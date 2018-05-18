@@ -4,7 +4,7 @@
 #
 # Copyright © 2018 dlilien <dlilien@berens>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3 license.
 
 """
 

@@ -4,7 +4,7 @@
 #
 # Copyright 2016 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3 license.
 
 """
 Created for compilation of fortran code

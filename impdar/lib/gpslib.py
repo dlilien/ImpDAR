@@ -4,7 +4,7 @@
 #
 # Copyright © 2016 dlilien <dlilien@berens>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3 license.
 
 """
 Some classes and functions to handle different types of GPS data
@@ -139,6 +139,7 @@ class nmea_info:
         m = (self.times % 10000 - s) / 100
         h = (self.times - m * 100 - s) / 10000
         return (h + m / 60.0 + s / 3600.0) / 24.0
+
 
 def nmea_to_ll(list_of_sentences):
     """Take in a list of raw sentences in GGA format and return a lon, lat list"""

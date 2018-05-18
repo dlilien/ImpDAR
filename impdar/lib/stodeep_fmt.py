@@ -4,7 +4,7 @@
 #
 # Copyright © 2018 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3 license.
 
 """
 Define a class that just has the necessary attributes for a stodeep file--this should be subclassed per filetype
