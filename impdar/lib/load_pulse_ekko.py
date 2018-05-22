@@ -9,6 +9,7 @@
 # Pythonized by David Lilien, May 2018
 # Distributed under the GNU GPL3 license
 
+import os.path
 from .gpslib import RadarGPS
 import numpy as np
 from .stodeep_fmt import StODeep, StOFlags
@@ -19,9 +20,10 @@ import datetime
 class PE(StODeep):
 
     def __init__(self, fn):
-        hdname = fn[0:6] + '.HD'
-        true_fn = fn[0:6] + '.DT1'
-        gps_fn = fn[0:6] + '.GPS'
+        bn = os.path.splitext(fn)[0]
+        hdname = bn + '.HD'
+        true_fn = bn + '.DT1'
+        gps_fn = bn + '.GPS'
 
         with open(hdname, 'r') as fin:
             for i, line in enumerate(fin):
@@ -60,7 +62,7 @@ class PE(StODeep):
         self.travel_time = np.atleast_2d(np.arange(0, window / 1.0e3, self.dt * 1.0e6)).transpose() + self.dt * 1.0e6
 
         # Now deal with the gps info
-        self.gps_data = get_gps_data(gps_fn, self.trace_num)
+        self.gps_data = _get_gps_data(gps_fn, self.trace_num)
         self.lat = self.gps_data.lat
         self.long = self.gps_data.lon
         self.x_coord = self.gps_data.x
@@ -128,7 +130,7 @@ class TH:
         self.header_index += 1
 
 
-def get_gps_data(fn, trace_nums):
+def _get_gps_data(fn, trace_nums):
     """Read GPS data associated with a GSSI sir4000 file.
 
     Parameters

@@ -14,27 +14,65 @@ from . import load_gssi, load_pulse_ekko
 from .stodeep_fmt import StODeep
 
 
-def load(filetype, fn, *args, **kwargs):
+def load(filetype, fns, *args, **kwargs):
+    """Load a list of files of a certain type
+
+    Parameters
+    ----------
+    filetype: str
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format
+    fns: list
+        List of files to load
+
+    Returns
+    -------
+    StODeeps: list of ~impdar.StODeep (or its subclasses)
+        Objects with relevant radar information
+    """
     if filetype == 'gssi':
-        dat = load_gssi.load_gssi(fn)
+        dat = [load_gssi.load_gssi(fn) for fn in fns]
     elif filetype == 'pe':
-        dat = load_pulse_ekko.load_pe(fn)
+        dat = [load_pulse_ekko.load_pe(fn) for fn in fns]
     elif filetype == 'mat':
-        dat = load_mat(fn)
+        dat = [load_mat(fn) for fn in fns]
     else:
         raise Exception('Unrecognized filetype')
     return dat
 
 
 def load_and_exit(filetype, fn, *args, **kwargs):
+    """Load a list of files of a certain type, save them as StODeep mat files, exit
+
+    Parameters
+    ----------
+    filetype: str
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format
+    fn: list or str
+        List of files to load (or a single file)
+    """
+    if type(fn) not in {list, tuple}:
+        fn = [fn]
     dat = load(filetype, fn, *args, **kwargs)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']
+        if len(dat) > 1:
+            raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
+        dat[0].save(out_fn)
     else:
-        out_fn = os.path.splitext(fn)[0] + '_raw.mat'
-    dat.save(out_fn)
+        for d, f in zip(dat, fn):
+            out_fn = os.path.splitext(f)[0] + '_raw.mat'
+            d.save(out_fn)
 
 
 def load_mat(fn):
+    """Load a .mat with radar info
+    
+    Just toss this in here so we have similar naming for 
+
+    Parameters
+    ----------
+    fn: str
+        name of matlab file containing relevant variables
+    """
     return StODeep(fn)
