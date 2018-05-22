@@ -12,33 +12,40 @@ Some classes and functions to handle different types of GPS data
 The workhorse of this library, nmea_info, is not designed to be created directly. See `gssilib.get_dzg_data`
 """
 import numpy as np
-import osr
+try:
+    import osr
+    conversions_enabled = True
+except ImportError:
+    conversions_enabled = False
 
 from scipy.interpolate import interp1d
 
+if conversions_enabled:
+    def get_utm_conversion(lat, lon):   
+        def utm_getZone(longitude):
+            return (int(1 + (longitude + 180.0) / 6.0))
 
-def get_utm_conversion(lat, lon):   
-    def utm_getZone(longitude):
-        return (int(1 + (longitude + 180.0) / 6.0))
+        def utm_isNorthern(latitude):
+            if (latitude < 0.0):
+                return False
+            else:
+                return True
 
-    def utm_isNorthern(latitude):
-        if (latitude < 0.0):
-            return False
-        else:
-            return True
+        utm_zone = utm_getZone(lon)
+        is_northern = utm_isNorthern(lat)
+       
+        utm_cs = osr.SpatialReference()
+        utm_cs.SetWellKnownGeogCS('WGS84')
+        utm_cs.SetUTM(utm_zone, is_northern)
 
-    utm_zone = utm_getZone(lon)
-    is_northern = utm_isNorthern(lat)
-   
-    utm_cs = osr.SpatialReference()
-    utm_cs.SetWellKnownGeogCS('WGS84')
-    utm_cs.SetUTM(utm_zone, is_northern)
-
-    wgs84_cs = utm_cs.CloneGeogCS()
-    wgs84_cs.ExportToPrettyWkt()
-   
-    transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-    return transform_WGS84_To_UTM.TransformPoints
+        wgs84_cs = utm_cs.CloneGeogCS()
+        wgs84_cs.ExportToPrettyWkt()
+       
+        transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
+        return transform_WGS84_To_UTM.TransformPoints
+else:
+    def get_utm_conversion(lat, lon):
+        raise ImportError('Cannot convert coordinates: osr not importable')
 
 
 class nmea_info:
@@ -84,7 +91,8 @@ class nmea_info:
         self.gz()
         self.ggeo_offset()
         self.gtimes()
-        self.get_utm()
+        if conversions_enabled:
+            self.get_utm()
         self.get_dist()
 
     def glat(self):
@@ -129,7 +137,7 @@ class nmea_info:
             self.dist[i] = self.dist[i - 1] + np.sqrt((self.x[i] - self.x[i - 1]) ** 2.0 + (self.y[i] - self.y[i - 1]) ** 2.0)
 
     def get_utm(self):
-        transform = get_utm_conversion(np.mean(self.lat), np.mean(self.lon))
+        transform = get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.lon))
         pts = np.array(transform(np.vstack((self.lon, self.lat)).transpose()))
         self.x, self.y = pts[:, 0], pts[:, 1]
 
@@ -182,10 +190,11 @@ class RadarGPS(nmea_info):
         self.nmea_info.scans = scans
         self.nmea_info.get_all()
 
-        kgps_indx = np.hstack((np.array([0]), np.where(np.diff(self.nmea_info.times) != 0)[0]))
+        kgps_indx = np.hstack((np.array([0]), np.where(np.logical_and(np.diff(self.nmea_info.times) != 0, ~np.isnan(self.nmea_info.times[1:])))[0]))
         self.lat = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lat[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
         self.lon = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lon[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
         self.z = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.z[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
         self.times = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.times[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
-        self.get_utm()
+        if conversions_enabled:
+            self.get_utm()
         self.get_dist()
