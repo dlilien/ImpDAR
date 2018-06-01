@@ -13,6 +13,7 @@ Define a class that just has the necessary attributes for a stodeep file--this s
 import numpy as np
 from scipy.io import loadmat, savemat
 from scipy.signal import butter, filtfilt
+from .horizontal_filters import hfilt, adaptivehfilt
 
 
 class RadarData():
@@ -91,7 +92,7 @@ class RadarData():
 
         # provide feedback to the user
         print('Bandpassing from {:4.1f} to {:4.1f} MHz...'.format(low, high))
-        self.data = filtfilt(b, a, self.data, axis=0)
+        self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
         print('Bandpass filter complete.')
 
         # set flags structure components
@@ -99,38 +100,13 @@ class RadarData():
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
 
-    def horizontal_band_pass(self, ntr1, ntr2, *args, **kwargs):
-        # v2.1
-        #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
-        #		or NMO data to reduce the horizontal noise in the upper layers.
-        #		The user need not specify any frequencies.  This program simply
-        #		takes the average of all of the traces and subtracts it from the
-        #		bandpassed data.  It will remove most horizontally-oriented
-        #		features in a radar profile: ringing, horizontal reflectors.  It
-        #		will also create artifacts at travel-times corresponding to any
-        #		bright horizontal reflectors included in the average trace.
-        #
-        #       You will want to experiment with the creation of the average trace.
-        #       Ideally choose an area where all reflectors are sloped and
-        #       relatively dim so that they average out while the horizontal noise
-        #       is amplified.  Note that generally there is no perfect horizontal
-        #       filter that will work at all depths.  You will have to experiment
-        #       to get the best results for your area of interest.
-
-        htr1 = int(max(0, min(ntr1, self.tnum - 1)))  # avoid a value less than 1 or greater than tnum
-        htrn = int(max(htr1 + 1, min(ntr2, self.tnum)))
-        print('Subtracting mean trace found between {:d} and {:d}'.format(htr1, htrn))
-
-        avg_trace = np.mean(self.data[:, htr1:htrn], axis=-1)
-
-        #taper average trace so it mostly affects only the upper layers in the
-        #data
-        avg_trace = avg_trace * (np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05))
-        self.data = self.data - np.atleast_2d(avg_trace).transpose()
-        print('Horizontal filter complete.')
-
-        # set flags structure components
-        self.flags.hfilt = np.ones((2,))
+    def hfilt(self, ftype='hfilt', bounds=None):
+        if ftype == 'hfilt':
+            hfilt(self, bounds[0], bounds[1])
+        elif ftype == 'adaptive':
+            adaptivehfilt(self)
+        else:
+            raise ValueError('Unrecognized filter type')
 
 
 class RadarFlags():

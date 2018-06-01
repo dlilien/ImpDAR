@@ -9,7 +9,7 @@
 """
 Some classes and functions to handle different types of GPS data
 
-The workhorse of this library, nmea_info, is not designed to be created directly. See `gssilib.get_dzg_data`
+The workhorse of this library, nmea_info, is not designed to be created directly. Use RadarGPS class, which has an __init__ method, instead.`
 """
 import numpy as np
 try:
@@ -132,9 +132,8 @@ class nmea_info:
             self.glat()
         if self.y is None:
             self.glon()
-        self.dist = np.zeros((len(self.y), 1))
-        for i in range(1, len(self.dist)):
-            self.dist[i] = self.dist[i - 1] + np.sqrt((self.x[i] - self.x[i - 1]) ** 2.0 + (self.y[i] - self.y[i - 1]) ** 2.0)
+        self.dist = np.zeros((len(self.y), ))
+        self.dist[1:] = np.cumsum(np.sqrt((self.x[1:] - self.x[:-1]) ** 2.0 + (self.y[1:] - self.y[:-1]) ** 2.0))
 
     def get_utm(self):
         transform = get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.lon))
@@ -190,7 +189,7 @@ class RadarGPS(nmea_info):
         self.nmea_info.scans = scans
         self.nmea_info.get_all()
 
-        kgps_indx = np.hstack((np.array([0]), np.where(np.logical_and(np.diff(self.nmea_info.times) != 0, ~np.isnan(self.nmea_info.times[1:])))[0]))
+        kgps_indx = np.hstack((np.array([0]), 1 + np.where(np.logical_and(np.diff(self.nmea_info.times) != 0, np.logical_and(~np.isnan(self.nmea_info.times[1:]), np.diff(self.nmea_info.scans) != 0)))[0]))
         self.lat = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lat[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
         self.lon = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lon[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
         self.z = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.z[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)

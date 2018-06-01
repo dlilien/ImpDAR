@@ -32,12 +32,14 @@ def _get_args():
     parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'mat'])
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
 
+    # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
     parser_proc.set_defaults(func=process.process_and_exit)
     parser_proc.add_argument('-gssi', action='store_true', help='Indicates that the file(s) are gssi output')
     parser_proc.add_argument('-pe', action='store_true', help='Indicates that the file(s) are pulse ekko output')
     parser_proc.add_argument('-vbp', nargs=2, type=float, help='Bandpass the data vertically at low (MHz) and high (MHz)')
     parser_proc.add_argument('-hfilt', nargs=2, type=int, help='Remove the average trace (average between hfilt0 and hfilt1)')
+    parser_proc.add_argument('-ahfilt', action='store_true', help='Adaptive horizontal filtering')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
 
     parser_plot = subparsers.add_parser('plot', help='Plot data')

@@ -13,7 +13,7 @@ import os.path
 from .load import load
 
 
-def process_and_exit(fn, vbp=None, hfilt=None, gssi=False, pe=False, **kwargs):
+def process_and_exit(fn, vbp=None, hfilt=None, ahfilt=False, gssi=False, pe=False, **kwargs):
     if gssi and pe:
         raise ValueError('Input cannot be both pulse-ekko and gssi')
     if gssi:
@@ -32,7 +32,12 @@ def process_and_exit(fn, vbp=None, hfilt=None, gssi=False, pe=False, **kwargs):
 
     if hfilt is not None:
         for dat in radar_data:
-            dat.horizontal_band_pass(*hfilt)
+            dat.hfilt(ftype='hfilt', bounds=hfilt)
+        done_stuff = True
+
+    if ahfilt is not None:
+        for dat in radar_data:
+            dat.hfilt(ftype='adaptive')
         done_stuff = True
 
     if not done_stuff:
