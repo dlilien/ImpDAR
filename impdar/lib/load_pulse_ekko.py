@@ -12,12 +12,12 @@
 import os.path
 from .gpslib import RadarGPS
 import numpy as np
-from .stodeep_fmt import StODeep, StOFlags
+from .RadarData import RadarData, RadarFlags
 import struct
 import datetime
 
 
-class PE(StODeep):
+class PE(RadarData):
 
     def __init__(self, fn):
         bn = os.path.splitext(fn)[0]
@@ -55,7 +55,7 @@ class PE(StODeep):
         self.trace_num = np.arange(self.tnum) + 1
         self.trig_level = np.zeros((self.tnum, ))
         self.pressure = np.zeros((self.tnum, ))
-        self.flags = StOFlags()
+        self.flags = RadarFlags()
 
         # some more real variables
         self.dt = window / self.snum * 1.0e-9

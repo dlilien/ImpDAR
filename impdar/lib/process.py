@@ -11,10 +11,9 @@ This is the overarching function that collects information about the processing 
 """
 import os.path
 from .load import load
-from .bandpass import vertical_band_pass, horizontal_band_pass
 
 
-def process_and_exit(fn, vbp=None, hbp=None, gssi=False, pe=False, **kwargs):
+def process_and_exit(fn, vbp=None, hfilt=None, gssi=False, pe=False, **kwargs):
     if gssi and pe:
         raise ValueError('Input cannot be both pulse-ekko and gssi')
     if gssi:
@@ -28,12 +27,12 @@ def process_and_exit(fn, vbp=None, hbp=None, gssi=False, pe=False, **kwargs):
 
     if vbp is not None:
         for dat in radar_data:
-            vertical_band_pass(dat, *vbp)
+            dat.vertical_band_pass(*vbp)
         done_stuff = True
 
-    if hbp is not None:
+    if hfilt is not None:
         for dat in radar_data:
-            horizontal_band_pass(dat, *vbp)
+            dat.horizontal_band_pass(*hfilt)
         done_stuff = True
 
     if not done_stuff:

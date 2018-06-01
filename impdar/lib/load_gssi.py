@@ -13,11 +13,11 @@ import os.path
 import struct
 import numpy as np
 from .gpslib import RadarGPS
-from .stodeep_fmt import StODeep, StOFlags
+from .RadarData import RadarData, RadarFlags
 import datetime
 
 
-class DZT(StODeep):
+class DZT(RadarData):
     header = None
     samp = None
 
@@ -101,7 +101,7 @@ class DZT(StODeep):
         self.trace_num = np.arange(self.data.shape[1]) + 1
         self.trig_level = np.zeros((self.tnum, ))
         self.pressure = np.zeros((self.tnum, ))
-        self.flags = StOFlags()
+        self.flags = RadarFlags()
         self.dt = self.rh.range / self.rh.nsamp * 1.0e-9
         self.travel_time = np.atleast_2d(np.arange(0, self.rh.range / 1.0e3, self.dt * 1.0e6)).transpose() + self.dt * 1.0e6
         self.trig = self.rh.zero

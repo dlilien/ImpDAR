@@ -11,7 +11,7 @@ A wrapper around the other loading utilities
 """
 import os.path
 from . import load_gssi, load_pulse_ekko
-from .stodeep_fmt import StODeep
+from .RadarData import RadarData
 
 
 def load(filetype, fns, *args, **kwargs):
@@ -75,4 +75,4 @@ def load_mat(fn):
     fn: str
         name of matlab file containing relevant variables
     """
-    return StODeep(fn)
+    return RadarData(fn)
