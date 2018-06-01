@@ -14,7 +14,7 @@
 #       3)  Added call for new batchdeep.m shell - B. Youngblood 7/12/08
 
 import argparse
-from impdar import load
+from impdar import load, process
 
 
 def dummy(args):
@@ -33,11 +33,15 @@ def _get_args():
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
 
     parser_proc = subparsers.add_parser('proc', help='Process data')
-    parser_proc.set_defaults(func=dummy)
+    parser_proc.set_defaults(func=process.process_and_exit)
+    parser_proc.add_argument('-gssi', action='store_true', help='Indicates that the file(s) are gssi output')
+    parser_proc.add_argument('-pe', action='store_true', help='Indicates that the file(s) are pulse ekko output')
+    parser_proc.add_argument('-vbp', nargs=2, type=float, help='Bandpass the data vertically at low (MHz) and high (MHz)')
+    parser_proc.add_argument('-hbp', nargs=2, help='Bandpass the data horizontally at low (MHz) and high (MHz)')
+    parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to load')
+
     parser_plot = subparsers.add_parser('plot', help='Plot data')
     parser_plot.set_defaults(func=dummy)
-    parser_save = subparsers.add_parser('save', help='Save data')
-    parser_save.set_defaults(func=dummy)
     return parser
 
 

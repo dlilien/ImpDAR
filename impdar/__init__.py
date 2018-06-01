@@ -10,5 +10,5 @@
 Skeleton import impdar
 """
 
-from .lib import load
+from .lib import load, process
 from .lib.stodeep_fmt import StODeep
