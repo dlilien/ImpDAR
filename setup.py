@@ -23,6 +23,6 @@ if __name__ == '__main__':
           author_email='dal22@uw.edu',
           license='MIT',
           entry_points={'console_scripts': console_scripts},
-          install_requires=['numpy', 'scipy', 'matplotlib'],
+          install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
           packages=['impdar', 'impdar.bin', 'impdar.lib'],
           test_suite='nose.collector')
