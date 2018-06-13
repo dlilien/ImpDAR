@@ -9,7 +9,7 @@
 """
 Some classes and functions to handle different types of GPS data
 
-The workhorse of this library, nmea_info, is not designed to be created directly. Use RadarGPS class, which has an __init__ method, instead.`
+The workhorse of this library, nmea_info, is not designed to be created directly. Use RadarGPS class, which has an __init__ method, instead.
 """
 import numpy as np
 try:
@@ -96,13 +96,15 @@ class nmea_info:
         self.get_dist()
 
     def glat(self):
-        self.lat = self.all_data[:, 2] * ((self.all_data[:, 1] - self.all_data[:, 1] % 100) / 100 + (self.all_data[:, 1] % 100) / 60)
+        if self.lat is None:
+            self.lat = self.all_data[:, 2] * ((self.all_data[:, 1] - self.all_data[:, 1] % 100) / 100 + (self.all_data[:, 1] % 100) / 60)
         if self.y is None:
             self.y = self.lat
         return self.lat
 
     def glon(self):
-        self.lon = self.all_data[:, 4] * ((self.all_data[:, 3] - self.all_data[:, 3] % 100) / 100 + (self.all_data[:, 3] % 100) / 60)
+        if self.lon is None:
+            self.lon = self.all_data[:, 4] * ((self.all_data[:, 3] - self.all_data[:, 3] % 100) / 100 + (self.all_data[:, 3] % 100) / 60)
         if self.x is None:
             self.x = self.lon
         return self.lon
@@ -129,9 +131,9 @@ class nmea_info:
 
     def get_dist(self):
         if self.x is None:
-            self.glat()
-        if self.y is None:
             self.glon()
+        if self.y is None:
+            self.glat()
         self.dist = np.zeros((len(self.y), ))
         self.dist[1:] = np.cumsum(np.sqrt((self.x[1:] - self.x[:-1]) ** 2.0 + (self.y[1:] - self.y[:-1]) ** 2.0))
 
