@@ -14,7 +14,7 @@ from . import load_gssi, load_pulse_ekko
 from .RadarData import RadarData
 
 
-def load(filetype, fns, *args, **kwargs):
+def load(filetype, fns):
     """Load a list of files of a certain type
 
     Parameters
@@ -26,7 +26,7 @@ def load(filetype, fns, *args, **kwargs):
 
     Returns
     -------
-    StODeeps: list of ~impdar.StODeep (or its subclasses)
+    RadarDataList: list of ~impdar.RadarData (or its subclasses)
         Objects with relevant radar information
     """
     if filetype == 'gssi':
@@ -52,7 +52,7 @@ def load_and_exit(filetype, fn, *args, **kwargs):
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
-    dat = load(filetype, fn, *args, **kwargs)
+    dat = load(filetype, fn)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']

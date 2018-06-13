@@ -4,7 +4,7 @@
 #
 # Copyright © 2018 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the GNU GPL3 license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 Define a class that just has the necessary attributes for a stodeep file--this should be subclassed per filetype
@@ -13,11 +13,21 @@ Define a class that just has the necessary attributes for a stodeep file--this s
 import numpy as np
 from scipy.io import loadmat, savemat
 from scipy.signal import butter, filtfilt
+from scipy.interpolate import interp1d
 from .horizontal_filters import hfilt, adaptivehfilt
 
 
 class RadarData():
-    # First define all the common attributes
+    """A class that holds the relevant information for a radar profile.
+    
+    We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
+    
+    Attributes
+    ----------
+    data: numpy.ndarray
+        The data matrix
+    
+    """
     chan = None
     data = None
     decday = None
@@ -37,23 +47,62 @@ class RadarData():
     trig_level = None
     x_coord = None
     y_coord = None
+    nmo_depth = None
+    attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
+    attrs_optional = ['nmo_depth']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
         mat = loadmat(fn)
-        for attr in ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
-            setattr(self, attr, mat[attr])
+        for attr in self.attrs_guaranteed:
+            if mat[attr].shape == (1, 1):
+                setattr(self, attr, mat[attr][0][0])
+            elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                setattr(self, attr, mat[attr].flatten())
+            else:
+                setattr(self, attr, mat[attr])
+        # We may have some additional variables
+        for attr in self.attrs_optional:
+            if attr in mat:
+                if mat[attr].shape == (1, 1):
+                    setattr(self, attr, mat[attr][0][0])
+                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                    setattr(self, attr, mat[attr].flatten())
+                else:
+                    setattr(self, attr, mat[attr])
+            else:
+                self.attr = None
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
 
     def save(self, fn):
+        """Save the radar data
+
+        Parameters
+        ----------
+        fn: str
+            Filename. Should have a .mat extension
+        """
         mat = {}
-        for attr in ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
+        for attr in self.attrs_guaranteed:
             mat[attr] = getattr(self, attr)
+        for attr in self.attrs_optional:
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+        mat['flags'] = self.flags
         savemat(fn, mat)
 
     def vertical_band_pass(self, low, high, *args, **kwargs):
-        # bandpass.m  v3.1 - this function performs a banspass filter in the
+        """Vertically bandpass the data
+
+        Parameters
+        ----------
+        low: float
+            Lowest frequency passed, in MHz
+        high: float
+            Highest frequency passed, in MHz
+        """
+        # adapted from bandpass.m  v3.1 - this function performs a banspass filter in the
         # time-domain of the radar data to remove environmental noise.  The routine
         # currently uses a 5th order Butterworth filter.
         # We have a lot of power to mess with this because scipy. Keeping the butter for now.
@@ -101,6 +150,17 @@ class RadarData():
         self.flags.bpass[2] = high
 
     def hfilt(self, ftype='hfilt', bounds=None):
+        """Horizontally filter the data.
+
+        This is a wrapper around other filter types.
+
+        Parameters
+        ----------
+        ftype: str, optional
+            The filter type. Options are 'hfilt' and 'adaptive'. Default hfilt
+        bounds: tuple, optional
+            Bounds for the hfilt. Default is None, but required for hfilt.
+        """
         if ftype == 'hfilt':
             hfilt(self, bounds[0], bounds[1])
         elif ftype == 'adaptive':
@@ -108,27 +168,155 @@ class RadarData():
         else:
             raise ValueError('Unrecognized filter type')
 
+    def reverse(self):
+        """Reverse radar data
+
+        The St Olaf version of this function had a bunch of options. They seemed irrelevant to me. We just try to flip everything that might need flipping.
+        """
+        self.data = np.fliplr(self.data)
+
+        self.x_coord = np.fliplr(self.x_coord)
+        self.y_coord = np.fliplr(self.y_coord)
+        self.decday = np.fliplr(self.decday)
+        self.lat = np.fliplr(self.lat)
+        self.long = np.fliplr(self.long)
+        self.elev = np.fliplr(self.elev)
+
+        # allow for re-reverasl
+        if self.flags.reverse:
+            print('Back to original direction')
+            self.flags.reverse = False
+        else:
+            print('Profile direction reversed')
+            self.flags.reverse = True
+
+    def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
+        """Normal move-out correction.
+
+        Converts travel time to distance accounting for antenna separation. This potentially affects data and snum. It also defines nmo_depth, the moveout-corrected depth
+
+        Parameters
+        ----------
+        ant_sep: float
+            Antenna separation in meters.
+        uice: float, optional
+            Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8
+        uar: float, optional
+            Speed of light in air. Default 3.0e8
+        """
+        # Conversion of StO nmodeep v2.4
+        #   Modifications:
+        #       1) Adapted for Stodeep - L. Smith, 6/15/03
+        #       2) Fixed rounding bug - L. Smith, 6/16/03
+        #       3) Converted to function and added documentation - B. Welch, 5/8/06
+        #		4) Rescaled uice at end of script to original input value for use
+        #		in other programs.  - J. Olson, 7/3/08
+        #       5) Increased function outputs - J. Werner, 7/7/08.
+        #       6) Converted flag variables to structure, and updated function I/O
+        #       - J. Werner, 7/10/08
+        #
+
+        #calculate travel time of air wave
+        tair = ant_sep / uair
+
+        if np.round(tair / self.dt) > self.trig:
+            self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
+            nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
+            self.snum = nmodata.shape[0]
+        else:
+            nmodata = self.data.copy()
+
+        #calculate direct ice wave time
+        tice = ant_sep / uice
+
+        #calculate sample location for time=0 when radar pulse is transmitted
+        #	(Note: trig is the air wave arrival)
+        # switched from rounding whole right side to just rounding (tair/dt)
+        #    -L. Smith, 6/16/03
+        nair = int((self.trig + 1) - np.round(tair / self.dt))
+
+        #calculate sample location for direct ice wave arrival
+        # switched from rounding whole right side to just rounding (tice/dt)
+        #    -L. Smith, 6/16/03
+        nice = int(nair + np.round(tice / self.dt))
+
+        #calculate vector of recorded travel times starting at time=0
+        #calculate new time vector where t=0 is the emitted pulse
+        pulse_time = np.arange(-self.dt * (nair), (self.snum - nair) * self.dt, self.dt)
+        pulse_time[nice] = tice
+
+        #create an empty vector
+        tadj = np.zeros((self.snum, ))
+
+        #calculate legs of travel path triangle (in one-way travel time)
+        hyp = pulse_time[nice:self.snum] / 2.
+
+        #calculate the vertical one-way travel time
+        tadj[nice:self.snum] = (np.sqrt((hyp**2.) - ((tice / 2.)**2.)))
+        tadj[np.imag(tadj) != 0] = 0
+
+        #convert the vertical one-way travel time to vector indices
+        nadj = np.zeros((self.snum, ))
+        nadj[nice:self.snum] = pulse_time[nice: self.snum] / self.dt - tadj[nice: self.snum] * 2. / self.dt
+
+        #loop through samples for all traces in profile
+        for n in range(nice, self.snum):
+            #correct the data by shifting the samples earlier in time by "nadj"
+            nmodata[n - np.round(nadj[n]).astype(int), :] = nmodata[np.round(n).astype(int), :]
+            #Since we are stretching the data near the ice surface we need to interpolate samples in the gaps. B. Welch June 2003
+            if (n - np.round(nadj[n])) - ((n - 1) - np.round(nadj[n - 1])) > 1 and n != nice:
+                interper = interp1d(np.array([((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))]), nmodata[[((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))], :].transpose())
+                nmodata[((n - 1) - int(round(nadj[n - 1]))): (n - int(round(nadj[n]))), :] = interper(np.arange(((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n]))))).transpose()
+
+        #define the new pre-trigger value based on the nmo-adjustment calculations above:
+        self.trig = nice - np.round(nadj[nice])
+
+        #calculate the new variables for the y-axis after NMO is complete
+        self.travel_time = np.arange((-self.trig) * self.dt, (nmodata.shape[0] - nair) * self.dt, self.dt) * 1.0e6
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+        
+        self.data = nmodata
+
+        self.flags.nmo[0] = 1
+        try:
+            self.flags.nmo[1] = ant_sep
+        except IndexError:
+            self.flags.nmo = np.ones((2, ))
+            self.flags.nmo[1] = ant_sep
+
 
 class RadarFlags():
+    """Flags that indicate the processing that has been used on the data.
+
+    Attributes
+    ----------
+    batch: bool
+        Legacy indication of whether we are batch processing. Always False.
+    """
 
     def __init__(self):
-        self.batch = 0
+        self.batch = False
         self.bpass = np.zeros((3,))
         self.hfilt = np.zeros((2,))
         self.rgain = 0
         self.agc = 0
-        self.restack = 0
-        self.reverse = 0
+        self.restack = False
+        self.reverse = False
         self.crop = 0
-        self.nmo = 0
+        self.nmo = np.zeros((2,))
         self.interp = 0
         self.mig = 0
         self.elev = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
+        self.bool_attrs = ['batch', 'restack', 'reverse']
 
     def to_matlab(self):
-        return {att: getattr(self, att) for att in self.attrs}
+        outmat = {att: getattr(self, att) for att in self.attrs}
+        for attr in self.bool_attrs:
+            outmat[attr] = 1 if outmat[attr] else 0
 
     def from_matlab(self, matlab_struct):
         for attr in self.attrs:
             setattr(self, attr, matlab_struct[attr][0][0][0])
+        for attr in self.bool_attrs:
+            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)

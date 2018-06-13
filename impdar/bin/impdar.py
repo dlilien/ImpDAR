@@ -17,20 +17,15 @@ import argparse
 from impdar import load, process, plot
 
 
-def dummy(args):
-    print(args)
-    print('Not yet implemented')
-
-
 def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='sub-command help')
-    parser.add_argument('-o', type=str, help='Write to this filename')
 
     parser_load = subparsers.add_parser('load', help='Load data')
     parser_load.set_defaults(func=load.load_and_exit)
     parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'mat'])
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
+    parser_load.add_argument('-o', type=str, help='Write to this filename')
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
@@ -40,12 +35,17 @@ def _get_args():
     parser_proc.add_argument('-vbp', nargs=2, type=float, help='Bandpass the data vertically at low (MHz) and high (MHz)')
     parser_proc.add_argument('-hfilt', nargs=2, type=int, help='Remove the average trace (average between hfilt0 and hfilt1)')
     parser_proc.add_argument('-ahfilt', action='store_true', help='Adaptive horizontal filtering')
+    parser_proc.add_argument('-rev', action='store_true', help='Reverse profile')
+    parser_proc.add_argument('-nmo', nargs=2, type=float, help='Normal moveout correction. First argument is the transmitter-receiver separation. Second argument is the velocity of the radar wave.')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
+    parser_proc.add_argument('-o', type=str, help='Write to this filename')
 
     parser_plot = subparsers.add_parser('plot', help='Plot data')
     parser_plot.set_defaults(func=plot.plot)
     parser_plot.add_argument('fn', type=str, nargs='+', help='File(s) to plot')
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
+    parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
+    parser_plot.add_argument('-o', type=str, help='Write to this filename')
     return parser
 
 

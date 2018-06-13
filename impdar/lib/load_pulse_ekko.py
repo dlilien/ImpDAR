@@ -71,7 +71,7 @@ class PE(RadarData):
         self.elev = self.gps_data.z
 
         timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
-        day_offset = datetime.datetime(*doy, 0, 0, 0) - timezero
+        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0) - timezero
         tmin, tmax = day_offset.days + np.min(self.gps_data.dectime), day_offset.days + np.max(self.gps_data.dectime)
         self.decday = np.linspace(tmin, tmax, self.tnum)
         self.trace_int = np.hstack((np.array(np.nanmean(np.diff(self.dist))), np.diff(self.dist)))
