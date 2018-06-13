@@ -14,7 +14,7 @@ from numpy.distutils.core import setup
 setuptools
 
 if __name__ == '__main__':
-    console_scripts = ['impdar=impdar.bin.impdar:main']
+    console_scripts = ['impdar=impdar.bin.impdar:main', 'impproc=impdar.bin.impproc:main']
     setup(name='impdar',
           version='0.1a1',
           description='Scripts for impulse radar',

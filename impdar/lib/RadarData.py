@@ -284,14 +284,68 @@ class RadarData():
             self.flags.nmo = np.ones((2, ))
             self.flags.nmo[1] = ant_sep
 
+    def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
+        """Crop the radar data in the vertical. We can take off the top or bottom.
+
+        This will affect data, travel_time, and snum.
+
+        Parameters
+        ----------
+        lim: float (int if dimension=='snum')
+            The value at which to crop.
+        top_or_bottom: str, optional
+            Crop off the top (lim is the first remaining return) or the bottom (lim is the last remaining return).
+        dimension: str, optional
+            Evaluate in terms of sample (snum), travel time (twtt), or depth (depth). If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
+        uice: float, optional
+            Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
+        """
+        if top_or_bottom not in ['top', 'bottom']:
+            raise ValueError('top_or_bottom must be "top" or "bottom" not {:s}'.format(top_or_bottom))
+        if dimension not in ['snum', 'twtt', 'depth']:
+            raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
+
+        if dimension == 'twtt':
+            lim = np.min(np.argwhere(self.travel_time >= lim))
+        elif dimension == 'depth':
+            if self.nmo_depth is not None:
+                depth = self.nmo_depth
+            else:
+                depth = self.travel_time / 2. * uice * 1.0e-6
+            ind = np.min(np.argwhere(depth >= lim))
+        else:
+            ind = int(lim)
+
+        if top_or_bottom == 'top':
+            lims = [ind, self.data.shape[0]]
+        else:
+            lims = [0, ind]
+
+        self.data = self.data[lims[0]:lims[1], :]
+        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        self.snum = self.data.shape[0]
+        self.flags.crop[0] = 1
+        try:
+            self.flags.crop[2] = self.flags.crop[1] + lims[1]
+        except IndexError:
+            self.flags.crop = np.zeros((3,))
+            self.flags.crop[0] = 1
+            self.flags.crop[2] = self.flags.crop[1] + lims[1]
+        self.flags.crop[1] = self.flags.crop[1] + lims[0]
+        print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
+
 
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
 
     Attributes
     ----------
-    batch: bool
+    batch: bool[lims[0]:lims[1]
         Legacy indication of whether we are batch processing. Always False.
+    bpass: 3x1 np.ndarray
+        (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
+    hfilt: 2x1 np.ndarray:
+        (1) 1 if horizontally filtered; (2) Filter type
     """
 
     def __init__(self):
@@ -302,7 +356,7 @@ class RadarFlags():
         self.agc = 0
         self.restack = False
         self.reverse = False
-        self.crop = 0
+        self.crop = np.zeros((3,))
         self.nmo = np.zeros((2,))
         self.interp = 0
         self.mig = 0

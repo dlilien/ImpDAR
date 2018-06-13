@@ -77,7 +77,6 @@ def add_def_args(parser):
 def main():
     parser = _get_args()
     args = parser.parse_args()
-    print(args)
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
         return
@@ -123,8 +122,8 @@ def vbp(dat, low=1, high=10000, **kwargs):
     dat.vertical_band_pass(low, high)
 
 
-def crop(dat, top_or_bottom, dimension, lim, **kwargs):
-    dat.crop(top_or_bottom, dimension, lim)
+def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
+    dat.crop(lim, top_or_bottom=top_or_bottom, dimension=dimension)
 
 
 def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, **kwargs):

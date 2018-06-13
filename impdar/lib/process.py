@@ -11,7 +11,6 @@ This is the overarching function that collects information about the processing 
 """
 import os.path
 from .load import load
-from .trivial_processing import reverse_radar
 
 
 def process_and_exit(fn, rev=False, vbp=None, hfilt=None, ahfilt=False, gssi=False, pe=False, **kwargs):
@@ -61,7 +60,7 @@ def process_and_exit(fn, rev=False, vbp=None, hfilt=None, ahfilt=False, gssi=Fal
             d.save(out_fn)
 
 
-def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, **kwargs):
+def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -83,10 +82,24 @@ def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=No
         If True, we did something, if False we didn't
     """
 
+    # first some argument checking so we don't crash later
+    if crop is not None:
+        try:
+            if crop[0] not in ['top', 'bottom']:
+                raise ValueError('First element of crop must be in ["top", "bottom"]')
+            if crop[1] not in ['snum', 'twtt', 'depth']:
+                raise ValueError('Second element of crop must be in ["snum", "twtt", "depth"]')
+            try:
+                crop[2] = float(crop[2])
+            except ValueError:
+                raise ValueError('Third element of crop must be convertible to a float')
+        except IndexError:
+            raise TypeError('Crop must be subscriptible')
+
     done_stuff = False
     if rev:
         for dat in RadarDataList:
-            reverse_radar(dat)
+            dat.reverse()
 
     if vbp is not None:
         for dat in RadarDataList:
@@ -109,6 +122,12 @@ def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=No
             nmo = (nmo, 1.6)
         for dat in RadarDataList:
             dat.nmo(*nmo)
+        done_stuff = True
+
+    # Crop after nmo so that we have nmo_depth available for cropping if desired
+    if crop is not None:
+        for dat in RadarDataList:
+            dat.crop(*crop)
         done_stuff = True
 
     if not done_stuff:
