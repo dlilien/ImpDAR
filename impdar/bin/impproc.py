@@ -15,6 +15,7 @@ All functionality probably overlaps with impdar, but the call is much cleaner. H
 import os.path
 import argparse
 from impdar.lib.load import load
+from impdar.lib.process import concat
 
 
 def _get_args():
@@ -32,6 +33,24 @@ def _get_args():
 
     # Simply reverse the files
     add_simple_procparser(subparsers, 'rev', 'Reverse the data', rev, defname='rev')
+
+    # Concatenate
+    add_simple_procparser(subparsers, 'cat', 'Concatenate the data', concat, defname='cat')
+
+    # Restack
+    parser_restack = add_procparser(subparsers, 'restack', 'Restack to interval', restack, defname='restacked')
+    parser_restack.add_argument('traces', type=int, help='Number of traces to stack. Must be an odd number')
+    add_def_args(parser_restack)
+
+    # Range gain
+    parser_rgain = add_procparser(subparsers, 'rgain', 'Add a range gain', rgain, defname='rgain')
+    parser_rgain.add_argument('-slope', type=float, default=0.1, help='Slope of the linear range gain. Default 0.1')
+    add_def_args(parser_rgain)
+
+    # Range gain
+    parser_agc = add_procparser(subparsers, 'agc', 'Add an automatic gain', agc, defname='agc')
+    parser_agc.add_argument('-window', type=int, default=50, help='Number of samples to average')
+    add_def_args(parser_agc)
 
     # Vertical bandpass
     parser_vbp = add_procparser(subparsers, 'vbp', 'Vertically bandpass the data', vbp, defname='bandpassed')
@@ -52,6 +71,7 @@ def _get_args():
     parser_nmo.add_argument('--uice', type=float, default=1.69e8, help='Speed of light in ice in m/s (default 1.69e8)')
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
     add_def_args(parser_nmo)
+
     return parser
 
 
@@ -89,20 +109,33 @@ def main():
         radar_data = load('pe', args.fns)
     else:
         radar_data = load('mat', args.fns)
-    
-    for dat in radar_data:
-        args.func(dat, **vars(args))
+
+    if args.name == 'cat':
+        radar_data = concat(radar_data)
+        bn = os.path.splitext(args.fns[0])[0]
+        args.fns = [bn + '.mat']
+        
+    else:
+        for dat in radar_data:
+            args.func(dat, **vars(args))
 
     if args.o is not None:
         if len(radar_data) > 1:
             for d, f in zip(radar_data, args.fns):
-                out_fn = args.o + '/' + os.path.split(os.path.splitext(f)[0])[1] + '_{:s}.mat'.format(args.name)
+                bn = os.path.split(os.path.splitext(f)[0])[1]
+                if bn[-4:] == '_raw':
+                    bn = bn[:-4]
+                out_fn = args.o + '/' + bn + '_{:s}.mat'.format(args.name)
                 d.save(out_fn)
         else:
+            out_fn = args.o
             radar_data[0].save(out_fn)
     else:
         for d, f in zip(radar_data, args.fns):
-            out_fn = os.path.splitext(f)[0] + '_{:s}.mat'.format(args.name)
+            bn = os.path.splitext(f)[0]
+            if bn[-4:] == '_raw':
+                bn = bn[:-4]
+            out_fn = bn + '_{:s}.mat'.format(args.name)
             d.save(out_fn)
 
 
@@ -128,6 +161,18 @@ def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
 
 def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, **kwargs):
     dat.nmo(ant_sep, uice=uice, uair=uair)
+
+
+def restack(dat, traces=1, **kwargs):
+    dat.restack(traces)
+
+
+def rgain(dat, slope=0.1, **kwargs):
+    dat.rangegain(slope)
+
+
+def agc(dat, window=50, scale_factor=50, **kwargs):
+    dat.agc(window=window, scaling_factor=scale_factor)
 
 
 if __name__ == '__main__':

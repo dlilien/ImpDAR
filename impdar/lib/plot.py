@@ -83,14 +83,17 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
         yd = dat.travel_time
         ax.set_ylabel('Two way travel time (usec)')
     elif ydat == 'depth':
-        yd = dat.nmo_depth
+        if dat.nmo_depth is not None:
+            yd = dat.nmo_depth
+        else:
+            yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
         ax.set_ylabel('Depth (m)')
 
     if xdat == 'tracenum':
         xd = np.arange(int(dat.snum))[x_range[0]:x_range[-1]]
         ax.set_xlabel('Trace number')
     elif xdat == 'dist':
-        xd = dat.dist[:, x_range[0]:x_range[-1]]
+        xd = dat.dist[x_range[0]:x_range[-1]]
         ax.set_xlabel('Distance (km)')
 
     im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')

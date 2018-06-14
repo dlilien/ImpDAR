@@ -334,6 +334,62 @@ class RadarData():
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
         print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
 
+    def restack(self, traces):
+        """Restack all relevant data to the given number of traces.
+
+        There are fancier ways to do this--if you can, you probably want to restack to constant trace spacing instead
+
+        Parameters
+        ----------
+        traces: int
+            The (odd) number of traces to stack
+        """
+        traces = int(traces)
+        if traces % 2 == 0:
+            print('Only will stack odd numbers of traces. Using {:d}'.format(int(traces + 1)))
+            traces = traces + 1
+        tnum = int(np.floor(self.tnum / traces))
+        stack = np.zeros((self.snum, tnum))
+        trace_int = np.zeros((tnum, ))
+        oned_restack_vars = ['dist', 'pressure', 'trig_level', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday']
+        oned_newdata = {key: np.zeros((tnum, )) for key in oned_restack_vars}
+        for j in range(tnum):
+            stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])], axis=1)
+            trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
+            for var, val in oned_newdata.items():
+                val[j] = np.mean(getattr(self, var)[j * traces:min((j + 1) * traces, self.data.shape[1])])
+        self.tnum = tnum
+        self.data = stack
+        self.trace_num = np.arange(self.tnum).astype(int) + 1
+        self.trace_int = trace_int
+        for var, val in oned_newdata.items():
+            setattr(self, var, val)
+        self.flags.restack = True
+
+    def rangegain(self, slope):
+        gain = self.travel_time[self.trig + 1:] * slope
+        self.data[self.trig + 1:, :] *= np.atleast_2d(gain).transpose()
+        self.flags.rgain = True
+
+    def agc(self, window=50, scaling_factor=50):
+        """Try to do some automatic gain control
+
+        This is from StoDeep--I'm not sure it is useful but it was easy to roll over so I'm going to keep it. I think you should have most of this gone with a bandpass, but whatever.
+
+        Parameters
+        ----------
+        window: int, optional
+            The size of window we use in number of samples (default 50)
+        scaling_factor: int, optional
+            The scaling factor. This gets divided by the max amplitude when we rescale the input. Default 50.
+        """
+        maxamp = np.zeros((self.snum,))
+        for i in range(window // 2):
+            maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):min(i + window // 2, self.snum)]))
+        maxamp[maxamp == 0] = 1.0e-6
+        self.data *= (scaling_factor / np.atleast_2d(maxamp).transpose()).astype(self.data.dtype)
+        self.flags.agc = True
+
 
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
@@ -353,7 +409,7 @@ class RadarFlags():
         self.bpass = np.zeros((3,))
         self.hfilt = np.zeros((2,))
         self.rgain = 0
-        self.agc = 0
+        self.agc = False
         self.restack = False
         self.reverse = False
         self.crop = np.zeros((3,))
@@ -362,7 +418,7 @@ class RadarFlags():
         self.mig = 0
         self.elev = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.bool_attrs = ['batch', 'restack', 'reverse']
+        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse']
 
     def to_matlab(self):
         outmat = {att: getattr(self, att) for att in self.attrs}

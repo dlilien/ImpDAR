@@ -32,12 +32,14 @@ def _get_args():
     parser_proc.set_defaults(func=process.process_and_exit)
     parser_proc.add_argument('-gssi', action='store_true', help='Indicates that the file(s) are gssi output')
     parser_proc.add_argument('-pe', action='store_true', help='Indicates that the file(s) are pulse ekko output')
+    parser_proc.add_argument('-cat', action='store_true', help='Concatenate the files')
     parser_proc.add_argument('-vbp', nargs=2, type=float, help='Bandpass the data vertically at low (MHz) and high (MHz)')
     parser_proc.add_argument('-hfilt', nargs=2, type=int, help='Remove the average trace (average between hfilt0 and hfilt1)')
     parser_proc.add_argument('-ahfilt', action='store_true', help='Adaptive horizontal filtering')
     parser_proc.add_argument('-rev', action='store_true', help='Reverse profile')
     parser_proc.add_argument('-nmo', nargs=2, type=float, help='Normal moveout correction. First argument is the transmitter-receiver separation. Second argument is the velocity of the radar wave (in m/s).')
     parser_proc.add_argument('-crop', nargs=3, type=str, help='Crop the radar data in the travel-time direction. Arguments are to crop off ["top", "bottom"], with limit defined in terms of ["snum", "twtt", "depth"] and then the limit itself')
+    parser_proc.add_argument('-restack', nargs=1, type=int, help='Restack to this (odd) number of traces')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
     parser_proc.add_argument('-o', type=str, help='Write to this filename')
 
@@ -46,6 +48,7 @@ def _get_args():
     parser_plot.add_argument('fn', type=str, nargs='+', help='File(s) to plot')
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
+    parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
     return parser
 

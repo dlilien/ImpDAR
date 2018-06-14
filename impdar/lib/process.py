@@ -11,27 +11,24 @@ This is the overarching function that collects information about the processing 
 """
 import os.path
 from .load import load
+import numpy as np
 
 
-def process_and_exit(fn, rev=False, vbp=None, hfilt=None, ahfilt=False, gssi=False, pe=False, **kwargs):
+def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
     """Perform one or more processing steps, save, and exit
 
     Parameters
     ----------
     fn: list of strs
         The filename(s) to process. Assumed to be .mat files unless gssi or pe is True.
-    rev: bool, optional
-        Reverse the profile orientation. Default is False.
-    vbp: 2-tuple, optional
-        Vertical bandpass between (vbp1, vbp2) MHz. Default None (no filtering).
-    hfilt: 2-tuple, optional
-        Horizontal filter subtracting average trace between (hfilt1, hfilt2). Default is None (no hfilt).
-    ahfilt: bool, optional
-        Adaptively horizontally filter the data.
     gssi: bool, optional
         If True, expect a gssi radar file as input rather than a .mat file.
     pe: bool, optional
         If True, expect a Pulse Ekko radar file as input rather than a .mat file.
+    cat: bool, optional
+        If True, concatenate files before processing rather than running through each individually
+    kwargs:
+        These are the processing arguments for `process`
     """
         
     if gssi and pe:
@@ -43,24 +40,43 @@ def process_and_exit(fn, rev=False, vbp=None, hfilt=None, ahfilt=False, gssi=Fal
     else:
         radar_data = load('mat', fn)
 
-    processed = process(radar_data, rev=rev, vbp=vbp, hfilt=hfilt, ahfilt=ahfilt, **kwargs)
-    if not processed:
+    # first we do the quirky one
+    if cat:
+        radar_data = concat(radar_data)
+        bn = os.path.splitext(fn[0])[0]
+        if bn[-4:] == '_raw':
+            bn = bn[:-4]
+        fn = [bn + '_cat.mat']
+
+    processed = process(radar_data, **kwargs)
+    if not processed and not cat:
+        print('No processing steps performed. Not saving!')
         return
 
     if 'o' in kwargs and kwargs['o'] is not None:
         if len(radar_data) > 1:
             for d, f in zip(radar_data, fn):
-                out_fn = kwargs['o'] + '/' + os.path.split(os.path.splitext(f)[0])[1] + '_proc.mat'
+                bn = os.path.split(os.path.splitext(f)[0])[1]
+                if bn[-4:] == '_raw':
+                    bn = bn[:-4]
+                out_fn = kwargs['o'] + '/' + bn + '_proc.mat'
                 d.save(out_fn)
         else:
+            out_fn = kwargs['o']
             radar_data[0].save(out_fn)
     else:
         for d, f in zip(radar_data, fn):
-            out_fn = os.path.splitext(f)[0] + '_proc.mat'
+            bn = os.path.splitext(f)[0]
+            if bn[-4:] == '_raw':
+                bn = bn[:-4]
+            if cat:
+                out_fn = bn + '.mat'
+            else:
+                out_fn = bn + '_proc.mat'
             d.save(out_fn)
 
 
-def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, **kwargs):
+def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -97,6 +113,10 @@ def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=No
             raise TypeError('Crop must be subscriptible')
 
     done_stuff = False
+    if restack is not None:
+        for dat in RadarDataList:
+            dat.restack(restack)
+
     if rev:
         for dat in RadarDataList:
             dat.reverse()
@@ -131,6 +151,36 @@ def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=No
         done_stuff = True
 
     if not done_stuff:
-        print('No processing steps performed. Not saving!')
         return False
     return True
+
+
+def concat(radar_data):
+    """Concatenate all radar data input
+
+    Parameters
+    ----------
+    fns: list of strs
+        files to concatenate
+    """
+    from copy import deepcopy
+    # let's do some checks to make sure we are consistent here
+    out = deepcopy(radar_data[0])
+
+    for dat in radar_data[1:]:
+        if out.snum != dat.snum:
+            raise ValueError('Need the same number of vertical samples in each file')
+        if not np.all(out.travel_time == dat.travel_time):
+            raise ValueError('Need matching travel time vectors')
+
+    out.data = np.hstack([dat.data for dat in radar_data])
+    tnums = np.hstack((np.array([0]), np.cumsum([dat.tnum for dat in radar_data])))
+    out.tnum = out.data.shape[1]
+    out.trace_num = np.hstack([dat.trace_num + tnum for dat, tnum in zip(radar_data, tnums)])
+    dists = np.hstack((np.array([0]), np.cumsum([dat.dist[-1] for dat in radar_data])))
+    out.dist = np.hstack([dat.dist + dist for dat, dist in zip(radar_data, dists)])
+    for attr in ['pressure', 'trig_level', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday', 'trace_int']:
+        setattr(out, attr, np.hstack([getattr(dat, attr) for dat in radar_data]))
+    radar_data = [out]
+    print('Files concatenated')
+    return radar_data
