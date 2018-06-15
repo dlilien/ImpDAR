@@ -12,6 +12,7 @@ This is the overarching function that collects information about the processing 
 import os.path
 from .load import load
 import numpy as np
+from .gpslib import interp as interpdeep
 
 
 def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
@@ -76,7 +77,7 @@ def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
             d.save(out_fn)
 
 
-def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, **kwargs):
+def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -142,6 +143,10 @@ def process(RadarDataList, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=No
             nmo = (nmo, 1.6)
         for dat in RadarDataList:
             dat.nmo(*nmo)
+        done_stuff = True
+
+    if interp is not None:
+        interpdeep(RadarDataList, float(interp[0]), interp[1])
         done_stuff = True
 
     # Crop after nmo so that we have nmo_depth available for cropping if desired

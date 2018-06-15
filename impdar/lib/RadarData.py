@@ -390,6 +390,36 @@ class RadarData():
         self.data *= (scaling_factor / np.atleast_2d(maxamp).transpose()).astype(self.data.dtype)
         self.flags.agc = True
 
+    def constant_space(self, spacing, min_movement=1.0e-2):
+        """Restack the radar data to a constant spacing.
+
+        This comprises the second half of what was done by StoDeep's interpdeep. If you have good GPS data, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data
+
+        Parameters
+        ----------
+        spacing: float
+            Target trace spacing, in meters
+        min_movement: float, optional
+            Minimum trace spacing. If there is not this much separation, toss the next shot. Set high to keep everything. Default 1.0e-2.
+        """
+        # eliminate an interpolation error by masking out little movement
+        good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000) >= min_movement))
+        new_dists = np.arange(np.min(self.dist[good_vals]), np.max(self.dist[good_vals]), step=spacing / 1000.0)
+        self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
+
+        for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
+            setattr(self, attr, interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
+
+        self.tnum = self.data.shape[1]
+        self.trace_num = np.arange(self.tnum).astype(int) + 1
+        self.dist = new_dists
+        try:
+            self.flag.interp[0] = 1
+            self.flag.interp[1] = spacing
+        except IndexError:
+            self.flag.interp = np.ones((2,))
+            self.flag.interp[1] = spacing
+
 
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
@@ -414,7 +444,7 @@ class RadarFlags():
         self.reverse = False
         self.crop = np.zeros((3,))
         self.nmo = np.zeros((2,))
-        self.interp = 0
+        self.interp = np.zeros((2,))
         self.mig = 0
         self.elev = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']

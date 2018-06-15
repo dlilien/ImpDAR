@@ -9,13 +9,14 @@
 """
 Make an executable for single actions of impulse radar processing.
 
-All functionality probably overlaps with impdar, but the call is much cleaner. However, you are limited to one processing step.
+All functionality probably overlaps with impdar, but the call is much cleaner. You get a lot more flexibility on things like keyword arguments. However, you are limited to one processing step.
 """
 
 import os.path
 import argparse
 from impdar.lib.load import load
 from impdar.lib.process import concat
+from impdar.lib.gpslib import interp as interpdeep
 
 
 def _get_args():
@@ -72,6 +73,14 @@ def _get_args():
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
     add_def_args(parser_nmo)
 
+    # Reinterpolate GPS
+    parser_interp = add_procparser(subparsers, 'interp', 'Reinterpolate GPS', interp, defname='interp')
+    parser_interp.add_argument('spacing', type=float, help='New spacing of radar traces, in meters')
+    parser_interp.add_argument('gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat')
+    parser_interp.add_argument('--offset', type=float, default=0.0, help='Offset from GPS time to radar time')
+    parser_interp.add_argument('--minmove', type=float, default=1.0e-2, help='Minimum movement to not be stationary')
+    add_def_args(parser_interp)
+
     return parser
 
 
@@ -114,6 +123,8 @@ def main():
         radar_data = concat(radar_data)
         bn = os.path.splitext(args.fns[0])[0]
         args.fns = [bn + '.mat']
+    elif args.name == 'interp':
+        interp(radar_data, **vars(args))
         
     else:
         for dat in radar_data:
@@ -173,6 +184,10 @@ def rgain(dat, slope=0.1, **kwargs):
 
 def agc(dat, window=50, scale_factor=50, **kwargs):
     dat.agc(window=window, scaling_factor=scale_factor)
+
+
+def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
+    interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove)
 
 
 if __name__ == '__main__':
