@@ -136,7 +136,7 @@ def main():
                 bn = os.path.split(os.path.splitext(f)[0])[1]
                 if bn[-4:] == '_raw':
                     bn = bn[:-4]
-                out_fn = args.o + '/' + bn + '_{:s}.mat'.format(args.name)
+                out_fn = os.path.join(args.o, bn + '_{:s}.mat'.format(args.name))
                 d.save(out_fn)
         else:
             out_fn = args.o

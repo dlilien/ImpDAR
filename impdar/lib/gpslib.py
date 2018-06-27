@@ -55,15 +55,15 @@ class nmea_info:
     
     Attributes
     ----------
-    lat: `np.ndarray`
+    lat: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
         wgs84 latitude of points
-    lon: `np.ndarray`
+    lon: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
         wgs84 longitude of points
-    x: `np.ndarray`
+    x: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
         Projected x coordinates of points
-    y: `np.ndarray`
+    y: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
         Projected y coordinates of points
-    z: `np.ndarray`
+    z: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
         Projected z coordinates of points
     """
     all_data = None
@@ -212,13 +212,13 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
     ----------
     dats: list of impdar.RadarData or impdar.RadarData
         The data to act upon
-    lat: np.ndarray
+    lat: :class:`numpy.ndarray`
         Latitude from kinematic
-    lon: np.ndarray
+    lon: :class:`numpy.ndarray`
         Longitude from kinematic
-    elev: np.ndarray
+    elev: :class:`numpy.ndarray`
         Elevation from kinematic
-    decday: np.ndarray
+    decday: :class:`numpy.ndarray`
         Decimal day. You need to reference this to match up with what the radar uses using offset
     offset: float, optional
         Translate the GPS times by this amount for alignment with the radar

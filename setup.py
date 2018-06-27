@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright 2016 dlilien <dlilien90@gmail.com>
+# Copyright 2018 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the GNU GPL3 license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 Created for compilation of fortran code
@@ -21,8 +21,8 @@ if __name__ == '__main__':
           url='http://github.com/dlilien/impdar',
           author='David Lilien',
           author_email='dal22@uw.edu',
-          license='MIT',
+          license='GNU GPL3.0',
           entry_points={'console_scripts': console_scripts},
           install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
-          packages=['impdar', 'impdar.bin', 'impdar.lib'],
+          packages=['impdar', 'impdar.lib'],
           test_suite='nose.collector')

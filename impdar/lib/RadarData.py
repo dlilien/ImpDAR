@@ -4,10 +4,10 @@
 #
 # Copyright © 2018 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the GNU GPL3.0 license.
+# Distributed under terms of the GNU GPL-3.0 license.
 
 """
-Define a class that just has the necessary attributes for a stodeep file--this should be subclassed per filetype
+Define a class that just has the necessary attributes for a StODeep file--this should be subclassed per filetype
 """
 
 import numpy as np
@@ -24,9 +24,8 @@ class RadarData():
     
     Attributes
     ----------
-    data: numpy.ndarray
-        The data matrix
-    
+    data: :class:`numpy.ndarray`
+        The data matrix.
     """
     chan = None
     data = None
@@ -367,6 +366,13 @@ class RadarData():
         self.flags.restack = True
 
     def rangegain(self, slope):
+        """Apply a range gain.
+
+        Parameters
+        ----------
+        slope: float
+            The slope of the linear range gain to be applied. Maybe try 1.0e-2?
+        """
         gain = self.travel_time[self.trig + 1:] * slope
         self.data[self.trig + 1:, :] *= np.atleast_2d(gain).transpose()
         self.flags.rgain = True
@@ -424,38 +430,55 @@ class RadarData():
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
 
+    These are used for figuring out whether different processing steps have been performed. They also contain some information about the input arguments for some (but not all) of the processing steps.
+
     Attributes
     ----------
-    batch: bool[lims[0]:lims[1]
+    batch: bool
         Legacy indication of whether we are batch processing. Always False.
-    bpass: 3x1 np.ndarray
-        (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
-    hfilt: 2x1 np.ndarray:
-        (1) 1 if horizontally filtered; (2) Filter type
+    agc: bool
+        Automatic gain control has been applied.
+    reverse: bool
+        Data have been reversed.
+    restack: bool
+        Data have been restacked.
+    rgain: bool
+        Data have a linear range gain applied.
+    bpass: 3x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
+    hfilt: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if horizontally filtered; (2) Filter type
+    interp: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
     """
 
     def __init__(self):
         self.batch = False
         self.bpass = np.zeros((3,))
         self.hfilt = np.zeros((2,))
-        self.rgain = 0
+        self.rgain = False
         self.agc = False
         self.restack = False
         self.reverse = False
         self.crop = np.zeros((3,))
         self.nmo = np.zeros((2,))
         self.interp = np.zeros((2,))
-        self.mig = 0
+        self.mig = False
         self.elev = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse']
+        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
 
     def to_matlab(self):
+        """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
+        """
         outmat = {att: getattr(self, att) for att in self.attrs}
         for attr in self.bool_attrs:
             outmat[attr] = 1 if outmat[attr] else 0
+        return outmat
 
     def from_matlab(self, matlab_struct):
+        """Associate all values from an incoming .mat file (i.e. a dictionary from :func:`scipy.io.loadmat`) with appropriate attributes
+        """
         for attr in self.attrs:
             setattr(self, attr, matlab_struct[attr][0][0][0])
         for attr in self.bool_attrs:
