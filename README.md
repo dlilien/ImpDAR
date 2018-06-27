@@ -1,6 +1,6 @@
 # impdar: an impulse radar processor
 
-[![Build Status](https://travis-ci.org/dlilien/impdar.svg?branch=master)](https://travis-ci.org/dlilien/impdar)
+[![Build Status](https://travis-ci.org/dlilien/ImpDAR.svg?branch=master)](https://travis-ci.org/dlilien/ImpDAR)
 
 This is a re-write of the St. Olaf Deep Radar processor in Python, adding some capability and pruning some dead limbs. This code has a lot of history of contributors: I've tried to preserve acknowledgment of many of them in the file headers.
 
@@ -18,4 +18,4 @@ This is a re-write of the St. Olaf Deep Radar processor in Python, adding some c
 
 ## Documentation
 
-Reasonably complete documentation is [here](http://dlilien.github.io/impdar)
+Reasonably complete documentation is [here](http://dlilien.github.io/ImpDAR)

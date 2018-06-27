@@ -17,6 +17,12 @@ from impdar.lib.RadarData import RadarData, RadarFlags
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+class NoInitRadarData(RadarData):
+
+    def __init__(self):
+        self.data = np.array([[2, 2], [1, 1]])
+
+
 class TestFlags(unittest.TestCase):
 
     def setUp(self):
@@ -65,7 +71,8 @@ class TestFlags(unittest.TestCase):
 class TestRadarData(unittest.TestCase):
 
     def test_ReadSucceeds(self):
-        RadarData(os.path.join(THIS_DIR, 'input_data/small_data.mat'))
+        data = RadarData(os.path.join(THIS_DIR, 'input_data/small_data.mat'))
+        self.assertEqual(data.data.shape, (20, 40))
 
 
 if __name__ == '__main__':
