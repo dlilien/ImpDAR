@@ -10,19 +10,18 @@
 Created for compilation of fortran code
 """
 import setuptools
-from numpy.distutils.core import setup
 setuptools
 
 if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdar:main', 'impproc=impdar.bin.impproc:main']
-    setup(name='impdar',
-          version='0.1a1',
-          description='Scripts for impulse radar',
-          url='http://github.com/dlilien/impdar',
-          author='David Lilien',
-          author_email='dal22@uw.edu',
-          license='GNU GPL3.0',
-          entry_points={'console_scripts': console_scripts},
-          install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
-          packages=['impdar', 'impdar.lib'],
-          test_suite='nose.collector')
+    setuptools.setup(name='impdar',
+                     version='0.1a1',
+                     description='Scripts for impulse radar',
+                     url='http://github.com/dlilien/impdar',
+                     author='David Lilien',
+                     author_email='dal22@uw.edu',
+                     license='GNU GPL-3.0',
+                     entry_points={'console_scripts': console_scripts},
+                     install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
+                     packages=['impdar', 'impdar.lib'],
+                     test_suite='nose.collector')
