@@ -42,6 +42,8 @@ install:
   - activate test-environment
   # We need wheel installed to build wheels
   - "%PYTHON%\\python.exe -m pip install wheel"
+  # this is how we test
+  - "%PYTHON%\\python.exe -m pip install nose"
 
 build: off
 
