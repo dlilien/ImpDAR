@@ -1,0 +1,26 @@
+language: python
+python:
+    - "2.7"
+      #- "3.3"
+    - "3.4"
+      #- "3.5"
+      #- "3.6"
+      #- "3.6-dev"
+      #- "3.7-dev"
+
+virtualenv:
+      system_site_packages: true
+before_install:
+    - sudo apt-get install -qq libgdal1h
+    - sudo apt-get install -qq python-numpy python-scientific
+    - sudo apt-get install -qq python3-numpy python3-scipy
+    - sudo apt-get install -qq python-qt4
+    - sudo apt-get install -qq python3-tk
+    - sudo apt-get install -qq python3-gdal
+    - sudo apt-get install -qq python-gdal
+
+install:
+  - pip install -r requirements.txt
+  - pip install .
+
+script: pytest
