@@ -45,6 +45,7 @@ install:
   # this is how we test
   - "%PYTHON%\\python.exe -m pip install nose"
   - "conda upgrade scipy numpy"
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 build: off
 
@@ -66,6 +67,8 @@ artifacts:
   # bdist_wheel puts your built wheel in the dist directory
   - path: dist\*
 
+on_finish:
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 #on_success:
 #  You can use this step to upload your artifacts to a public website.
 #  See Appveyor's documentation for more details. Or you can simply
