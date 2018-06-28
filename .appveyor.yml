@@ -8,14 +8,14 @@ environment:
       MINICONDA: C:\Miniconda
       PYTHON_VERSION: 2.7
 
-    # Python 3.4
-    - PYTHON: "C:\\Python34"
-      MINICONDA: C:\Miniconda3
-      PYTHON_VERSION: 3.4
-    - PYTHON: "C:\\Python34-x64"
-      DISTUTILS_USE_SDK: "1"
-      MINICONDA: C:\Miniconda3
-      PYTHON_VERSION: 3.4
+    # Python 3.4 -- this errors out with a bad checksum on QT (6/28/18). I don't want to deal with that
+    #- PYTHON: "C:\\Python34"
+    #  MINICONDA: C:\Miniconda3
+    #  PYTHON_VERSION: 3.4
+    #- PYTHON: "C:\\Python34-x64"
+    #  DISTUTILS_USE_SDK: "1"
+    #  MINICONDA: C:\Miniconda3
+    #  PYTHON_VERSION: 3.4
 
     # Python 3.5
     - PYTHON: "C:\\Python35"
@@ -40,10 +40,7 @@ install:
   # We need to install numpy, scipy and matplotlib through conda
   - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib nose"
   - activate test-environment
-  # We need wheel installed to build wheels
-  - "python -m pip install wheel"
-  # this is how we test
-  - "python -m pip install nose"
+  # give me a remote-login option to debug
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 build: off
