@@ -44,6 +44,7 @@ install:
   - "%PYTHON%\\python.exe -m pip install wheel"
   # this is how we test
   - "%PYTHON%\\python.exe -m pip install nose"
+  - "conda upgrade scipy numpy"
 
 build: off
 
