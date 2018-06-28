@@ -38,37 +38,25 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   # We need to install numpy, scipy and matplotlib through conda
-  - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib"
+  - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib nose"
   - activate test-environment
   # We need wheel installed to build wheels
-  - "%PYTHON%\\python.exe -m pip install wheel"
+  - "python -m pip install wheel"
   # this is how we test
-  - "%PYTHON%\\python.exe -m pip install nose"
-  - "conda upgrade scipy numpy"
+  - "python -m pip install nose"
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 build: off
 
 test_script:
-  # Put your test command here.
-  # If you don't need to build C extensions on 64-bit Python 3.3 or 3.4,
-  # you can remove "build.cmd" from the front of the command, as it's
-  # only needed to support those cases.
-  # Note that you must use the environment variable %PYTHON% to refer to
-  # the interpreter you're using - Appveyor does not do anything special
-  # to put the Python version you want to use on PATH.
-  - "%PYTHON%\\python.exe setup.py test"
+  - "python setup.py test"
 
 after_test:
-  # this gives us stuff to play with
-  - "%PYTHON%\\python.exe setup.py bdist_wheel"
+  - "python setup.py bdist_wheel"
 
 artifacts:
-  # bdist_wheel puts your built wheel in the dist directory
   - path: dist\*
 
-on_finish:
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 #on_success:
 #  You can use this step to upload your artifacts to a public website.
 #  See Appveyor's documentation for more details. Or you can simply
