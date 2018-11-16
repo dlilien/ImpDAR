@@ -15,7 +15,7 @@ setuptools
 if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdar:main', 'impproc=impdar.bin.impproc:main']
     setuptools.setup(name='impdar',
-                     version='0.1a1',
+                     version='0.1b1',
                      description='Scripts for impulse radar',
                      url='http://github.com/dlilien/impdar',
                      author='David Lilien',
