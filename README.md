@@ -19,3 +19,7 @@ This is a re-write of the St. Olaf Deep Radar processor in Python, adding some c
 ## Documentation
 
 Reasonably complete documentation is [here](http://dlilien.github.io/ImpDAR)
+
+## Installation
+
+Some explanation of other options is available in the main documentation, but I'll try to keep updating PyPi and so the easiest is `pip install impdar`.

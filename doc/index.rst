@@ -37,8 +37,13 @@ If you do not have a current (2.7 or 3+) python installation, you will need one 
 
 If you choose to use anaconda, you can install GDAL with `conda install -c conda-forge gdal`. If you are using homewbrew, `brew install gdal` should do the trick. GDAL is technically optional, but is needed for the majority of use cases.
 
-Finally, you are ready to install impdar. For now, use
+Finally, you are ready to install impdar. You can get a version with
 
+.. code-block:: bash
+
+    pip install impdar
+    
+The only downside here is that I need to remember to update version tags in order to update on PyPi, and I may not remember that often. To be sure that you have the newest version, use
 
 .. code-block:: bash
 
@@ -46,13 +51,7 @@ Finally, you are ready to install impdar. For now, use
     cd impdar
     python setup.py install
 
-This requires `git <https://git-scm.com/downloads>`_. Soon I'll have the project on PyPi and you will be able to do
-
-
-.. code-block:: bash
-
-    pip install impdar
-
+This requires `git <https://git-scm.com/downloads>`_. 
 
 Indices and tables
 ==================

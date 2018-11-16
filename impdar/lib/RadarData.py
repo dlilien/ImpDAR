@@ -47,8 +47,9 @@ class RadarData():
     x_coord = None
     y_coord = None
     nmo_depth = None
+    picks = None
     attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
-    attrs_optional = ['nmo_depth']
+    attrs_optional = ['nmo_depth', 'picks']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
@@ -84,11 +85,19 @@ class RadarData():
         """
         mat = {}
         for attr in self.attrs_guaranteed:
-            mat[attr] = getattr(self, attr)
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                # this guards against error in matlab format
+                mat[attr] = 0
         for attr in self.attrs_optional:
             if hasattr(self, attr) and getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
-        mat['flags'] = self.flags
+        if self.flags is not None:
+            mat['flags'] = self.flags
+        else:
+            # We want the structure available to prevent read errors from corrupt files
+            mat['flags'] = RadarFlags()
         savemat(fn, mat)
 
     def vertical_band_pass(self, low, high, *args, **kwargs):
