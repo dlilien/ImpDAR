@@ -116,11 +116,21 @@ class DZT(RadarData):
             self.dist = self.gps_data.dist.flatten()
             self.elev = self.gps_data.z
 
-        timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
-        day_offset = self.rh.Create - timezero
-        tmin, tmax = day_offset.days + np.min(self.gps_data.dectime), day_offset.days + np.max(self.gps_data.dectime)
-        self.decday = np.linspace(tmin, tmax, self.tnum)
-        self.trace_int = np.hstack((np.array(np.nanmean(np.diff(self.dist))), np.diff(self.dist)))
+            timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
+            day_offset = self.rh.Create - timezero
+            tmin, tmax = day_offset.days + np.min(self.gps_data.dectime), day_offset.days + np.max(self.gps_data.dectime)
+            self.decday = np.linspace(tmin, tmax, self.tnum)
+            self.trace_int = np.hstack((np.array(np.nanmean(np.diff(self.dist))), np.diff(self.dist)))
+
+        else:
+            self.lat = np.zeros((self.data.shape[1],))
+            self.long = np.zeros((self.data.shape[1],))
+            self.x_coord = np.zeros((self.data.shape[1],))
+            self.y_coord = np.zeros((self.data.shape[1],))
+            self.dist = np.zeros((self.data.shape[1],))
+            self.elev = np.zeros((self.data.shape[1],))
+            self.decday = np.arange(self.data.shape[1])
+            self.trace_int = np.ones((self.data.shape[1],))
 
         for attr in ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
             if getattr(self, attr) is None:
