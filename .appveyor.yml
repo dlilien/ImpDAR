@@ -33,6 +33,14 @@ environment:
       MINICONDA: C:\Miniconda36
       PYTHON_VERSION: 3.6
 
+    # Python 3.7
+    - PYTHON: "C:\\Python37"
+      MINICONDA: C:\Miniconda37
+      PYTHON_VERSION: 3.7
+    - PYTHON: "C:\\Python37-x64"
+      MINICONDA: C:\Miniconda37
+      PYTHON_VERSION: 3.7
+
 install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
