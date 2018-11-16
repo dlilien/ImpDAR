@@ -170,7 +170,7 @@ def nmea_all_info(list_of_sentences):
     """Return an object with the nmea info from a given list of sentences"""
     def _gga_sentence_split(sentence):
         all = sentence.split(',')
-        numbers = list(map(float, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
+        numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
         if all[3] == 'S':
             numbers[2] = -1
         if all[5] == 'W':

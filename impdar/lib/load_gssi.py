@@ -107,13 +107,14 @@ class DZT(RadarData):
         self.trig = self.rh.zero
 
         # Now deal with the gps info
-        self.gps_data = _get_dzg_data(os.path.splitext(fn)[0] + '.DZG', self.trace_num)
-        self.lat = self.gps_data.lat
-        self.long = self.gps_data.lon
-        self.x_coord = self.gps_data.x
-        self.y_coord = self.gps_data.y
-        self.dist = self.gps_data.dist.flatten()
-        self.elev = self.gps_data.z
+        if os.path.exists(os.path.splitext(fn)[0] + '.DZG'):
+            self.gps_data = _get_dzg_data(os.path.splitext(fn)[0] + '.DZG', self.trace_num)
+            self.lat = self.gps_data.lat
+            self.long = self.gps_data.lon
+            self.x_coord = self.gps_data.x
+            self.y_coord = self.gps_data.y
+            self.dist = self.gps_data.dist.flatten()
+            self.elev = self.gps_data.z
 
         timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
         day_offset = self.rh.Create - timezero
