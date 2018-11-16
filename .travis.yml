@@ -1,17 +1,17 @@
 language: python
 python:
-    - "2.7"
-      #- "3.3"
-    - "3.4"
-    - "3.5"
-    - "3.6"
-    - "3.6-dev"
-    - "3.7"
-    - "3.7-dev"
-    - "3.8-dev"
-
+- '2.7'
+- '3.4'
+- '3.5'
+- '3.6'
+- 3.6-dev
+- 3.7-dev
 install:
-  - pip install -r requirements.txt
-  - pip install .
-
+- pip install -r requirements.txt
+- pip install .
+deploy:
+  provider: pypi
+  user: dlilien
+  password:
+    secure: kipnRdbs6X1avpdM40pJLPgh7fwVOPS1eeKWnTW2xZWAToJK/14n+v9Bj7cgxAiLeAmCDKBveLTW5iaEc5czz7J4iaX+ym/ZTw/YKHbDzV47FrmA+GBbBaANFD3QHcI0SXBeUnPykT+e+sI7+6pUGSFDW4rFcq4Okfjs4LpQIR8oSAQ+6gBWYUu5HDDiLvOyZ2eGwT0LMs+rZWCQzVT2EzaPOzpA41rAc1Ps/HV3dVTwy76+BUu53+ke3Z3tnUuFmp7bDW6YbwCqNoqBHzEPcC4FQWg1GJPap538m1JNPg9O1fKFYFRCW1oUTgsgcZ+p16PgrDSsvBCSaLyIL1TcxKnahzwScDchkC/3mn/qB1n0BxoXltG4zPllSmkF/nFm3nHHaoAZCAzBPnkFL97NcTdet5ASEJQTPOE7sMtolukIABSNLaCaMHcX59e2j3DrIccjEH5tWTI+bOQ9YizaqaJYGQZCpyZhi3Y0bfjmRC6HQBD+XcWOUhpZqZFfp6z4rH86O51Xg2OQagqi6n7i1qJZsIVqLp5cvpeQGbJEYXjujRl4zuN4RyGkoj+gmgnPH4idGF51eWgaDwx1x+nf/E99mrAIn/0AJOas0UTMxpVTYdcZFWDAQbVLpYHZX0n31Fei5bwmn8i8XMjHPEt/x3PZy5o5dzj3UrwfQzCkolI=
 script: pytest
