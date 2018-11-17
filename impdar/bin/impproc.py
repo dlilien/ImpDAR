@@ -162,8 +162,8 @@ def rev(dat, **kwargs):
     dat.reverse()
 
 
-def vbp(dat, low=1, high=10000, **kwargs):
-    dat.vertical_band_pass(low, high)
+def vbp(dat, low_MHz=1, high_MHz=10000, **kwargs):
+    dat.vertical_band_pass(low_MHz, high_MHz)
 
 
 def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
