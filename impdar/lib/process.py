@@ -102,12 +102,12 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
     # first some argument checking so we don't crash later
     if crop is not None:
         try:
-            if crop[0] not in ['top', 'bottom']:
+            if crop[1] not in ['top', 'bottom']:
                 raise ValueError('First element of crop must be in ["top", "bottom"]')
-            if crop[1] not in ['snum', 'twtt', 'depth']:
+            if crop[2] not in ['snum', 'twtt', 'depth']:
                 raise ValueError('Second element of crop must be in ["snum", "twtt", "depth"]')
             try:
-                crop[2] = float(crop[2])
+                crop[0] = float(crop[0])
             except ValueError:
                 raise ValueError('Third element of crop must be convertible to a float')
         except IndexError:

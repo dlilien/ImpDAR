@@ -314,7 +314,7 @@ class RadarData():
             raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
 
         if dimension == 'twtt':
-            lim = np.min(np.argwhere(self.travel_time >= lim))
+            ind = np.min(np.argwhere(self.travel_time >= lim))
         elif dimension == 'depth':
             if self.nmo_depth is not None:
                 depth = self.nmo_depth
@@ -330,7 +330,7 @@ class RadarData():
             lims = [0, ind]
 
         self.data = self.data[lims[0]:lims[1], :]
-        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
         self.snum = self.data.shape[0]
         self.flags.crop[0] = 1
         try:
