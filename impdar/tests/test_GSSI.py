@@ -17,7 +17,7 @@ from impdar.lib import load_gssi
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-class TestDZT(unittest.TestCase):
+class Dummy(unittest.TestCase):
 
     def test_load_withDZG(self):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_GSSI.DZT'))
