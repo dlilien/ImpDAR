@@ -50,6 +50,7 @@ def _get_args():
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
+    parser_plot.add_argument('-tr', nargs=2, type=int, help='Plot the traces in this range (line plot)')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
     return parser
 

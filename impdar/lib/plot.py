@@ -127,8 +127,8 @@ def plot_traces(dat, tr, ydat='twtt'):
 
     if ydat not in ['twtt', 'depth']:
         raise ValueError('y axis choices are twtt or depth')
-    fig, ax = plt.subplots(figsize=(12, 8))
-    lims = np.percentile(dat.data[:, tr[0]:tr[1]], (10, 90))
+    fig, ax = plt.subplots(figsize=(8, 12))
+    lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
     ax.invert_yaxis()
 
     if ydat == 'twtt':
@@ -141,7 +141,11 @@ def plot_traces(dat, tr, ydat='twtt'):
     for j in range(*tr):
         ax.plot(dat.data[:, j], yd)
 
-    ax.set_xlim(*lims)
+    if lims[0] < 0 and lims[1] > 0:
+        ax.set_xlim(lims[0], -lims[0])
+    else:
+        ax.set_xlim(*lims)
+    ax.set_xlabel('Power')
     return fig
 
 
