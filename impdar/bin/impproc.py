@@ -38,6 +38,9 @@ def _get_args():
     # Concatenate
     add_simple_procparser(subparsers, 'cat', 'Concatenate the data', concat, defname='cat')
 
+    # Elevation correction
+    add_simple_procparser(subparsers, 'elev', 'Elevation correct', elev, defname='elev')
+
     # Restack
     parser_restack = add_procparser(subparsers, 'restack', 'Restack to interval', restack, defname='restacked')
     parser_restack.add_argument('traces', type=int, help='Number of traces to stack. Must be an odd number')
@@ -160,6 +163,10 @@ def ahfilt(dat, **kwargs):
 
 def rev(dat, **kwargs):
     dat.reverse()
+
+
+def elev(dat, **kwargs):
+    dat.elev_correct()
 
 
 def vbp(dat, low_MHz=1, high_MHz=10000, **kwargs):

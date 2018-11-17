@@ -49,7 +49,7 @@ class RadarData():
     nmo_depth = None
     picks = None
     attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
-    attrs_optional = ['nmo_depth', 'picks']
+    attrs_optional = ['nmo_depth', 'picks', 'elevation']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
@@ -435,6 +435,23 @@ class RadarData():
             self.flag.interp = np.ones((2,))
             self.flag.interp[1] = spacing
 
+    def elev_correct(self, v=1.69e8):
+        # calculate number of rows that must be added
+        elev_diffs = np.max(self.elev) - self.elev
+        max_diff = np.max(elev_diffs)
+
+        dz = self.dt * (v / 2.)
+        max_samp = int(np.ceil(max_diff / dz))
+
+        data_old = self.data.copy()
+        self.data = np.zeros((data_old.shape[0] + max_samp, data_old.shape[1]))
+        self.data[:, :] = np.nan
+
+        for i in range(self.data.shape[1]):
+            self.data[int(elev_diffs[i] // dz):-(max_samp - int((elev_diffs[i]) // dz)), i] = data_old[:, i]
+
+        self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
+        self.flags.elev = 1
 
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
@@ -474,6 +491,7 @@ class RadarFlags():
         self.interp = np.zeros((2,))
         self.mig = False
         self.elev = 0
+        self.elevation = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
         self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
 

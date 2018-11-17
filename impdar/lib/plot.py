@@ -62,7 +62,7 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         plt.show()
 
 
-def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range=(0, -1)):
+def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range=(0, -1), cmap=plt.cm.gray_r):
     if xdat not in ['tracenum', 'dist']:
         raise ValueError('x axis choices are tracenum or dist')
     if ydat not in ['twtt', 'depth']:
@@ -71,24 +71,28 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
     if x_range is None:
         x_range = (0, -1)
 
-    lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]], (10, 90))
+    lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]][~np.isnan(dat.data[:, x_range[0]:x_range[-1]])], (10, 90))
     clims = [lims[0] * 2 if lims[0] < 0 else lims[0] / 2, lims[1] * 2]
 
     if not interactive:
         fig, ax = plt.subplots(figsize=(12, 8))
     else:
         fig, (ax, ax_slider1, ax_slider2) = plt.subplots(nrows=3, figsize=(12, 8), gridspec_kw={'height_ratios': (1, 0.02, 0.02)})
-    ax.invert_yaxis()
 
-    if ydat == 'twtt':
-        yd = dat.travel_time
-        ax.set_ylabel('Two way travel time (usec)')
-    elif ydat == 'depth':
-        if dat.nmo_depth is not None:
-            yd = dat.nmo_depth
-        else:
-            yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
-        ax.set_ylabel('Depth (m)')
+    if hasattr(dat.flags, 'elev') and dat.flags.elev:
+        yd = dat.elevation
+        ax.set_ylabel('Elevation (m)')
+    else:
+        ax.invert_yaxis()
+        if ydat == 'twtt':
+            yd = dat.travel_time
+            ax.set_ylabel('Two way travel time (usec)')
+        elif ydat == 'depth':
+            if dat.nmo_depth is not None:
+                yd = dat.nmo_depth
+            else:
+                yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+            ax.set_ylabel('Depth (m)')
 
     if xdat == 'tracenum':
         xd = np.arange(int(dat.snum))[x_range[0]:x_range[-1]]
@@ -97,7 +101,10 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
         xd = dat.dist[x_range[0]:x_range[-1]]
         ax.set_xlabel('Distance (km)')
 
-    im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+    if hasattr(dat.flags, 'elev') and dat.flags.elev:
+        im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
+    else:
+        im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
 
     if interactive:
         slidermin = Slider(ax_slider1, 'Min', clims[0], clims[1], valinit=lims[0])
@@ -167,17 +174,21 @@ class interactive_plot():
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
 
             self.fig, self.ax = plt.subplots(figsize=(12, 8))
-            self.ax.invert_yaxis()
 
-            if ydat == 'twtt':
-                self.yd = self.dat.travel_time
-                self.ax.set_ylabel('Two way travel time (usec)')
-            elif ydat == 'depth':
-                if self.dat.nmo_depth is not None:
-                    self.yd = self.dat.nmo_depth
-                else:
-                    self.yd = self.dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
-                self.ax.set_ylabel('Depth (m)')
+            if hasattr(dat.flags, 'elev') and dat.flags.elev:
+                yd = dat.elevation
+                ax.set_ylabel('Elevation (m)')
+            else:
+                ax.invert_yaxis()
+                if ydat == 'twtt':
+                    yd = dat.travel_time
+                    ax.set_ylabel('Two way travel time (usec)')
+                elif ydat == 'depth':
+                    if dat.nmo_depth is not None:
+                        yd = dat.nmo_depth
+                    else:
+                        yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+                    ax.set_ylabel('Depth (m)')
 
             if xdat == 'tracenum':
                 self.xd = np.arange(int(self.dat.snum))[x_range[0]:x_range[-1]]
