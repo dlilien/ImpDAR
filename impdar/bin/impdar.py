@@ -14,7 +14,7 @@
 #       3)  Added call for new batchdeep.m shell - B. Youngblood 7/12/08
 
 import argparse
-from impdar import load, process, plot
+from impdar import load, process, plot, convert
 
 
 def _get_args():
@@ -52,6 +52,13 @@ def _get_args():
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
     parser_plot.add_argument('-tr', nargs=2, type=int, help='Plot the traces in this range (line plot)')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
+
+    parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
+    parser_convert.set_defaults(func=convert.convert)
+    parser_convert.add_argument('fn', type=str, nargs='+', help='File(s) to convert')
+    parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat'])
+    parser_convert.add_argument('-in_fmt', type=str, default=None, choices=['mat', 'gssi', 'pe'], help='Input format type. If none, guess from extension')
+    parser_convert.add_argument('-t_srs', type=int, default=4326, help='Target spatial reference system (only used if out_fmt==shp). Give as EPSG number.')
     return parser
 
 

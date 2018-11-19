@@ -10,5 +10,5 @@
 Skeleton import impdar
 """
 
-from .lib import load, process, plot
+from .lib import load, process, plot, convert
 from .lib.RadarData import RadarData
