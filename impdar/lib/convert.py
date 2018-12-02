@@ -54,7 +54,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             out_fn = os.path.splitext(f)[0] + '.mat'
             dat.save(out_fn)
     elif out_fmt == 'shp':
-        for loader, fn, dat in zip(loaders, fn, data):
+        for loader, f, dat in zip(loaders, fn, data):
             out_fn = os.path.splitext(f)[0] + '.shp'
             dat.output_shp(out_fn, t_srs=t_srs)
 
