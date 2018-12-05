@@ -53,6 +53,7 @@ class RadarData():
     y_coord = None
     nmo_depth = None
     picks = None
+    fn = None
     attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
     attrs_optional = ['nmo_depth', 'picks', 'elevation']
 
@@ -77,6 +78,7 @@ class RadarData():
                     setattr(self, attr, mat[attr])
             else:
                 self.attr = None
+        self.fn = fn
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
 
@@ -489,7 +491,6 @@ class RadarData():
             layer.CreateFeature(feature)
             feature = None
         data_source = None
-
 
 
 class RadarFlags():

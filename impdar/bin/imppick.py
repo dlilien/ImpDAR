@@ -10,16 +10,23 @@
 An executable to start the picker.
 """
 
+
 import argparse
 
-from impdar import pick, load
+from impdar.lib import picklib, load
+
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Button, TextBox
+from matplotlib import rc
+rc('text', usetex=False) 
 
 
 def main():
     parser = _get_args()
     args = parser.parse_args()
-
-    pick(
+    radardata = load.load('mat', [args.fn])[0]
+    ip = picklib.pick(radardata, guard_save=True)
 
 
 def _get_args():

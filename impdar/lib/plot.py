@@ -57,7 +57,7 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         figs = [plot_radargram(dat, interactive=not s, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
     if s:
-        [f.savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
+        [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
     else:
         plt.show()
 
@@ -115,7 +115,7 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
 
         slidermin.on_changed(update)
         slidermax.on_changed(update)
-    return fig
+    return fig, ax
 
 
 def plot_traces(dat, tr, ydat='twtt'):
@@ -149,7 +149,7 @@ def plot_traces(dat, tr, ydat='twtt'):
     return fig
 
 
-class interactive_plot():
+class InteractivePlot():
     
     def __init__(self, dat, xdat='tracenum', ydat='twtt', x_range=(0, -1)):
         plt.ion()
@@ -181,18 +181,18 @@ class interactive_plot():
 
             if hasattr(dat.flags, 'elev') and dat.flags.elev:
                 yd = dat.elevation
-                ax.set_ylabel('Elevation (m)')
+                self.ax.set_ylabel('Elevation (m)')
             else:
-                ax.invert_yaxis()
+                self.ax.invert_yaxis()
                 if ydat == 'twtt':
-                    yd = dat.travel_time
-                    ax.set_ylabel('Two way travel time (usec)')
+                    self.yd = dat.travel_time
+                    self.ax.set_ylabel('Two way travel time (usec)')
                 elif ydat == 'depth':
                     if dat.nmo_depth is not None:
-                        yd = dat.nmo_depth
+                        self.yd = dat.nmo_depth
                     else:
-                        yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
-                    ax.set_ylabel('Depth (m)')
+                        self.yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+                    self.ax.set_ylabel('Depth (m)')
 
             if xdat == 'tracenum':
                 self.xd = np.arange(int(self.dat.snum))[x_range[0]:x_range[-1]]
@@ -204,17 +204,20 @@ class interactive_plot():
             self.im = self.ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             self.fig.canvas.mpl_connect('key_press_event', self.press)
             self.fig.canvas.mpl_connect('button_press_event', self.click)
-            plt.show()
+            plt.show(self.fig)
         except KeyboardInterrupt:
             plt.close('all')
 
+
     def press(self, event):
+        print('pressed ' + event.key)
         if event.key == 'f':
             self.press_f()
         elif event.key == ' ':
             self.press_space()
         elif event.key == 'p':
             self.press_p()
+
 
     def press_f(self):
         gs = gridspec.GridSpec(5, 5)
@@ -237,6 +240,7 @@ class interactive_plot():
         slider_freq = Slider(ax_freq, 'Frequency', 0, 50, valinit=4, valstep=1, valfmt='%2.0f MHz')
         radio_bwb = RadioButtons(ax_bwb, ('BWB', 'WBW'))
         radio_color = RadioButtons(ax_color, ('gray', 'bwr', 'viridis', 'plasma', 'inferno', 'magma', 'seismic', 'hsv', 'jet', 'rainbow'))
+        plt.show(self.fig_fiddle)
 
         def lim_update(val):
             self.im.set_clim(vmin=slidermin.val, vmax=slidermax.val)
@@ -265,8 +269,6 @@ class interactive_plot():
         slider_freq.on_changed(freq_update)
         radio_bwb.on_clicked(bwb_update)
         radio_color.on_clicked(color_update)
-
-        plt.show()
 
 
     def press_p(self):
@@ -311,6 +313,7 @@ class interactive_plot():
         
         self.current_layer = len(self.dat.picks) - 1
         self.line = self.ax.plot(self.xd, self.dat.picks[self.current_layer])
+
 
     def click(self, event):
         if self.line is None:

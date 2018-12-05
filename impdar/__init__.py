@@ -10,5 +10,13 @@
 Skeleton import impdar
 """
 
+import platform
+import matplotlib
+# if platform.system() == 'Darwin':
+#     matplotlib.use('macosx')
+# else:
+#     matplotlib.use('gtk3agg')
+matplotlib.use('Qt5Agg')
+
 from .lib import load, process, plot, convert
 from .lib.RadarData import RadarData
