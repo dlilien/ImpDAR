@@ -13,7 +13,7 @@ import sys
 from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5
 if is_pyqt5():
     from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-    from PyQt5.QtWidgets import QFileDialog
+    from PyQt5.QtWidgets import QFileDialog, QMessageBox
 else:
     from matplotlib.backends.backend_qt4agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
@@ -24,12 +24,13 @@ from matplotlib.widgets import Slider, RadioButtons, TextBox, Button
 import os.path
 import numpy as np
 
-from . import plot, RawPickGUI
+from . import plot
+from .ui import RawPickGUI
 
 
 def pick(radardata, guard_save=True):
     app = QtWidgets.QApplication(sys.argv)
-    ip = InteractivePicker(radardata, guard_save=guard_save)
+    ip = InteractivePicker(radardata)
     ip.show()
     sys.exit(app.exec_())
 
@@ -107,8 +108,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.im = self.ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             self.kpid = self.fig.canvas.mpl_connect('key_press_event', self.press)
             self.bpid = self.fig.canvas.mpl_connect('button_press_event', self.click)
-            if guard_save:
-                self.fig.canvas.mpl_connect('close_event', self._on_close)
             plt.show(self.fig)
         except KeyboardInterrupt:
             plt.close('all')
@@ -238,8 +237,20 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if not self.saved:
             self._save_cancel_close(event)
 
-    def _save_canvel_close(self, event):
-        pass
+    def _save_cancel_close(self, event):
+        dialog = QMessageBox()
+        dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel)
+        result = dialog.exec()
+        if result == QMessageBox.Cancel:
+            event.ignore()
+        elif result == QMessageBox.Close:
+            event.accept()
+        else:
+            if self.firstsave:
+                event.accept() if self._save_as(event) else event.ignore()
+            else:
+                self._save()
+                event.accept()
 
     def _save_inplace(self, evt):
         """Save the file without changing name"""
@@ -258,6 +269,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _save_as(self, event=None):
         """Fancy file handler for gracious exit"""
         fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn, "All Files (*);;mat Files (*.mat)")
+        return fn
 
 
 class DrawableLine:

@@ -175,7 +175,7 @@ class Ui_MainWindow(object):
         self.actionNext.setText(_translate("MainWindow", "Next"))
         self.actionPrevious.setText(_translate("MainWindow", "Previous"))
 
-from .mplfigcanvaswidget import MplFigCanvasWidget
+from ..mplfigcanvaswidget import MplFigCanvasWidget
 
 if __name__ == "__main__":
     import sys
