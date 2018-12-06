@@ -13,7 +13,7 @@ An executable to start the picker.
 
 import argparse
 
-from impdar.lib import picklib, load
+from impdar.lib import pickgui, load
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ def main():
     parser = _get_args()
     args = parser.parse_args()
     radardata = load.load('mat', [args.fn])[0]
-    ip = picklib.pick(radardata, guard_save=True)
+    ip = pickgui.pick(radardata, guard_save=True)
 
 
 def _get_args():

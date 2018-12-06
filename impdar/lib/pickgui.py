@@ -9,28 +9,54 @@
 """
 
 """
-import os.path
-import numpy as np
+import sys
+from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5
+if is_pyqt5():
+    from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+    from PyQt5.QtWidgets import QFileDialog
+else:
+    from matplotlib.backends.backend_qt4agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Slider, RadioButtons, TextBox, Button
 
-from . import plot
+import os.path
+import numpy as np
+
+from . import plot, RawPickGUI
 
 
 def pick(radardata, guard_save=True):
-    ip = InteractivePlot(radardata, guard_save=guard_save)
-    return ip
+    app = QtWidgets.QApplication(sys.argv)
+    ip = InteractivePicker(radardata, guard_save=guard_save)
+    ip.show()
+    sys.exit(app.exec_())
 
 
-class InteractivePlot():
+class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     
     def __init__(self, dat, xdat='tracenum', ydat='twtt', x_range=(0, -1), guard_save=False):
-        self.bwb = 'bwb'
-        self.freq = 4
+        # Next line is required for Qt, then give us the layout
+        super(self.__class__, self).__init__()
+        self.setupUi(self)
+
+        # Connect the menu to actions
+        self.actionSave_as.triggered.connect(self._save_as)
+        
+        # Easy access to normal mpl figure and axes
+        self.ax = self.FigCanvasWidget.canvas.ax
+        self.fig = self.FigCanvasWidget.canvas.fig
+        plt.ion()
+
+        # Two constants to keep track of how to prompt for saves
+        self.firstsave = True
         self.saved = True
 
-        plt.ion()
+        # Set defaults
+        self.bwb = 'bwb'
+        self.freq = 4
+
         # line is the matplotlib object of the current pick
         self.line = None
         # pick_pts contains our picked points, which will differ from what we want to save in the file. Need to have one per line.
@@ -55,7 +81,6 @@ class InteractivePlot():
             self.lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]], (10, 90))
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
 
-            self.fig, self.ax = plt.subplots(figsize=(12, 8))
 
             if hasattr(dat.flags, 'elev') and dat.flags.elev:
                 yd = dat.elevation
@@ -83,11 +108,10 @@ class InteractivePlot():
             self.kpid = self.fig.canvas.mpl_connect('key_press_event', self.press)
             self.bpid = self.fig.canvas.mpl_connect('button_press_event', self.click)
             if guard_save:
-                self.fig.canvas.mpl_connect('close_event', self.on_close)
+                self.fig.canvas.mpl_connect('close_event', self._on_close)
             plt.show(self.fig)
         except KeyboardInterrupt:
             plt.close('all')
-
 
     def press(self, event):
         if event.key == 'd':
@@ -96,7 +120,6 @@ class InteractivePlot():
             self.press_space()
         elif event.key == 'n':
             self.press_p()
-
 
     def press_f(self):
         gs = gridspec.GridSpec(5, 5)
@@ -123,9 +146,9 @@ class InteractivePlot():
         self.radio_color = RadioButtons(ax_color, ('gray', 'bwr', 'viridis', 'plasma', 'inferno', 'magma', 'seismic', 'hsv', 'jet', 'rainbow'))
 
         def lim_update(val):
-            self.im.set_clim(vmin=slidermin.val, vmax=slidermax.val)
-            self.lims[0] = slidermin.val
-            self.lims[1] = slidermax.val
+            self.im.set_clim(vmin=self.slidermin.val, vmax=self.slidermax.val)
+            self.lims[0] = self.slidermin.val
+            self.lims[1] = self.slidermax.val
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
         
@@ -184,7 +207,6 @@ class InteractivePlot():
         next.on_clicked(next_and_exit)
         tb.on_submit(change_layer)
 
-
     def press_space(self):
         if self.dat.picks is None:
             self.dat.picks = []
@@ -196,8 +218,9 @@ class InteractivePlot():
         self.current_layer = len(self.dat.picks) - 1
         self.line = self.ax.plot(self.xd, self.dat.picks[self.current_layer])
 
-
     def click(self, event):
+        if self.FigCanvasWidget.mpl_toolbar._active is not None:
+            return
         if self.line is None:
             self.press_space()
         if event.button == 1:
@@ -209,47 +232,32 @@ class InteractivePlot():
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             self.saved = False
-
     
     # We have a section here that makes sure you don't close
-    def on_close(self, evt):
+    def closeEvent(self, event):
         if not self.saved:
-            self.save_dialog()
+            self._save_cancel_close(event)
 
-    def save_dialog(self):
-        gs = gridspec.GridSpec(5, 6)
-        self.fig_save = plt.figure(figsize=(6, 2))
-        self.fig_save.canvas.mpl_connect('close_event', self.on_close)
-        ax_savei = plt.subplot(gs[0, :2])
-        ax_savep = plt.subplot(gs[1, :2])
-        ax_saveas = plt.subplot(gs[2, :])
+    def _save_canvel_close(self, event):
+        pass
 
-        self.savebutton = Button(ax_savei, 'Save in place')
-        self.savepbutton = Button(ax_savep, 'Save sub pick')
-        self.saveas = TextBox(ax_saveas, 'Save as', initial=self.dat.fn)
-
-        self.savebutton.on_clicked(self.save_inplace)
-        self.savepbutton.on_clicked(self.save_pick)
-        self.saveas.on_submit(self.save_as)
-
-    def save_inplace(self, evt):
+    def _save_inplace(self, evt):
+        """Save the file without changing name"""
         self.dat.save(self.dat.fn)
         print('Saved as ' + self.dat.fn)
         self.saved = True
         plt.close(self.fig_save)
 
-    def save_pick(self, evt):
+    def _save_pick(self, evt):
+        """Save with _pick appended"""
         self.dat.save(self.dat.fn[:-4] + '_pick.mat')
         print('Saved as ' + self.dat.fn[:-4] + '_pick.mat')
         self.saved = True
         plt.close(self.fig_save)
 
-    def save_as(self, fn):
-        self.dat.save(fn)
-        print('Saved as ' + fn)
-        self.saved = True
-        plt.close(self.fig_save)
-
+    def _save_as(self, event=None):
+        """Fancy file handler for gracious exit"""
+        fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn, "All Files (*);;mat Files (*.mat)")
 
 
 class DrawableLine:
