@@ -116,11 +116,15 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
     done_stuff = False
     if restack is not None:
         for dat in RadarDataList:
+            if type(restack) in [list, tuple]:
+                restack = int(restack[0])
             dat.restack(restack)
+        done_stuff = True
 
     if rev:
         for dat in RadarDataList:
             dat.reverse()
+        done_stuff = True
 
     if vbp is not None:
         for dat in RadarDataList:
