@@ -14,5 +14,7 @@ ui: $(UI_PY)
 
 $(UI_PY): %.py: %.ui
 	$(PYQT)	-x $< -o $@
+	sed 's/mplfigcanvaswidget/.mplfigcanvaswidget/' $@ | grep -v setShortcutVisibleInContextMenu > dum
+	mv dum $@
 # vim:ft=make
 #
