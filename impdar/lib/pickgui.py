@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 from .ui import RawPickGUI
-from . import plot, RadarData
+from . import plot, RadarData, picklib
 import numpy as np
 import os.path
 import matplotlib.gridspec as gridspec
@@ -60,13 +60,18 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Set defaults
         self.bwb = 'bwb'
         self.freq = 4
+        self.pick_mode = 'select'
 
         # line is the matplotlib object of the current pick
-        self.line = None
+        self.cline = None
+        self.tline = None
+        self.bline = None
+
         # pick_pts contains our picked points, which will differ from what we want to save in the file. Need to have one per line.
         self.pick_pts = []
         self.dat = dat
         self.current_layer = 0
+        self.current_pick = None
 
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
@@ -80,7 +85,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             if x_range is None:
                 x_range = (0, -1)
             if x_range[-1] == -1:
-                x_range = (x_range[0], self.dat.snum)
+                x_range = (x_range[0], self.dat.tnum)
 
             self.lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]], (10, 90))
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
@@ -104,7 +109,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     self.ax.set_ylabel('Depth (m)')
 
             if xdat == 'tracenum':
-                self.xd = np.arange(int(self.dat.snum))[x_range[0]:x_range[-1]]
+                self.xd = np.arange(int(self.dat.tnum))[x_range[0]:x_range[-1]]
                 self.ax.set_xlabel('Trace number')
             elif xdat == 'dist':
                 self.xd = self.dat.dist[x_range[0]:x_range[-1]]
@@ -145,18 +150,19 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.fig.canvas.flush_events()
 
     def _freq_update(self, val):
-        self.dat.picks.pickparams.freq = val
+        self.dat.picks.pickparams.freq_update(val)
+        self.freq = val
 
     def _mode_update(self):
         _translate = QtCore.QCoreApplication.translate
-        if self.dat.picks.pickparams.apickflag == 1:
+        if self.pick_mode == 'select':
             self.modeButton.setText(_translate('MainWindow', 'Edit Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
-            self.dat.picks.pickparams.apickflag = 0
+            self.pick_mode = 'edit'
         else:
             self.modeButton.setText(_translate('MainWindow', 'Select Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
-            self.dat.picks.pickparams.apickflag = 1
+            self.pick_mode = 'select'
 
     #######
     # Handling of mouse events
@@ -164,20 +170,53 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def click(self, event):
         if self.FigCanvasWidget.mpl_toolbar._active is not None:
             return
-        if self.dat.picks.pickparams.apickflag == 0:
-            if self.line is None:
+        if self.pick_mode == 'edit':
+            if self.cline is None:
                 self._add_pick()
             if event.button == 1:
-                self.pick_pts[self.current_layer].append((event.xdata, event.ydata))
-                # closest_coord = np.argmin(np.abs(self.xd - event.xdata))
-                plot_pts = np.sort(np.array(self.pick_pts[self.current_layer], dtype=[('x', float), ('y', float)]), order='x', axis=0)
-                # self.dat.picks[self.current_layer][closest_coord] = event.ydata
-                self.line[0].set_data(plot_pts['x'], plot_pts['y'])
+                tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
+                picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self.current_layer]:tnum], self.dat.picks.lasttrace.snum[self.current_layer], snum, pickparams=self.dat.picks.pickparams)
+                self.current_pick[:, self.dat.picks.lasttrace.tnum[self.current_layer]:tnum] = picks
+                self.dat.picks.lasttrace.tnum[self.current_layer] = tnum
+                self.dat.picks.lasttrace.snum[self.current_layer] = snum
+                if self.cline is None:
+                    self.cline = self.ax.plot(self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)], color='g')
+                    self.tline = self.ax.plot(self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)], color='m')
+                    self.bline = self.ax.plot(self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)], color='m')
+                else:
+                    if False:
+                        self.cline[0].data = (self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)])
+                        self.tline[0].data = (self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)])
+                        self.bline[0].data = (self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)])
+                    self.cline = self.ax.plot(self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)], color='g')
+                    self.tline = self.ax.plot(self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)], color='m')
+                    self.bline = self.ax.plot(self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)], color='m')
                 self.fig.canvas.draw()
                 self.fig.canvas.flush_events()
                 self._saved = False
+
+            elif event.button == 3:
+                # Delete picks
+                tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
+                self.current_pick[:, tnum:] = np.nan
+                self.cline[0].data = (self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)])
+                self.tline[0].data = (self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)])
+                self.bline[0].data = (self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)])
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
+                self._saved = False
+
         else:
             raise ValueError('You need to implement selection')
+
+    def _dat_to_snumtnum(self, x, y):
+        if self.xscale == 'tnum':
+            xo = int(x)
+        else:
+            xo = np.argmin(np.abs(self.dat.dist - x))
+
+        yo = np.argmin(np.abs(getattr(self.dat, self.yscale) - y))
+        return xo, yo
 
     #######
     # Logistics of saving and closing
@@ -241,14 +280,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.press_p()
 
     def _add_pick(self):
-        pick_ind = self.dat.picks.add_pick(
-        d = np.zeros((self.dat.snum, ))
+        pick_ind = self.dat.picks.add_pick()
+        d = np.zeros((5, self.dat.tnum))
         d[d == 0] = np.nan
-        self.dat.picks.append(d)
-        self.pick_pts.append([])
-
-        self.current_layer = len(self.dat.picks) - 1
-        self.line = self.ax.plot(self.xd, self.dat.picks[self.current_layer])
+        self.current_pick = d
 
 
 # We want to add this fancy colormap
