@@ -95,7 +95,7 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
             ax.set_ylabel('Depth (m)')
 
     if xdat == 'tracenum':
-        xd = np.arange(int(dat.snum))[x_range[0]:x_range[-1]]
+        xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
         ax.set_xlabel('Trace number')
     elif xdat == 'dist':
         xd = dat.dist[x_range[0]:x_range[-1]]

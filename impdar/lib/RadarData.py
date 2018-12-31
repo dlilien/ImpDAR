@@ -55,7 +55,7 @@ class RadarData():
     picks = None
     fn = None
     attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
-    attrs_optional = ['nmo_depth', 'picks', 'elevation']
+    attrs_optional = ['nmo_depth', 'elevation']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
@@ -584,6 +584,7 @@ class Picks():
             self.time = np.zeros((1, self.radardata.tnum))
             self.power = np.zeros((1, self.radardata.tnum))
             self.picknums = [picknum]
+            self.lasttrace.add_pick(-9999, 0)
         elif np.all(np.isnan(self.samp1[-1, :])):
             # If the last pick is blank, we just overwrite it. Zero the pick.
             self.mod_line(self.samp1.shape[0], 0, 0)
@@ -594,7 +595,7 @@ class Picks():
             self.samp3 = np.vstack((self.samp3, np.zeros((1, self.radardata.tnum))))
             self.time = np.vstack((self.time, np.zeros((1, self.radardata.tnum))))
             self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
-            self.lasttrace.add_pick(0, 0)
+            self.lasttrace.add_pick(-9999, 0)
             self.picknums.append(picknum)
         # We return the row number of the sample, which gives access to all its info
         return self.samp1.shape[0]
@@ -606,9 +607,9 @@ class Picks():
                 mat[attr] = getattr(self, attr)
             else:
                 mat[attr] = 0
-        for attr in spec_attrs:
+        for attr in self.spec_attrs:
             if getattr(self, attr) is not None:
-                mat[attr] = getattr(self, attr).to_struct
+                mat[attr] = getattr(self, attr).to_struct()
             else:
                 mat[attr] = 0
         return mat
@@ -622,7 +623,7 @@ class LastTrace():
         self.snum = None
         self.tnum = None
 
-    def add_line(self, snum, tnum):
+    def add_pick(self, snum, tnum):
         if self.snum is None:
             self.snum = [snum]
             self.tnum = [tnum]
@@ -635,6 +636,7 @@ class LastTrace():
         self.tnum[ind] = tnum
 
     def to_struct(self):
+        mat = {}
         for attr in self.attrs:
             if getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
@@ -654,6 +656,7 @@ class LeaderTrailer():
         self.crop = Crop(radardata)
 
     def to_struct(self):
+        mat = {}
         for attr in self.attrs:
             if getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
@@ -683,7 +686,7 @@ class Crop():
 
 class PickParameters():
     """Some information for picking"""
-    attrs = ['apickthresh', 'freq', 'dt', 'plength', 'FWW', 'scst', 'pol', 'apickflag', 'addpicktype', 'radardata']
+    attrs = ['apickthresh', 'freq', 'dt', 'plength', 'FWW', 'scst', 'pol', 'apickflag', 'addpicktype']
 
     def __init__(self, radardata):
         self.apickthresh = 10
@@ -697,7 +700,14 @@ class PickParameters():
         self.addpicktype = 'zero'
         self.radardata = radardata
 
+    def freq_update(self, val):
+        self.freq = val
+        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
+        self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
+        self.scst = int(round((self.plength - self.FWW) / 2))
+
     def to_struct(self):
+        mat = {}
         for attr in self.attrs:
             if getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
