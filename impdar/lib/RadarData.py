@@ -600,6 +600,13 @@ class Picks():
         # We return the row number of the sample, which gives access to all its info
         return self.samp1.shape[0]
 
+    def update_pick(self, picknum, pick_info):
+        self.samp1[picknum, :] = pick_info[0, :]
+        self.samp2[picknum, :] = pick_info[1, :]
+        self.samp3[picknum, :] = pick_info[2, :]
+        self.time[picknum, :] = pick_info[3, :]
+        self.power[picknum, :] = pick_info[4, :]
+
     def to_struct(self):
         mat = {}
         for attr in self.attrs:

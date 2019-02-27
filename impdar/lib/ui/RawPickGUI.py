@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1009, 726)
+        MainWindow.resize(1031, 726)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)
@@ -23,6 +23,10 @@ class Ui_MainWindow(object):
         self.modeButton.setMaximumSize(QtCore.QSize(161, 32))
         self.modeButton.setObjectName("modeButton")
         self.verticalLayout_3.addWidget(self.modeButton)
+        self.newpickButton = QtWidgets.QPushButton(self.centralwidget)
+        self.newpickButton.setMaximumSize(QtCore.QSize(161, 32))
+        self.newpickButton.setObjectName("newpickButton")
+        self.verticalLayout_3.addWidget(self.newpickButton)
         self.groupBox_2 = QtWidgets.QGroupBox(self.centralwidget)
         self.groupBox_2.setMaximumSize(QtCore.QSize(161, 220))
         self.groupBox_2.setObjectName("groupBox_2")
@@ -106,7 +110,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.verticalLayout_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1009, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1031, 22))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -162,6 +166,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "PickGUI"))
         self.modeButton.setText(_translate("MainWindow", "Select Mode"))
+        self.newpickButton.setText(_translate("MainWindow", "New Pick"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Pick Options"))
         self.checkBox.setText(_translate("MainWindow", "Autopick"))
         self.groupBox_3.setTitle(_translate("MainWindow", "Frequency"))

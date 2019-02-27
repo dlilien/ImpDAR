@@ -24,11 +24,20 @@ else:
     from PyQt4.QtWidgets import QFileDialog, QMessageBox
 
 
-def pick(radardata, guard_save=True):
+def pick(radardata, guard_save=True, xd=False, yd=False):
+    if xd:
+        x = 'dist'
+    else:
+        x = 'tracenum'
+    if yd:
+        y = 'depth'
+    else:
+        y = 'twtt'
+
     if not hasattr(radardata, 'picks') or radardata.picks is None:
         radardata.picks = RadarData.Picks(radardata)
     app = QtWidgets.QApplication(sys.argv)
-    ip = InteractivePicker(radardata)
+    ip = InteractivePicker(radardata, xdat=x, ydat=y)
     ip.show()
     sys.exit(app.exec_())
 

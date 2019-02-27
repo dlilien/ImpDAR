@@ -26,12 +26,14 @@ def main():
     parser = _get_args()
     args = parser.parse_args()
     radardata = load.load('mat', [args.fn])[0]
-    ip = pickgui.pick(radardata, guard_save=True)
+    ip = pickgui.pick(radardata, guard_save=True, xd=args.xd, yd=args.yd)
 
 
 def _get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('fn', type=str, help='The file to pick. At least for now you can only do one at a time.')
+    parser.add_argument('-xd', action='store_true', help='Distance on the x')
+    parser.add_argument('-yd', action='store_true', help='Depth on the y')
     return parser
 
 
