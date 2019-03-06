@@ -9,6 +9,9 @@ python:
 install:
 - pip install -r requirements.txt
 - pip install .
+branches:
+    only:
+        - master
 deploy:
   provider: pypi
   user: dlilien
