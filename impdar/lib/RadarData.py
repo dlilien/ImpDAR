@@ -610,9 +610,7 @@ class Picks():
             self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
             self.lasttrace.add_pick(-9999, 0)
             self.picknums.append(picknum)
-            print(self.samp1)
         # We return the row number of the sample, which gives access to all its info
-        print('Added {:d}'.format(self.samp1.shape[0]))
         return self.samp1.shape[0]
 
     def update_pick(self, picknum, pick_info):
