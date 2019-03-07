@@ -12,11 +12,15 @@ Skeleton import impdar
 
 import platform
 import matplotlib
-# if platform.system() == 'Darwin':
-#     matplotlib.use('macosx')
-# else:
-#     matplotlib.use('gtk3agg')
+
+# We are going to do this here so that it comes first. We need Qt5 for the picker
+# but we can break things with no-qt installations that way
 matplotlib.use('Qt5Agg')
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
 
 from .lib import load, process, plot, convert
 from .lib.RadarData import RadarData
