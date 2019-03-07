@@ -49,6 +49,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Next line is required for Qt, then give us the layout
         super(self.__class__, self).__init__()
         self.setupUi(self)
+        self.FigCanvasWidget.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.FigCanvasWidget.canvas.setFocus()
 
         # Connect the menu to actions
         self.actionSave_pick.triggered.connect(self._save_as)
@@ -80,7 +82,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # pick_pts contains our picked points, which will differ from what we want to save in the file. Need to have one per line.
         self.pick_pts = []
         self.dat = dat
-        self.current_layer = 0
         self.current_pick = None
 
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
@@ -127,19 +128,23 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
             self.im = self.ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             if self.dat.picks.samp1 is not None:
-                self.cline = []
-                self.bline = []
-                self.tline = []
-                for i in range(self.dat.picks.samp1.shape[0] - 1):
-                    self.cline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp2[i, :])], self.yd[self.dat.picks.samp2[i, :][~np.isnan(self.dat.picks.samp1[i, :])].astype(int)], color='b', picker=5)[0])
-                    self.tline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp1[i, :])], self.yd[self.dat.picks.samp1[i, :][~np.isnan(self.dat.picks.samp2[i, :])].astype(int)], color='y')[0])
-                    self.bline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp3[i, :])], self.yd[self.dat.picks.samp3[i, :][~np.isnan(self.dat.picks.samp3[i, :])].astype(int)], color='y')[0])
-                self.cline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp2[-1, :])], self.yd[self.dat.picks.samp2[-1, :][~np.isnan(self.dat.picks.samp1[-1, :])].astype(int)], color='m', picker=5)[0])
-                self.tline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp1[-1, :])], self.yd[self.dat.picks.samp1[-1, :][~np.isnan(self.dat.picks.samp2[-1, :])].astype(int)], color='g')[0])
-                self.bline.append(self.ax.plot(self.xd[~np.isnan(self.dat.picks.samp3[-1, :])], self.yd[self.dat.picks.samp3[-1, :][~np.isnan(self.dat.picks.samp3[-1, :])].astype(int)], color='g')[0])
+                self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                for i in range(self.dat.picks.samp1.shape[0]):
+                    if i == self.dat.picks.samp1.shape[0] - 1:
+                        colors = 'gmm'
+                    else:
+                        colors = 'byy'
+                    self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
+                    self._pick_ind = i
+                    self.update_lines(colors=colors, picker=5)
 
-            self.kpid = self.fig.canvas.mpl_connect('key_press_event', self.press)
-            self.bpid = self.fig.canvas.mpl_connect('pick_event', self.click)
+            self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
+            self.krid = self.fig.canvas.mpl_connect('key_release_event', self._release)
+            self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
+            # We need this so we no if we are nanpicking
+            self._n_pressed = False
 
             #####
             # Connect some stuff after things are set up
@@ -183,62 +188,120 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
             self.pick_mode = 'edit'
             self.fig.canvas.mpl_disconnect(self.bpid)
-            self.bpid = self.fig.canvas.mpl_connect('button_press_event', self.click)
+            self.bpid = self.fig.canvas.mpl_connect('button_press_event', self._click)
+            for c, b, t in zip(self.cline, self.bline, self.tline):
+                if c is not None:
+                    c.set_picker(None)
+                    b.set_picker(None)
+                    t.set_picker(None)
         else:
             self.modeButton.setText(_translate('MainWindow', 'Select Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
             self.pick_mode = 'select'
             self.fig.canvas.mpl_disconnect(self.bpid)
-            self.bpid = self.fig.canvas.mpl_connect('pick_event', self.click)
+            self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
+            for c, b, t in zip(self.cline, self.bline, self.tline):
+                if c is not None:
+                    c.set_picker(5)
+                    b.set_picker(5)
+                    t.set_picker(5)
 
     #######
     # Handling of mouse events
     #######
-    def click(self, event):
+    def _click(self, event):
         # This will handle both edit mode and select mode clicks
         if self.FigCanvasWidget.mpl_toolbar._active is not None:
             return
         if self.pick_mode == 'edit':
-            if len(self.cline) == 0:
-                self._add_pick()
-            if event.button == 1:
-                tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
-                picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self.current_layer]:tnum], self.dat.picks.lasttrace.snum[self.current_layer], snum, pickparams=self.dat.picks.pickparams)
-                self.current_pick[:, self.dat.picks.lasttrace.tnum[self.current_layer]:tnum] = picks
-                self.dat.picks.update_pick(self._pick_ind, self.current_pick)
-                self.dat.picks.lasttrace.tnum[self.current_layer] = tnum
-                self.dat.picks.lasttrace.snum[self.current_layer] = snum
-                if self.cline[self._pick_ind] is None:
-                    self.cline[self._pick_ind], = self.ax.plot(self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)], color='g')
-                    self.tline[self._pick_ind], = self.ax.plot(self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)], color='m')
-                    self.bline[self._pick_ind], = self.ax.plot(self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)], color='m')
-                else:
-                    self.cline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)])
-                    self.tline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)])
-                    self.bline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)])
-                self.fig.canvas.draw()
-                self.fig.canvas.flush_events()
-                self._saved = False
-
-            elif event.button == 3:
-                # Delete picks
-                tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
-                self.current_pick[:, tnum:] = np.nan
-                self.cline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[1, :])], self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)])
-                self.tline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[0, :])], self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)])
-                self.bline[self._pick_ind].set_data(self.xd[~np.isnan(self.current_pick[2, :])], self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)])
-                self.fig.canvas.draw()
-                self.fig.canvas.flush_events()
-                self._saved = False
+            self._edit_lines_click(event)
         elif self.pick_mode == 'select':
-            self.select_lines(event)
+            self._select_lines_click(event)
 
-    def select_lines(self, event):
+    def _edit_lines_click(self, event):
+        """We have a click on the canvas while in edit mode. We need to shunt this event to the appropriate function
+
+        Can be plain left click (pick)
+        left click with n depressed (nanpick)
+        or right click (delete)
+        """
+        if len(self.cline) == 0:
+            self._add_pick()
+        tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
+        if event.button == 1:
+            if self._n_pressed:
+                self._add_nanpick(snum, tnum)
+            else:
+                self._add_point_pick(snum, tnum)
+        elif event.button == 3:
+            self._delete_picks(snum, tnum)
+
+        self.update_lines()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+        self._saved = False
+
+    def _add_point_pick(self, snum, tnum):
+        """We are given a snum, tnum location in the image: follow layer to that point, plot it"""
+        picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum], self.dat.picks.lasttrace.snum[self._pick_ind], snum, pickparams=self.dat.picks.pickparams)
+        self.current_pick[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum] = picks
+        self.dat.picks.update_pick(self._pick_ind, self.current_pick)
+        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+        self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+
+    def _add_nanpick(self, snum, tnum):
+        """Update for a nanpick. This is trivial, since the matrix is already NaNs"""
+        # Just move our counter over so we know where to go next
+        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+        self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+
+    def _delete_picks(self, snum, tnum):
+        self.current_pick[:, tnum:] = np.nan
+
+    def update_lines(self, colors='gmm', picker=None):
+        """Update the plotting of the current pick.
+        
+        Parameters
+        ----------
+        colors: str
+            3-letter string of one-letter colors
+        picker:
+            argument to pass to plot of cline (if new) for selection tolerance (use if plotting in select mode)
+        """
+        c = np.zeros(self.xd.shape)
+        c[:] = np.nan
+        c[~np.isnan(self.current_pick[1, :])] = self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)]
+        t = np.zeros(self.xd.shape)
+        t[:] = np.nan
+        t[~np.isnan(self.current_pick[0, :])] = self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)]
+        b = np.zeros(self.xd.shape)
+        b[:] = np.nan
+        b[~np.isnan(self.current_pick[2, :])] = self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)]
+        if self.cline[self._pick_ind] is None:
+            self.cline[self._pick_ind], = self.ax.plot(self.xd, c, color=colors[0], picker=picker)
+            self.tline[self._pick_ind], = self.ax.plot(self.xd, t, color=colors[1])
+            self.bline[self._pick_ind], = self.ax.plot(self.xd, b, color=colors[2])
+        else:
+            # This is a little complicated to avoid plotting NaN regions
+            self.cline[self._pick_ind].set_data(self.xd, c)
+            self.tline[self._pick_ind].set_data(self.xd, t)
+            self.bline[self._pick_ind].set_data(self.xd, b)
+
+    def _dat_to_snumtnum(self, x, y):
+        if self.xscale == 'tnum':
+            xo = int(x)
+        else:
+            xo = np.argmin(np.abs(self.dat.dist - x))
+
+        yo = np.argmin(np.abs(getattr(self.dat, self.yscale) - y))
+        return xo, yo
+
+    def _select_lines_click(self, event):
         thisline = event.artist
         if thisline in self.cline:
             self._pick_ind = self.cline.index(thisline)
-            for c, b, t in zip(self.cline, self.bline, self.tline):
-                if self._pick_ind == self.cline.index(thisline):
+            for i, (c, b, t) in enumerate(zip(self.cline, self.bline, self.tline)):
+                if i == self._pick_ind:
                     c.set_color('g')
                     b.set_color('m')
                     t.set_color('m')
@@ -249,15 +312,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-
-    def _dat_to_snumtnum(self, x, y):
-        if self.xscale == 'tnum':
-            xo = int(x)
-        else:
-            xo = np.argmin(np.abs(self.dat.dist - x))
-
-        yo = np.argmin(np.abs(getattr(self.dat, self.yscale) - y))
-        return xo, yo
 
     #######
     # Logistics of saving and closing
@@ -311,14 +365,17 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     #######
     # Enable the key presses from the old stointerpret
     #######
-
-    def press(self, event):
+    def _press(self, event):
         if event.key == 'd':
             self.press_f()
         elif event.key == ' ':
             self.press_space()
         elif event.key == 'n':
-            self.press_p()
+            self._n_pressed = True
+
+    def _release(self, event):
+        if event.key == 'n':
+            self._n_pressed = False
 
     def _add_pick(self):
         # Give the user a visual clue to what is being picked by using different colors for the old lines

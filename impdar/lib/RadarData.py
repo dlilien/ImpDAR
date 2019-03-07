@@ -610,9 +610,7 @@ class Picks():
             self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
             self.lasttrace.add_pick(-9999, 0)
             self.picknums.append(picknum)
-            print(self.samp1)
         # We return the row number of the sample, which gives access to all its info
-        print('Added {:d}'.format(self.samp1.shape[0]))
         return self.samp1.shape[0]
 
     def update_pick(self, picknum, pick_info):
@@ -644,7 +642,7 @@ class LastTrace():
     def __init__(self, lasttrace_struct=None):
         if lasttrace_struct is not None:
             for attr in self.attrs:
-                setattr(self, attr, lasttrace_struct[0][0][attr])
+                setattr(self, attr, lasttrace_struct[0][0][attr][0][0].flatten())
         else:
             self.snum = None
             self.tnum = None
@@ -721,7 +719,7 @@ class PickParameters():
     def __init__(self, radardata, pickparams_struct=None):
         if pickparams_struct is not None:
             for attr in self.attrs:
-                setattr(self, attr, pickparams_struct[0][0][attr])
+                setattr(self, attr, pickparams_struct[0][0][attr][0][0][0][0])
         else:
             self.apickthresh = 10
             self.freq = 4
