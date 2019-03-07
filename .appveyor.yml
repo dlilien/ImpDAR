@@ -62,6 +62,10 @@ after_test:
 artifacts:
   - path: dist\*
 
+branches:
+  only:
+    - master
+
 #on_success:
 #  You can use this step to upload your artifacts to a public website.
 #  See Appveyor's documentation for more details. Or you can simply
