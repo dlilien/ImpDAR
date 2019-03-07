@@ -22,6 +22,8 @@ class NoInitRadarData(RadarData):
 
     def __init__(self):
         self.data = np.array([[2, 2], [1, 1]])
+        # need to set this to avoid divide by zero later
+        self.dt = 1
 
 
 class TestFlags(unittest.TestCase):
