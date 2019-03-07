@@ -15,11 +15,12 @@ import matplotlib
 
 # We are going to do this here so that it comes first. We need Qt5 for the picker
 # but we can break things with no-qt installations that way
-matplotlib.use('Qt5Agg')
 try:
+    import PyQt5
+    matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
 except ImportError:
-    matplotlib.use('Agg')
+    matplotlib.use('AGG')
     import matplotlib.pyplot as plt
 
 from .lib import load, process, plot, convert
