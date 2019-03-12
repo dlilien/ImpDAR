@@ -9,6 +9,7 @@
 """
 
 """
+import codecs
 import os.path
 import struct
 import numpy as np
@@ -206,12 +207,24 @@ def _get_dzg_data(fn, trace_nums):
     data: :class:`~impdar.lib.gpslib.nmea_info`
     """
 
-    with open(fn) as f:
+    with codecs.open(fn, 'r', encoding='utf-8', errors='ignore') as f:
         lines = f.readlines()
-    ggis = lines[::3]
-    gga = lines[1::3]
-    scans = np.array(list(map(lambda x: int(x.split(',')[1]), ggis)))
-    data = RadarGPS(gga, scans, trace_nums)
+    # We have to be careful with this to permit other NMEA strings to have been recorded and to be sure that the indices line up
+    gssis_inds = [i for i, line in enumerate(lines) if 'GSSIS' in line]
+    gga_inds = [i for i, line in enumerate(lines) if 'GGA' in line]
+    # we may have some records without GGA, so check if this is the case; we keep track of the offset if so
+    gssis_inds_keep = []
+    offset_ind = 0
+    for i, j in enumerate(gssis_inds[:-1]):
+        if (gga_inds[i + offset_ind] > j and gga_inds[i + offset_ind] < gssis_inds[i + 1]):
+            gssis_inds_keep.append(j)
+        else:
+            offset_ind -= 1
+    if gga_inds[-1] > gssis_inds[-1]:
+        gssis_inds_keep.append(gssis_inds[-1])
+
+    scans = np.array(list(map(lambda x: int(x.split(',')[1]), [line for i, line in enumerate(lines) if i in gssis_inds_keep])))
+    data = RadarGPS([line for i, line in enumerate(lines) if i in gga_inds], scans, trace_nums)
     return data
 
 

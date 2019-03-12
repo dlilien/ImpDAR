@@ -46,7 +46,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   # We need to install numpy, scipy and matplotlib through conda
-  - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib nose"
+  - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib nose pyqt"
   - activate test-environment
   # give me a remote-login option to debug
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
