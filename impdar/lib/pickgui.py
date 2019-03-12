@@ -161,10 +161,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             plt.close('all')
 
     #######
-    # Handling of keypress events
+    # Handling of the bar of option things on the left
     #######
     def _color_select(self, val):
-        self.im.set_cmap(plt.cm.get_cmap(val))
+        self.im.set_cmap(plt.cm.get_cmap(val + '_r'))
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
