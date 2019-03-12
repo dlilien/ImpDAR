@@ -111,7 +111,6 @@ class RadarData():
         else:
             # We want the structure available to prevent read errors from corrupt files
             mat['flags'] = RadarFlags().to_matlab()
-        print(mat)
         savemat(fn, mat)
 
     def vertical_band_pass(self, low, high, *args, **kwargs):
@@ -197,12 +196,12 @@ class RadarData():
         """
         self.data = np.fliplr(self.data)
 
-        self.x_coord = np.fliplr(self.x_coord)
-        self.y_coord = np.fliplr(self.y_coord)
-        self.decday = np.fliplr(self.decday)
-        self.lat = np.fliplr(self.lat)
-        self.long = np.fliplr(self.long)
-        self.elev = np.fliplr(self.elev)
+        self.x_coord = np.flip(self.x_coord)
+        self.y_coord = np.flip(self.y_coord)
+        self.decday = np.flip(self.decday)
+        self.lat = np.flip(self.lat)
+        self.long = np.flip(self.long)
+        self.elev = np.flip(self.elev)
 
         # allow for re-reverasl
         if self.flags.reverse:
