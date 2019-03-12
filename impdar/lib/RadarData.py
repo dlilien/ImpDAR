@@ -53,8 +53,9 @@ class RadarData():
     y_coord = None
     nmo_depth = None
     picks = None
+    fn = None
     attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
-    attrs_optional = ['nmo_depth', 'picks', 'elevation']
+    attrs_optional = ['nmo_depth', 'elevation']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
@@ -77,8 +78,13 @@ class RadarData():
                     setattr(self, attr, mat[attr])
             else:
                 self.attr = None
+        self.fn = fn
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
+        if ('picks' not in mat) or mat['picks'] == 0 or mat['picks'][0] == 0 or mat['picks'][0][0] == 0:
+            self.picks = Picks(self)
+        else:
+            self.picks = Picks(self, mat['picks'])
 
     def save(self, fn):
         """Save the radar data
@@ -98,11 +104,13 @@ class RadarData():
         for attr in self.attrs_optional:
             if hasattr(self, attr) and getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
+        if hasattr(self, 'picks') and self.picks is not None:
+            mat['picks'] = self.picks.to_struct()
         if self.flags is not None:
-            mat['flags'] = self.flags
+            mat['flags'] = self.flags.to_matlab()
         else:
             # We want the structure available to prevent read errors from corrupt files
-            mat['flags'] = RadarFlags()
+            mat['flags'] = RadarFlags().to_matlab()
         savemat(fn, mat)
 
     def vertical_band_pass(self, low, high, *args, **kwargs):
@@ -188,12 +196,12 @@ class RadarData():
         """
         self.data = np.fliplr(self.data)
 
-        self.x_coord = np.fliplr(self.x_coord)
-        self.y_coord = np.fliplr(self.y_coord)
-        self.decday = np.fliplr(self.decday)
-        self.lat = np.fliplr(self.lat)
-        self.long = np.fliplr(self.long)
-        self.elev = np.fliplr(self.elev)
+        self.x_coord = np.flip(self.x_coord)
+        self.y_coord = np.flip(self.y_coord)
+        self.decday = np.flip(self.decday)
+        self.lat = np.flip(self.lat)
+        self.long = np.flip(self.long)
+        self.elev = np.flip(self.elev)
 
         # allow for re-reverasl
         if self.flags.reverse:
@@ -491,7 +499,6 @@ class RadarData():
         data_source = None
 
 
-
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
 
@@ -532,6 +539,7 @@ class RadarFlags():
         self.elev = 0
         self.elevation = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None] 
         self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
 
     def to_matlab(self):
@@ -545,7 +553,232 @@ class RadarFlags():
     def from_matlab(self, matlab_struct):
         """Associate all values from an incoming .mat file (i.e. a dictionary from :func:`scipy.io.loadmat`) with appropriate attributes
         """
-        for attr in self.attrs:
+        for attr, attr_dim in zip(self.attrs, self.attr_dims):
             setattr(self, attr, matlab_struct[attr][0][0][0])
+            # Use this because matlab inputs may have zeros for flags that 
+            # were lazily appended to be arrays, but we preallocate
+            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+                setattr(self, attr, np.zeros((attr_dim, )))
+
         for attr in self.bool_attrs:
             setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)
+
+
+class Picks():
+    """Information about picks"""
+    attrs = ['samp1', 'samp2', 'samp3', 'time', 'power', 'picknums']
+    spec_attrs = ['lasttrace', 'lt', 'pickparams']
+
+    def __init__(self, radardata, pick_struct=None):
+        if pick_struct is not None:
+            # Loading from a file
+            for attr in self.attrs:
+                setattr(self, attr, pick_struct[attr][0][0])
+                # Convert matlab zeros to Nones
+                if getattr(self, attr) == np.zeros((1, 1)):
+                    setattr(self, attr, None)
+            self.lasttrace = LastTrace(pick_struct['lasttrace'])
+            self.lt = LeaderTrailer(radardata, pick_struct['lt'])
+            self.pickparams = PickParameters(radardata, pick_struct['pickparams'])
+        else:
+            # Blank initialization
+            self.samp1 = None
+            self.samp2 = None
+            self.samp3 = None
+            self.time = None
+            self.power = None
+            self.picknums = None
+            self.lasttrace = LastTrace()
+            self.lt = LeaderTrailer(radardata)
+            self.pickparams = PickParameters(radardata)
+
+        # These are not in StoInterpret, but I'm using them to keep life more object oriented
+        self.radardata = radardata
+        # This will contain the handles for all the lines plotted so we can do some selection
+        self.lines = []
+
+    def add_pick(self, picknum=0):
+        if self.samp1 is None:
+            # We have no matrices yet
+            self.samp1 = np.zeros((1, self.radardata.tnum))
+            self.samp2 = np.zeros((1, self.radardata.tnum))
+            self.samp3 = np.zeros((1, self.radardata.tnum))
+            self.time = np.zeros((1, self.radardata.tnum))
+            self.power = np.zeros((1, self.radardata.tnum))
+            self.picknums = [picknum]
+            self.lasttrace.add_pick(-9999, 0)
+        elif np.all(np.isnan(self.samp1[-1, :])):
+            # If the last pick is blank, we just overwrite it. Zero the pick.
+            self.mod_line(self.samp1.shape[0], 0, 0)
+        else:
+            # We are just adding a row to the existing matrices of samples etc.
+            self.samp1 = np.vstack((self.samp1, np.zeros((1, self.radardata.tnum))))
+            self.samp2 = np.vstack((self.samp2, np.zeros((1, self.radardata.tnum))))
+            self.samp3 = np.vstack((self.samp3, np.zeros((1, self.radardata.tnum))))
+            self.time = np.vstack((self.time, np.zeros((1, self.radardata.tnum))))
+            self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
+            self.lasttrace.add_pick(-9999, 0)
+            self.picknums.append(picknum)
+        # We return the row number of the sample, which gives access to all its info
+        return self.samp1.shape[0]
+
+    def update_pick(self, picknum, pick_info):
+        self.samp1[picknum, :] = pick_info[0, :]
+        self.samp2[picknum, :] = pick_info[1, :]
+        self.samp3[picknum, :] = pick_info[2, :]
+        self.time[picknum, :] = pick_info[3, :]
+        self.power[picknum, :] = pick_info[4, :]
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        for attr in self.spec_attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr).to_struct()
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class LastTrace():
+    """The sample and trace of the last trace for picking"""
+    attrs = ['snum', 'tnum']
+
+    def __init__(self, lasttrace_struct=None):
+        if lasttrace_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, lasttrace_struct[0][0][attr][0][0].flatten())
+        else:
+            self.snum = None
+            self.tnum = None
+
+    def add_pick(self, snum, tnum):
+        if self.snum is None:
+            self.snum = [snum]
+            self.tnum = [tnum]
+        else:
+            self.snum.append(snum)
+            self.tnum.append(tnum)
+
+    def mod_line(self, ind, snum, tnum):
+        self.snum[ind] = snum
+        self.tnum[ind] = tnum
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class LeaderTrailer():
+    """The lt structure from StoInterpret"""
+    attrs = ['llength', 'tlength', 'ltmatrix']
+
+    def __init__(self, radardata, lt_struct=None):
+        if lt_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, lt_struct[0][0][attr])
+            self.crop = Crop(radardata)
+        else:
+            self.llength = 0
+            self.tlength = 0
+            self.ltmatrix = 0
+            self.crop = Crop(radardata)
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        mat['crop'] = self.crop.to_struct()
+        return mat
+
+
+class Crop():
+    """Crop information. I have no idea what this is for but it is retained for backwards compatibility"""
+    attrs = ['tnum', 'maxsnum', 'mintt', 'maxtt']
+
+    def __init__(self, radardata):
+        self.tnum = radardata.tnum
+        self.maxsnum = radardata.snum
+        self.mintt = np.min(radardata.travel_time)
+        self.maxtt = np.max(radardata.travel_time)
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class PickParameters():
+    """Some information for picking
+    
+    Attributes
+    ----------
+    apickthresh: float
+        Some kind of auto picking threshold that I have not yet used (default 10)
+    freq: float
+        Frequency of the layer pick (default 4)
+    dt: float
+        Time between acquisitions
+    plength: float
+        Some function of dt and freq
+    FWW: float
+        Some function of dt and freq
+    scst: float
+        Some function of plength and FWW
+    pol: int
+        Polarity of the picks
+    apickflag: int
+        I think this just kept track of whether StoDeep was autopicking
+    addpicktype: str
+        Some flag
+    radardata: `RadarData`
+        A link back up to the RadarData object with which this is affiliated
+    """
+    attrs = ['apickthresh', 'freq', 'dt', 'plength', 'FWW', 'scst', 'pol', 'apickflag', 'addpicktype']
+
+    def __init__(self, radardata, pickparams_struct=None):
+        if pickparams_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, pickparams_struct[0][0][attr][0][0][0][0])
+        else:
+            self.apickthresh = 10
+            self.freq = 4
+            self.dt = radardata.dt
+            self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.dt)))
+            self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.dt))))
+            self.scst = int(round((self.plength - self.FWW) / 2))
+            self.pol = 1
+            self.apickflag = 1
+            self.addpicktype = 'zero'
+        self.radardata = radardata
+
+    def freq_update(self, val):
+        self.freq = val
+        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
+        self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
+        self.scst = int(round((self.plength - self.FWW) / 2))
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat
