@@ -178,7 +178,11 @@ def _to_date(bin, le=True):
                 yield (int(b) >> i) & 1
 
     a = _time()
-    bit = [b for b in _bits(bin)]
+    try:
+        bit = [b for b in _bits(bin)]
+    except ValueError:
+        # No guarantees on this one. I don't think that python2 likes my _bits function.
+        return None
     a.sec2 = _bit_to_int(bit[0:5])
     a.minute = _bit_to_int(bit[5:11])
     a.hour = _bit_to_int(bit[11:16])
