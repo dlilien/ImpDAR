@@ -11,6 +11,11 @@ A wrapper around the other loading utilities
 """
 import os.path
 from . import load_gssi, load_pulse_ekko
+try:
+    from . import load_segy
+    segy = True
+except ImportError:
+    segy = False
 from .RadarData import RadarData
 
 
@@ -20,7 +25,7 @@ def load(filetype, fns):
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
     fns: list
         List of files to load
 
@@ -35,6 +40,11 @@ def load(filetype, fns):
         dat = [load_pulse_ekko.load_pe(fn) for fn in fns]
     elif filetype == 'mat':
         dat = [load_mat(fn) for fn in fns]
+    elif filetype == 'segy':
+        if segy:
+            dat = [load_segy.load_segy(fn) for fn in fns]
+        else:
+            raise ImportError('Failed to import segyio, cannot read segy')
     else:
         raise Exception('Unrecognized filetype')
     return dat
