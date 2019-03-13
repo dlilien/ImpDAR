@@ -2,9 +2,10 @@
 
 [![Build Status](https://travis-ci.org/dlilien/ImpDAR.svg?branch=master)](https://travis-ci.org/dlilien/ImpDAR) [![Build status](https://ci.appveyor.com/api/projects/status/uuef8aio2xbgiux8?svg=true)](https://ci.appveyor.com/project/dlilien/impdar)
 
-This is a re-write of the St. Olaf Deep Radar processor in Python, adding some capability and pruning some dead limbs. This code has a lot of history of contributors--I've tried to preserve acknowledgment of many of them in the file headers. ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, GSSI and PulseEKKO files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing.
+This is a re-write of the St. Olaf Deep Radar processor in Python, adding some capability and pruning some dead limbs. This code has a lot of history of contributors--I've tried to preserve acknowledgment of many of them in the file headers. ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, GSSI and PulseEKKO files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The primary interface is through the command line, which allows efficient processing of large volumes of data. An API, centered around the RadarData class, is also available to allow the user to use ImpDAR in other programs.
 
 In addition to processing, ImpDAR can also be used for picking reflectors. Picking is generally an interactive process, and there is something of a GUI for doing the picking. For the most up-to-date version of the picker, check out the "picker" branch, where most development of the picker is happening.
+
 
 ### Dependencies
 

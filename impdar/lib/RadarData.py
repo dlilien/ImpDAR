@@ -81,7 +81,7 @@ class RadarData():
         self.fn = fn
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
-        if ('picks' not in mat) or mat['picks'] == 0 or mat['picks'][0] == 0 or mat['picks'][0][0] == 0:
+        if ('picks' not in mat):
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
@@ -113,8 +113,10 @@ class RadarData():
             mat['flags'] = RadarFlags().to_matlab()
         savemat(fn, mat)
 
-    def vertical_band_pass(self, low, high, *args, **kwargs):
+    def vertical_band_pass(self, low, high, order=5, *args, **kwargs):
         """Vertically bandpass the data
+
+        This function uses a forward-backward Butterworth filter to filter the data. Returns power that is not near the wavelength of the transmitter is assumed to be noise, so the limits for the filtering should generally surround the radar frequency. Some experimentation to see what provides the clearest results is probably needed for any given dataset.
 
         Parameters
         ----------
@@ -122,6 +124,8 @@ class RadarData():
             Lowest frequency passed, in MHz
         high: float
             Highest frequency passed, in MHz
+        order: int
+            Filter order (default 5)
         """
         # adapted from bandpass.m  v3.1 - this function performs a banspass filter in the
         # time-domain of the radar data to remove environmental noise.  The routine
@@ -158,7 +162,7 @@ class RadarData():
         corner_freq[0] = Low_Corner_Freq / Nyquist_Freq
         corner_freq[1] = High_Corner_Freq / Nyquist_Freq
 
-        b, a = butter(5, corner_freq, 'bandpass')
+        b, a = butter(order, corner_freq, 'bandpass')
 
         # provide feedback to the user
         print('Bandpassing from {:4.1f} to {:4.1f} MHz...'.format(low, high))
@@ -173,14 +177,14 @@ class RadarData():
     def hfilt(self, ftype='hfilt', bounds=None):
         """Horizontally filter the data.
 
-        This is a wrapper around other filter types.
+        This is a wrapper around other filter types. Horizontal filters are implemented (and documented) in the :mod:`impdar.lib.horizontal_filters` module.
 
         Parameters
         ----------
         ftype: str, optional
-            The filter type. Options are 'hfilt' and 'adaptive'. Default hfilt
+            The filter type. Options are :func:`hfilt <impdar.lib.horizontal_filters.hfilt>` and :func:`adaptive <impdar.lib.horizontal_filters.adaptivehfilt>`. Default hfilt
         bounds: tuple, optional
-            Bounds for the hfilt. Default is None, but required for hfilt.
+            Bounds for the hfilt. Default is None, but required if ftype is hfilt.
         """
         if ftype == 'hfilt':
             hfilt(self, bounds[0], bounds[1])
@@ -192,7 +196,7 @@ class RadarData():
     def reverse(self):
         """Reverse radar data
 
-        The St Olaf version of this function had a bunch of options. They seemed irrelevant to me. We just try to flip everything that might need flipping.
+        Essentially flip the profile left-right. This is desirable in a number of instances, but is particularly useful for concatenating profiles that were acquired in different directions. The St Olaf version of this function had a bunch of options. They seemed irrelevant to me. We just try to flip everything that might need flipping.
         """
         self.data = np.fliplr(self.data)
 
@@ -358,7 +362,7 @@ class RadarData():
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
 
-        There are fancier ways to do this--if you can, you probably want to restack to constant trace spacing instead
+        This function just takes the average of the given number of traces. This reduces file size and can get rid of noise. There are fancier ways to do this--if you can, you probably want to restack to constant trace spacing instead.
 
         Parameters
         ----------
@@ -421,7 +425,9 @@ class RadarData():
     def constant_space(self, spacing, min_movement=1.0e-2):
         """Restack the radar data to a constant spacing.
 
-        This comprises the second half of what was done by StoDeep's interpdeep. If you have good GPS data, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data
+        This method uses the GPS information (i.e. the distance, x, y, lat, and lon), to do a 1-d interpolation to get new values in the radargram. It also updates related variables like lat, long, elevation, and coordinates. To avoid retaining sections of the radargram when the antenna was in fact stationary, some minimum movement between traces is enforced. This value is in meters, and should change to be commensurate with the collection strategy (e.g. skiing a radar is slower than towing it with a snowmobile).
+        
+        This function comprises the second half of what was done by StoDeep's interpdeep. If you have GPS data from an external, high-precision GPS, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data.
 
         Parameters
         ----------
@@ -442,11 +448,11 @@ class RadarData():
         self.trace_num = np.arange(self.tnum).astype(int) + 1
         self.dist = new_dists
         try:
-            self.flag.interp[0] = 1
-            self.flag.interp[1] = spacing
+            self.flags.interp[0] = 1
+            self.flags.interp[1] = spacing
         except IndexError:
-            self.flag.interp = np.ones((2,))
-            self.flag.interp[1] = spacing
+            self.flags.interp = np.ones((2,))
+            self.flags.interp[1] = spacing
 
     def elev_correct(self, v=1.69e8):
         # calculate number of rows that must be added

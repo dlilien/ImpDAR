@@ -79,7 +79,7 @@ def _get_args():
     # Reinterpolate GPS
     parser_interp = add_procparser(subparsers, 'interp', 'Reinterpolate GPS', interp, defname='interp')
     parser_interp.add_argument('spacing', type=float, help='New spacing of radar traces, in meters')
-    parser_interp.add_argument('gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat')
+    parser_interp.add_argument('--gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat. Default is None--use associated (presumably non-precision) GPS', default=None)
     parser_interp.add_argument('--offset', type=float, default=0.0, help='Offset from GPS time to radar time')
     parser_interp.add_argument('--minmove', type=float, default=1.0e-2, help='Minimum movement to not be stationary')
     add_def_args(parser_interp)
