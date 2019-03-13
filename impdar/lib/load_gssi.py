@@ -182,7 +182,7 @@ def _to_date(bin, le=True):
         bit = [b for b in _bits(bin)]
     except ValueError:
         # No guarantees on this one. I don't think that python2 likes my _bits function.
-        return datetime.datetime(0, 0, 0, 0, 0, 0)
+        return datetime.datetime(2000, 1, 1, 1, 1, 1)
     a.sec2 = _bit_to_int(bit[0:5])
     a.minute = _bit_to_int(bit[5:11])
     a.hour = _bit_to_int(bit[11:16])
@@ -192,7 +192,7 @@ def _to_date(bin, le=True):
     if a.year > 0:
         return datetime.datetime(a.year, a.month, a.day, a.hour, a.minute, a.sec2)
     else:
-        return datetime.datetime(0, 0, 0, 0, 0, 0)
+        return datetime.datetime(2000, 1, 1, 1, 1, 1)
 
 
 def _get_dzg_data(fn, trace_nums):
