@@ -175,7 +175,7 @@ def _to_date(bin, le=True):
     def _bits(bytes):
         for b in bytes:
             for i in range(8):
-                yield (b >> i) & 1
+                yield (int(b) >> i) & 1
 
     a = _time()
     bit = [b for b in _bits(bin)]
