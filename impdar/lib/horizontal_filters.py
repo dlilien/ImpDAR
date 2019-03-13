@@ -3,6 +3,9 @@ from scipy.signal import filtfilt, butter, tukey
 
 
 def adaptivehfilt(dat, *args, **kwargs):
+    """Adaptively filter to reduce noise in upper layers
+    
+    This subtracts the average of traces around an individual trace in order to filter it. You can call this method directly, or it can be called by sending the 'adaptive' option to :func:`RadarData.hfilt() <impdar.lib.RadarData.RadarData.hfilt>`"""
     # v3.1
     #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
     #		or NMO data to reduce the horizontal noise in the upper layers.
@@ -81,6 +84,15 @@ def adaptivehfilt(dat, *args, **kwargs):
 
 
 def hfilt(dat, ntr1, ntr2, *args, **kwargs):
+    """Remove the average trace.
+
+    Parameters
+    ----------
+    ntr1: int
+        Leftmost trace for averaging
+    ntr2: int
+        Rightmost trace for averaging
+    """
     # v2.1
     #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
     #		or NMO data to reduce the horizontal noise in the upper layers.
@@ -126,7 +138,7 @@ def highpass(dat, wavelength, tracespace):
     #   Note that generally there is no perfect horizontal filter that will
     #   work at all depths.  You will have to experiment to get the best
     #   results for your area of interest.
-    #
+    #:func:`hfilt <impdar.lib.horizontal_filters.hfilt>`
     #	WARNING: Do not use highpassdeep on elevation-corrected data!!! 
     #
     #

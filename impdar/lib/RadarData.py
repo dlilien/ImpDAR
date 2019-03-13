@@ -81,7 +81,7 @@ class RadarData():
         self.fn = fn
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
-        if ('picks' not in mat) or mat['picks'] == 0 or mat['picks'][0] == 0 or mat['picks'][0][0] == 0:
+        if ('picks' not in mat):
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
@@ -177,14 +177,14 @@ class RadarData():
     def hfilt(self, ftype='hfilt', bounds=None):
         """Horizontally filter the data.
 
-        This is a wrapper around other filter types.
+        This is a wrapper around other filter types. Horizontal filters are implemented (and documented) in the :mod:`impdar.lib.horizontal_filters` module.
 
         Parameters
         ----------
         ftype: str, optional
-            The filter type. Options are 'hfilt' and 'adaptive'. Default hfilt
+            The filter type. Options are :func:`hfilt <impdar.lib.horizontal_filters.hfilt>` and :func:`adaptive <impdar.lib.horizontal_filters.adaptivehfilt>`. Default hfilt
         bounds: tuple, optional
-            Bounds for the hfilt. Default is None, but required for hfilt.
+            Bounds for the hfilt. Default is None, but required if ftype is hfilt.
         """
         if ftype == 'hfilt':
             hfilt(self, bounds[0], bounds[1])
