@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 from .ui import RawPickGUI
-from . import plot, RadarData, picklib
+from . import plot, RadarData, picklib, horizontal_filters
 import numpy as np
 import os.path
 import matplotlib.gridspec as gridspec
@@ -18,10 +18,10 @@ import sys
 from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5, QtGui
 if is_pyqt5():
     from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-    from PyQt5.QtWidgets import QFileDialog, QMessageBox
+    from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 else:
     from matplotlib.backends.backend_qt4agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-    from PyQt4.QtWidgets import QFileDialog, QMessageBox
+    from PyQt4.QtWidgets import QFileDialog, QMessageBox, QDialog
 
 
 def pick(radardata, guard_save=True, xd=False, yd=False):
@@ -47,15 +47,24 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def __init__(self, dat, xdat='tracenum', ydat='twtt', x_range=(0, -1), guard_save=False):
         # Next line is required for Qt, then give us the layout
-        super(self.__class__, self).__init__()
+        super(InteractivePicker, self).__init__()
         self.setupUi(self)
         self.FigCanvasWidget.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.FigCanvasWidget.canvas.setFocus()
 
         # Connect the menu to actions
+        # save menu
         self.actionSave_pick.triggered.connect(self._save_as)
         self.actionSave_as.triggered.connect(self._save_as)
         self.actionClose.triggered.connect(self.close)
+
+        #pick menu
+
+        # Process menu
+        self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
+        self.actionVertical_band_pass.triggered.connect(self._vbp)
+        self.actionReverse.triggered.connect(self._reverse)
+        self.actionCrop.triggered.connect(self._crop)
 
         # Connect controls on the left
         self.ColorSelector.currentTextChanged.connect(self._color_select)
@@ -94,9 +103,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 raise ValueError('y axis choices are twtt or depth')
 
             if x_range is None:
-                x_range = (0, -1)
+                self.x_range = (0, -1)
             if x_range[-1] == -1:
-                x_range = (x_range[0], self.dat.tnum)
+                self.x_range = (x_range[0], self.dat.tnum)
 
             self.lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]], (10, 90))
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
@@ -126,7 +135,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 self.xd = self.dat.dist[x_range[0]:x_range[-1]]
                 self.ax.set_xlabel('Distance (km)')
 
-            self.im = self.ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=plt.cm.gray_r, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
+            self.im = self.ax.imshow(dat.data[:, self.x_range[0]:self.x_range[-1]], cmap=plt.cm.gray, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             if self.dat.picks.samp1 is not None:
                 self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
                 self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
@@ -161,7 +170,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             plt.close('all')
 
     #######
-    # Handling of keypress events
+    # Handling of the bar of option things on the left
     #######
     def _color_select(self, val):
         self.im.set_cmap(plt.cm.get_cmap(val))
@@ -362,6 +371,59 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actionSave_pick.triggered.disconnect()
         self.actionSave_pick.triggered.connect(self._save_as)
 
+    ######
+    # Decorators for processing
+    ######
+    def update_radardata(self):
+        """Make the plot reflect updates to the data"""
+        self.im.set_data(self.dat.data[:, self.x_range[0]:self.x_range[-1]])
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+        self._saved = False
+
+    def _ahfilt(self, event):
+        self.progressLabel.setText('Horizontally filtering...')
+        self.progressBar.setProperty("value", 25)
+        QtWidgets.QApplication.processEvents()
+        horizontal_filters.adaptivehfilt(self.dat)
+        self.progressBar.setProperty("value", 75)
+        QtWidgets.QApplication.processEvents()
+        self.update_radardata()
+        self.progressLabel.setText('Done...')
+        self.progressBar.setProperty("value", 100)
+
+    def _vbp(self, event):
+        dialog = VBPInputDialog()
+        result = dialog.exec()
+        if result != 0:
+            self.progressLabel.setText('Vertically Bandpassing...')
+            self.progressBar.setProperty("value", 25)
+            QtWidgets.QApplication.processEvents()
+            self.dat.vertical_band_pass(*dialog.lims)
+            self.progressBar.setProperty("value", 75)
+            QtWidgets.QApplication.processEvents()
+            self.update_radardata()
+            self.progressLabel.setText('Done...')
+            self.progressBar.setProperty("value", 100)
+
+    def _reverse(self, event):
+        self.dat.reverse()
+        self.update_radardata()
+
+    def _crop(self, event):
+        dialog = CropInputDialog()
+        result = dialog.exec()
+        if result != 0:
+            self.progressLabel.setText('Cropping...')
+            self.progressBar.setProperty("value", 25)
+            QtWidgets.QApplication.processEvents()
+            self.dat.crop(dialog.val, dimension=dialog.inputtype, top_or_bottom=dialog.top_or_bottom)
+            self.progressBar.setProperty("value", 75)
+            QtWidgets.QApplication.processEvents()
+            self.update_radardata()
+            self.progressLabel.setText('Done...')
+            self.progressBar.setProperty("value", 100)
+
     #######
     # Enable the key presses from the old stointerpret
     #######
@@ -396,6 +458,95 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         d = np.zeros((5, self.dat.tnum))
         d[d == 0] = np.nan
         self.current_pick = d
+
+
+class VBPInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super(VBPInputDialog, self).__init__(parent)
+        layout = QtWidgets.QFormLayout()
+        self.minlabel = QtWidgets.QLabel()
+        self.minlabel.setText('Min (MHz):')
+        self.minspin = QtWidgets.QSpinBox()
+        self.minspin.setMinimum(0.)
+        self.minspin.setMaximum(999999.)
+        self.minspin.setValue(50.)
+        self.maxlabel = QtWidgets.QLabel()
+        self.maxlabel.setText('Max (MHz):')
+        self.maxspin = QtWidgets.QSpinBox()
+        self.maxspin.setMinimum(0.)
+        self.maxspin.setMaximum(999999.)
+        self.maxspin.setValue(250.)
+        layout.addRow(self.minlabel, self.minspin)
+        layout.addRow(self.maxlabel, self.maxspin)
+        self.cancel = QtWidgets.QPushButton("Cancel")
+        self.ok = QtWidgets.QPushButton("Ok")
+        layout.addRow(self.cancel, self.ok)
+        self.ok.clicked.connect(self.clickOK)
+        self.cancel.clicked.connect(self.close)
+        self.setLayout(layout)
+        self.setWindowTitle("Vertical Bandpass")
+
+    def clickOK(self):
+        if self.minspin.value() >= self.maxspin.value():
+            self.minspin.setValue(self.maxspin.value() - 1)
+            return
+        self.lims = (self.minspin.value(), self.maxspin.value())
+        self.accept()
+
+
+class CropInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super(CropInputDialog, self).__init__(parent)
+        layout = QtWidgets.QFormLayout()
+
+        self.spinnerlabel = QtWidgets.QLabel()
+        self.spinnerlabel.setText('Cutoff in TWTT (usec):')
+        self.spinner = QtWidgets.QDoubleSpinBox()
+        self.spinner.setMinimum(0)
+        self.spinner.setMaximum(10000)
+        self.spinner.setDecimals(4)
+        layout.addRow(self.spinnerlabel, self.spinner)
+
+        self.inputlabel = QtWidgets.QLabel()
+        self.inputlabel.setText('Input units:')
+        self.inputtype = QtWidgets.QComboBox()
+        self.inputtype.addItem('twtt')
+        self.inputtype.addItem('snum')
+        self.inputtype.addItem('depth')
+        self.inputtype.currentTextChanged.connect(self._type_select)
+        layout.addRow(self.inputlabel, self.inputtype)
+
+        self.tblabel = QtWidgets.QLabel()
+        self.tblabel.setText('Crop off:')
+        self.tb = QtWidgets.QComboBox()
+        self.tb.addItem('top')
+        self.tb.addItem('bottom')
+        layout.addRow(self.tblabel, self.tb)
+
+        self.cancel = QtWidgets.QPushButton("Cancel")
+        self.ok = QtWidgets.QPushButton("Ok")
+        layout.addRow(self.cancel, self.ok)
+        self.ok.clicked.connect(self.clickOK)
+        self.cancel.clicked.connect(self.close)
+        self.setLayout(layout)
+        self.setWindowTitle('Vertically crop')
+
+    def clickOK(self):
+        self.val = self.spinner.value()
+        self.inputtype = self.inputtype.currentText()
+        self.top_or_bottom = self.tb.currentText()
+        self.accept()
+
+    def _type_select(self, val):
+        if val == 'snum':
+            self.spinnerlabel.setText('Cutoff (sample num):')
+            self.spinner.setDecimals(0)
+        if val == 'twtt':
+            self.spinnerlabel.setText('Cutoff in TWTT (usec):')
+            self.spinner.setDecimals(3)
+        if val == 'depth':
+            self.spinnerlabel.setText('Cutoff in depth (m):')
+            self.spinner.setDecimals(2)
 
 
 # We want to add this fancy colormap
