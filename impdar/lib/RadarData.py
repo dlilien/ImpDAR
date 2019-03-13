@@ -448,11 +448,11 @@ class RadarData():
         self.trace_num = np.arange(self.tnum).astype(int) + 1
         self.dist = new_dists
         try:
-            self.flag.interp[0] = 1
-            self.flag.interp[1] = spacing
+            self.flags.interp[0] = 1
+            self.flags.interp[1] = spacing
         except IndexError:
-            self.flag.interp = np.ones((2,))
-            self.flag.interp[1] = spacing
+            self.flags.interp = np.ones((2,))
+            self.flags.interp[1] = spacing
 
     def elev_correct(self, v=1.69e8):
         # calculate number of rows that must be added
