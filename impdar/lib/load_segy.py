@@ -18,7 +18,8 @@ class SEGY(RadarData):
 
     def __init__(self, fn):
         self.f = segyio.open(fn, ignore_geometry=True)
-        self.data = np.array([trace for trace in self.f.trace[:]]).transpose()
+        w = np.where(self.f.attributes(segyio.TraceField.SourceX)[:] == self.f.attributes(segyio.TraceField.SourceX)[0])[0]
+        self.data = segyio.tools.collect(self.f.trace[w[0]:w[-1] + 1]).transpose()
         self.snum = self.f.bin[segyio.BinField.Samples]
         self.tnum = self.data.shape[1]
         self.dt = self.f.bin[segyio.BinField.Interval] / 1.
