@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 from .ui import RawPickGUI
-from . import plot, RadarData, picklib, horizontal_filters
+from ..lib import plot, RadarData, picklib, horizontal_filters
 import numpy as np
 import os.path
 import matplotlib.gridspec as gridspec

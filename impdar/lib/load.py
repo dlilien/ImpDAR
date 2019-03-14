@@ -34,6 +34,8 @@ def load(filetype, fns):
     RadarDataList: list of ~impdar.RadarData (or its subclasses)
         Objects with relevant radar information
     """
+    if type(fns) not in {list, tuple}:
+        fns = [fns]
     if filetype == 'gssi':
         dat = [load_gssi.load_gssi(fn) for fn in fns]
     elif filetype == 'pe':
@@ -46,7 +48,7 @@ def load(filetype, fns):
         else:
             raise ImportError('Failed to import segyio, cannot read segy')
     else:
-        raise Exception('Unrecognized filetype')
+        raise ValueError('Unrecognized filetype')
     return dat
 
 

@@ -17,8 +17,6 @@ from impdar.lib.RadarData import RadarData
 from impdar.lib.RadarFlags import RadarFlags
 from impdar.lib import horizontal_filters
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
 data_dummy = np.ones((500, 400))
 
 

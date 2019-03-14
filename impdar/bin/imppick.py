@@ -13,7 +13,9 @@ An executable to start the picker.
 
 import argparse
 
-from impdar.lib import pickgui, load
+from impdar.gui import pickgui
+
+from impdar.lib import load
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
