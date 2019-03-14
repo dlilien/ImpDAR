@@ -1,7 +1,6 @@
 language: python
 python:
 - '2.7'
-- '3.4'
 - '3.5'
 - '3.6'
 - 3.7-dev
@@ -17,7 +16,7 @@ before_install:
 
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
-- if [ "$qt5_inc" = true ] ; then sudo apt-get install qt5-default; pip install pyqt5; fi
+- if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
