@@ -153,7 +153,7 @@ def highpass(dat, wavelength, tracespace):
     #	 
 
     #Convert wavelength to meters.
-    wavelength = wavelength * 1000
+    wavelength = int(wavelength * 1000)
     #Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
     fsamp = 100
     #Calculate the number of samples per wavelength.
@@ -162,29 +162,30 @@ def highpass(dat, wavelength, tracespace):
     #The high corner frequency is the ratio of the sampling frequency (in MHz)
     #and the number of samples per wavelength (unitless).
     High_Corner_Freq = fsamp / nsamp
-    print('	Lowpass cutoff at {:4.2f} MHz...'.format(High_Corner_Freq))
+    print('High cutoff at {:4.2f} MHz...'.format(High_Corner_Freq))
 
-    Sample_Freq = 1 / dat.dt
+    Sample_Freq = 1. / dat.dt
 
     Nyquist_Freq = Sample_Freq / 2.0
     #Convert High_Corner_Freq to Hz.
-    High_Corner_Freq = High_Corner_Freq * 1e6
+    High_Corner_Freq = High_Corner_Freq
 
     #Corner_Freq is used in the olaf_butter routine.
     Corner_Freq = High_Corner_Freq / Nyquist_Freq
 
+    print(Corner_Freq)
     b, a = butter(5, Corner_Freq, 'high')
 
     dat.data = filtfilt(b, a, dat.data)
 
     # set flags structure components
-    dat.flags.hfilt[1] = 1
-    dat.flags.hfilt[2] = 3
+    dat.flags.hfilt = np.ones((2,))
+    dat.flags.hfilt[1] = 3
 
     print('Highpass filter complete.')
 
 
-def winavg_hfiltdeep(dat, avg_win, taper='full', filtdepth=100):
+def winavg_hfilt(dat, avg_win, taper='full', filtdepth=100):
     #WINAVG_HFILTDEEP - This StoDeep subroutine performs a horizontal filter on
     #   the data to reduce the ringing in the upper layers. It uses a moving
     #   window to creat an average trace for each individual trace, applies an
@@ -211,57 +212,53 @@ def winavg_hfiltdeep(dat, avg_win, taper='full', filtdepth=100):
     #		code to set hfilt components of flags structure.  J. Olson 7/10/08
     #	 
 
+    if avg_win > dat.tnum:
+        print('Cannot average over more than the whole data matrix. Reducing avg_win to tnum')
+        avg_win = dat.tnum
     if avg_win % 2 == 0:
         avg_win = avg_win + 1
         print('The averaging window must be an odd number of traces.')
         print('The averaging window has been changed to {:d}'.format(avg_win))
-
+    exptaper = np.exp(-dat.travel_time.flatten() * 0.05) / np.exp(-dat.travel_time[0] * 0.05)
     if taper == 'full':
-        exptaper = np.exp(-dat.travel_time * 0.05) / np.exp(-dat.travel_time[1] * 0.05)
+        # Don't modify the taper
+        pass
     elif taper == 'pexp':
-        filtdepth = filtdepth * 100 + dat.trig + 1
-        exptaper = np.exp(-dat.travel_time * 0.05) / np.exp(-dat.travel_time[1] * 0.05)
+        # Commented out this next line since it seems wrong
+        # filtdepth = filtdepth * 100 + dat.trig + 1
+
         #set taper to effect only the initial times
-        exptaper[1:filtdepth] = exptaper[1:filtdepth] - exptaper[filtdepth]
+        exptaper[:filtdepth] = exptaper[:filtdepth] - exptaper[filtdepth]
         exptaper[filtdepth:dat.snum] = 0
         exptaper = exptaper / np.max(exptaper)
-    elif taper == 'tukey':
-        exptaper = np.zeros((950,))
+    elif taper == 'tukey':  # pragma: no cover
+        # This taper is weirdly hard-coded in StoDeep, and I'm assuming it is unused
         exptaper[1:30] = np.ones((30,))
         tukey_win = tukey(60, 0.5)
         exptaper[31:45] = tukey_win[46:60]
     else:
         raise ValueError('Unrecognized taper. Options are full, pexp, or tukey')
 
-    hfiltdata = np.zeros_like(dat.data)
+    hfiltdata = np.zeros_like(dat.data, dtype=dat.data.dtype)
     #set up ranges, create average, taper average, subtract average
 
     for i in range(int(dat.tnum)):
-        range_start = i - ((avg_win - 1) / 2)
-        range_end = i + ((avg_win - 1) / 2)
+        range_start = i - ((avg_win - 1) // 2)
+        range_end = i + ((avg_win - 1) // 2)
 
-        # wrap range_start around to otherside of window to maintain
-        # constant range size when i is less than 101 and range_start would
-        # be zero or less
+        # As opposed to StoDeep, don't wrap just cutoff for simplicity
         if range_start < 0:
-            range_end = range_end + range_start
             range_start = 0
-
-        #wrap range_end around to beginning of window to maintain constant 
-        #range size when range would be greater than tnum, this
-        #perserves size of range.
         if range_end > dat.tnum:
-            range_start = range_start - (range_end - dat.tnum)
             range_end = dat.tnum
-
         #create an average trace
-        avg_trace = (np.sum(dat.data[:, range_start:range_end]) / (range_end - range_start)).flatten() * exptaper
+        avg_trace = np.mean(dat.data[:, range_start:range_end], axis=-1) * exptaper
 
         #subtract avg_trace from each trace
         hfiltdata[:, i] = dat.data[:, i] - avg_trace
 
-    dat.data = hfiltdata.astype(dat.data.dtype)
-    dat.flags.hfilt[1] = 1
-    dat.flags.hfilt[2] = 2
+    dat.data = hfiltdata.copy()
+    dat.flags.hfilt = np.zeros((2,))
+    dat.flags.hfilt[1] = 2
 
     print('Horizontal filter complete.')

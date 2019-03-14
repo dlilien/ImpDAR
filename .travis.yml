@@ -19,7 +19,7 @@ deploy:
   skip_existing: true
   distributions: "sdist bdist_wheel"
 
-script: coverage run --source cookiecutter setup.py test
+script: coverage run --source impdar --omit=impdar/tests/*,impdar/bin/* setup.py test
 
 after_success:
     coveralls
