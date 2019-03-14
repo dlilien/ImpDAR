@@ -4,14 +4,12 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
-- 3.6-dev
 - 3.7-dev
 
 env:
-    - segyio_inc=true
-    - segyio_inc=false
-    - qt5_inc=true
-    - qt5_inc=false
+    - segyio_inc=false qt5_inc=false
+    - segyio_inc=true qt5_inc=false
+    - segyio_inc=false qt5_inc=true
 
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
