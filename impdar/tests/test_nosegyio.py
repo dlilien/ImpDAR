@@ -11,6 +11,7 @@
 """
 import sys
 sys.modules['segyio'] = None
+sys.modules['_segyio'] = None
 
 import os
 import unittest
