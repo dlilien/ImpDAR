@@ -155,13 +155,13 @@ def highpass(dat, wavelength, tracespace):
     #Convert wavelength to meters.
     wavelength = int(wavelength * 1000)
     #Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
-    fsamp = 100
+    fsamp = 100.
     #Calculate the number of samples per wavelength.
     nsamp = (wavelength - (wavelength % tracespace)) // tracespace
     print('Sample resolution = {:d}'.format(nsamp))
     #The high corner frequency is the ratio of the sampling frequency (in MHz)
     #and the number of samples per wavelength (unitless).
-    High_Corner_Freq = fsamp / nsamp
+    High_Corner_Freq = fsamp / float(nsamp)
     print('High cutoff at {:4.2f} MHz...'.format(High_Corner_Freq))
 
     Sample_Freq = 1. / dat.dt
@@ -173,7 +173,6 @@ def highpass(dat, wavelength, tracespace):
     #Corner_Freq is used in the olaf_butter routine.
     Corner_Freq = High_Corner_Freq / Nyquist_Freq
 
-    print(Corner_Freq)
     b, a = butter(5, Corner_Freq, 'high')
 
     dat.data = filtfilt(b, a, dat.data)
