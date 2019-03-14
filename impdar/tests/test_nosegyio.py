@@ -21,6 +21,7 @@ from impdar.lib import load
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+@unittest.skipIf(sys.version_info[0] < 3, 'Excluding segyio fails')
 class TestLoadNoSEGY(unittest.TestCase):
 
     def test_loadmat(self):
