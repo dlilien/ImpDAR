@@ -9,6 +9,7 @@
 """
 
 """
+import numpy as np
 from .LastTrace import LastTrace
 from .LeaderTrailer import LeaderTrailer
 from .PickParameters import PickParameters

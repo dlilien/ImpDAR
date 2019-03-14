@@ -28,7 +28,7 @@ class TestLoad(unittest.TestCase):
         self.assertEqual(data[0].data.shape, (20, 40))
 
     def test_loadgssi(self):
-        data = load.load('gssi', os.path.join(THIS_DIR, 'input_data', 'test_GSSI.DZT'))
+        data = load.load('gssi', os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT'))
 
     def test_loadbad(self):
         with self.assertRaises(ValueError):

@@ -32,18 +32,6 @@ class TestRadarData(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
 
-    def test_Write(self):
-        rd = NoInitRadarData()
-        rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-
-    def test_WriteRead(self):
-        # We are going to create a really bad file (most info missing) and see if we recover it or get an error
-        rd = NoInitRadarData()
-        rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))

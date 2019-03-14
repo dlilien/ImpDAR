@@ -77,6 +77,7 @@ class RadarDataSaving:
                 f.bin.update(tsort=segyio.TraceSortingFormat.INLINE_SORTING)
 
     def output_shp(self, fn, t_srs=4326):
+        # TODO Need to output picks if we have picks
         if not conversions_enabled:
             raise ImportError('osgeo was not imported')
         out_srs = osr.SpatialReference()
@@ -89,17 +90,11 @@ class RadarDataSaving:
         data_source = driver.CreateDataSource(fn)
         layer = data_source.CreateLayer('traces', out_srs, ogr.wkbPoint)
         layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
-        if hasattr(self, 'layers') and self.layers is not None:
-            for i in range(len(self.layers)):
-                layer.CreateField(ogr.FieldDefn('Layer {:d}'.format(i), ogr.OFTReal))
 
         # Process the text file and add the attributes and features to the shapefile
         for trace in range(self.tnum):
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetField('TraceNum', trace)
-            if hasattr(self, 'layers') and self.layers is not None:
-                for i in range(len(self.layers)):
-                    feature.SetField('Layer {:d}'.format(i), self.layers[i][trace])
             x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])        
             wkt = 'POINT({:f} {:f})'.format(x, y)
             point = ogr.CreateGeometryFromWkt(wkt)
