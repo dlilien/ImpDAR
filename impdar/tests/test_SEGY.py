@@ -12,11 +12,16 @@ Test the basics of RadarData
 import os
 import unittest
 import numpy as np
-from impdar.lib.load_segy import load_segy
+try:
+    from impdar.lib.load_segy import load_segy
+    segy = True
+except ImportError:
+    segy = False
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+@unittest.skipIf(not segy, 'No SEGY on this version')
 class TestSEGY(unittest.TestCase):
 
     def test_ReadSucceeds(self):
