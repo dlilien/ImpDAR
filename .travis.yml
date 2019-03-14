@@ -8,7 +8,7 @@ python:
 - 3.7-dev
 install:
 - pip install -r requirements.txt
-- pip install segyio
+- pip install segyio coveralls
 - pip install .
 
 deploy:
@@ -18,4 +18,8 @@ deploy:
     secure: DuqiQ+NBz4tTa+1Ej8wu7beC7xy2iOcRK5q63iMdYc2Qn6US1VW54rYiKUjEpn35XTwNRD/2zY5hqRn3GMWfoODE8pNS27gBnEtXQgg091ElHNXWXB261lkusslRLNVYd1iOPMOfl96YpZm9HipTwo0Npr0jLRMG8xbwletBkJRDXtZvrEhWIQ2CSfX5WWvx5IOKT65ZTsOxpzU4R7F0vrWE+J45e6doMsuSpMwNgtTdjh7RiCbB+FmQ0xmYk48r0DQ1optMsoLKaXfGLdhBDMbUhDEYHPDGZZARnTiBzR5Q1DdSYdoNTGqQwfiDKhePuh9g4eLw41MqXgzhdW/FI7FJtYBT5XLVhHCnPyRRkeC8E78V71Cz78fCSCIfhGVHGrOyHOUW3vq/3YYOuS/Ild4bocJdfONNQRqGBwUsrAIVnloSyEyvwQj0BexVX0huz9Tdx29vlpa04oKKEWND2qb1WUhO4uSk089WwLWVQzlCukA3GhkRzQ7OpUM1xyLvfSLskiOXnf8hvzH5TwMOFrl9bmsUPprzRNZ32fPP32lsiLazK9pIEIfHrptD6Bhaa1nQNMaiYQwpHvzGxYehHw0cRcYCtAm+/sMeO0ijBdbET+8GZe++5kbpIpZzcoT0xizteqwTUf0EPd+p+YcrfYwOLcmb4HzLffqkJy7LWcI=
   skip_existing: true
   distributions: "sdist bdist_wheel"
-script: pytest
+
+script: coverage run --source cookiecutter setup.py test
+
+after_success:
+    coveralls
