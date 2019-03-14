@@ -14,7 +14,6 @@ sys.modules['segyio'] = None
 
 import os
 import unittest
-from unittest.mock import patch
 import numpy as np
 from impdar.lib import load
 
