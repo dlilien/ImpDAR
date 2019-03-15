@@ -26,11 +26,36 @@ class NoInitRadarData(RadarData):
         self.dt = 1
 
 
-class TestRadarData(unittest.TestCase):
+class TestRadarDataLoading(unittest.TestCase):
 
     def test_ReadSucceeds(self):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
+
+    def tearDown(self):
+        if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
+            os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+
+
+class TestRadarDataMethods(unittest.TestCase):
+
+    def setUp(self):
+        self.data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+
+    def test_Reverse(self):
+        data_unrev = self.data.data.copy()
+        self.data.reverse()
+        self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
+        self.data.reverse()
+        self.assertTrue(np.allclose(self.data.data, data_unrev))
+
+    def test_NMO_noexcpetion(self):
+        # If velocity is 2
+        self.data.nmo(0., uice=2.0, uair=2.0)
+        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
+        # shouldn't care about uair if offset=0
+        self.data.nmo(0., uice=2.0, uair=200.0)
+        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
