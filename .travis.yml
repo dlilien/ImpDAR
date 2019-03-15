@@ -7,9 +7,10 @@ python:
 - 3.7-dev
 
 env:
-    - segyio_inc=false qt5_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=true qt5_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=false qt5_inc=true COVERALLS_PARALLEL=true
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
+    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
+    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true
+    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true
 
 before_install:
  - sudo add-apt-repository --yes ppa:ubuntu-sdk-team/ppa
@@ -18,6 +19,7 @@ before_install:
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
+- if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; pip install gdal==10.1.1; fi
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
