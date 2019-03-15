@@ -63,7 +63,7 @@ class TestHighPass(unittest.TestCase):
         radardata.highpass(1000.0, 1)
         # There is no high-frequency variability, so this result should be small
         # We only have residual variability from the quality of the filter
-        self.assertTrue(np.allclose(radardata.data - radardata.data[0, 0], np.zeros_like(data_dummy), atol=1.0e-5, rtol=1.0e-5))
+        self.assertTrue(np.all(radardata.data - radardata.data[0, 0] < 1.0e-5))
 
     def test_HighPassBadcutoff(self):
         radardata = NoInitRadarData()
