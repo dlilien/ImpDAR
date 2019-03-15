@@ -25,6 +25,7 @@ cd ..
 
 # Install PyQt5
 export PYTHONPATH=$PYTHONPATH:PyQt5_install-$PYQT_VERSION
+ls PyQt5_install-$PYQT_VERSION
 
 python -c 'import PyQt5' 
 if [ "$?" -eq "0" ]; then

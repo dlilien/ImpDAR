@@ -178,12 +178,12 @@ class RadarData(RadarDataSaving):
         """
         self.data = np.fliplr(self.data)
 
-        self.x_coord = np.flip(self.x_coord)
-        self.y_coord = np.flip(self.y_coord)
-        self.decday = np.flip(self.decday)
-        self.lat = np.flip(self.lat)
-        self.long = np.flip(self.long)
-        self.elev = np.flip(self.elev)
+        self.x_coord = np.flip(self.x_coord, 0)
+        self.y_coord = np.flip(self.y_coord, 0)
+        self.decday = np.flip(self.decday, 0)
+        self.lat = np.flip(self.lat, 0)
+        self.long = np.flip(self.long, 0)
+        self.elev = np.flip(self.elev, 0)
 
         # allow for re-reverasl
         if self.flags.reverse:

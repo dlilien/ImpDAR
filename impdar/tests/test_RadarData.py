@@ -43,11 +43,14 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
 
     def test_Reverse(self):
+        self.data.x_coord = np.array([1, 2])
         data_unrev = self.data.data.copy()
         self.data.reverse()
         self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
+        self.assertTrue(np.allclose(self.data.x_coord, np.array([2, 1])))
         self.data.reverse()
         self.assertTrue(np.allclose(self.data.data, data_unrev))
+        self.assertTrue(np.allclose(self.data.x_coord, np.array([1, 2])))
 
     def test_NMO_noexcpetion(self):
         # If velocity is 2
