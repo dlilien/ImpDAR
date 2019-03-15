@@ -62,7 +62,7 @@ def _get_args():
     parser_vbp.add_argument('high_MHz', type=float, help='Highest frequency passed (in MHz)')
     add_def_args(parser_vbp)
 
-    # Crop in the vertical 
+    # Crop in the vertical
     parser_crop = add_procparser(subparsers, 'crop', 'Crop the data in the vertical', crop, defname='cropped')
     parser_crop.add_argument('top_or_bottom', choices=['top', 'bottom'], help='Remove from the top or bottom')
     parser_crop.add_argument('dimension', choices=['snum', 'twtt', 'depth'], help='Set the bound in terms of snum (sample number), twtt (two way travel time in microseconds), or depth (m, calculated using the nmo_depth or a light speed of 1.69e8m/s if it doesn\'t')
@@ -83,6 +83,12 @@ def _get_args():
     parser_interp.add_argument('--offset', type=float, default=0.0, help='Offset from GPS time to radar time')
     parser_interp.add_argument('--minmove', type=float, default=1.0e-2, help='Minimum movement to not be stationary')
     add_def_args(parser_interp)
+
+    # Migration
+    parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
+    parser_mig.add_argument('mtype', type=str , help='Migration Routine')
+    parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
+    add_def_args(parser_mig)
 
     return parser
 
@@ -128,7 +134,7 @@ def main():
         args.fns = [bn + '.mat']
     elif args.name == 'interp':
         interp(radar_data, **vars(args))
-        
+
     else:
         for dat in radar_data:
             args.func(dat, **vars(args))
@@ -195,6 +201,10 @@ def agc(dat, window=50, scale_factor=50, **kwargs):
 
 def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove)
+
+
+def mig(dat, mtype='stolt', **kwargs):
+    dat.migrate(mtype)
 
 
 if __name__ == '__main__':

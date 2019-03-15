@@ -25,15 +25,9 @@ Mar 12 2019
 import numpy as np
 import time
 
-
-def mig(dat,*args,**kwargs):
-
-    return dat
-
-
 # -----------------------------------------------------------------------------
 
-def migrationKirchhoff(dat,vel=1.69e8,nearfield=False):
+def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
     """
 
     Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)

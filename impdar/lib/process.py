@@ -31,7 +31,7 @@ def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
     kwargs:
         These are the processing arguments for `process`
     """
-        
+
     if gssi and pe:
         raise ValueError('Input cannot be both pulse-ekko and gssi')
     if gssi:
@@ -77,7 +77,7 @@ def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
             d.save(out_fn)
 
 
-def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, **kwargs):
+def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, mig=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -92,6 +92,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         Horizontal filter subtracting average trace between (hfilt1, hfilt2). Default is None (no hfilt).
     ahfilt: bool, optional
         Adaptively horizontally filter the data.
+    mig: string, optional
+        Migrates the data.
 
     Returns
     -------
@@ -157,6 +159,10 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
     if crop is not None:
         for dat in RadarDataList:
             dat.crop(*crop)
+        done_stuff = True
+
+    if mig is not None:
+        dat.migrate(mtype=mig)
         done_stuff = True
 
     if not done_stuff:

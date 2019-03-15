@@ -15,6 +15,7 @@ from scipy.io import loadmat, savemat
 from scipy.signal import butter, filtfilt
 from scipy.interpolate import interp1d
 from .horizontal_filters import hfilt, adaptivehfilt
+from .migration_routines import *
 try:
     from osgeo import osr, ogr
     conversions_enabled = True
@@ -24,9 +25,9 @@ except ImportError:
 
 class RadarData():
     """A class that holds the relevant information for a radar profile.
-    
+
     We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
-    
+
     Attributes
     ----------
     data: :class:`numpy.ndarray`
@@ -131,7 +132,7 @@ class RadarData():
         # time-domain of the radar data to remove environmental noise.  The routine
         # currently uses a 5th order Butterworth filter.
         # We have a lot of power to mess with this because scipy. Keeping the butter for now.
-        #	
+        #
         #Created as stand alone script bandpass.m prior to 1997
         #  Modification history:
         #   1) Input changes made by A. Weitzel 7/10/97
@@ -146,7 +147,7 @@ class RadarData():
         #       rather than selected within the script. - B. Welch, 5/1/06
         #	7) Updated input and outputs to include flags structure. Also added
         #		code to update flags structure - J. Olson 7/10/08
-        #	
+        #
         # first determine the cut-off corner frequencies - expressed as a
         #	fraction of the Nyquist frequency (half the sample freq).
         # 	Note: all of this is in Hz
@@ -192,6 +193,27 @@ class RadarData():
             adaptivehfilt(self)
         else:
             raise ValueError('Unrecognized filter type')
+
+    def migrate(self, mtype='stolt', **kwargs):
+        """Migrate the data.
+
+        This is a wrapper around all the migration routines in migration_routines.py.
+
+        Parameters
+        ----------
+        mtype: str, optional
+            The chosen migration routine. Options are: kirchhoff, stolt, gazdag.
+            Default: stolt
+        """
+        if mtype == 'kirchhoff':
+            migrationKirchhoff(self,**kwargs)
+        elif mtype == 'stolt':
+            migrationStolt(self)
+        elif mtype == 'gazdag':
+            migrationGazdag(self)
+        else:
+            raise ValueError('Unrecognized migration routine')
+
 
     def reverse(self):
         """Reverse radar data
@@ -299,7 +321,7 @@ class RadarData():
         #calculate the new variables for the y-axis after NMO is complete
         self.travel_time = np.arange((-self.trig) * self.dt, (nmodata.shape[0] - nair) * self.dt, self.dt) * 1.0e6
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
-        
+
         self.data = nmodata
 
         self.flags.nmo[0] = 1
@@ -426,7 +448,7 @@ class RadarData():
         """Restack the radar data to a constant spacing.
 
         This method uses the GPS information (i.e. the distance, x, y, lat, and lon), to do a 1-d interpolation to get new values in the radargram. It also updates related variables like lat, long, elevation, and coordinates. To avoid retaining sections of the radargram when the antenna was in fact stationary, some minimum movement between traces is enforced. This value is in meters, and should change to be commensurate with the collection strategy (e.g. skiing a radar is slower than towing it with a snowmobile).
-        
+
         This function comprises the second half of what was done by StoDeep's interpdeep. If you have GPS data from an external, high-precision GPS, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data.
 
         Parameters
@@ -496,7 +518,7 @@ class RadarData():
             if hasattr(self, 'layers') and self.layers is not None:
                 for i in range(len(self.layers)):
                     feature.SetField('Layer {:d}'.format(i), self.layers[i][trace])
-            x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])        
+            x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])
             wkt = 'POINT({:f} {:f})'.format(x, y)
             point = ogr.CreateGeometryFromWkt(wkt)
             feature.SetGeometry(point)
@@ -545,7 +567,7 @@ class RadarFlags():
         self.elev = 0
         self.elevation = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None] 
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None]
         self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
 
     def to_matlab(self):
@@ -561,7 +583,7 @@ class RadarFlags():
         """
         for attr, attr_dim in zip(self.attrs, self.attr_dims):
             setattr(self, attr, matlab_struct[attr][0][0][0])
-            # Use this because matlab inputs may have zeros for flags that 
+            # Use this because matlab inputs may have zeros for flags that
             # were lazily appended to be arrays, but we preallocate
             if attr_dim is not None and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
@@ -732,7 +754,7 @@ class Crop():
 
 class PickParameters():
     """Some information for picking
-    
+
     Attributes
     ----------
     apickthresh: float
