@@ -19,7 +19,7 @@ before_install:
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
-- if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; pip install gdal==1.10.1; fi
+- if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; pip install gdal==1.10.0; fi
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
