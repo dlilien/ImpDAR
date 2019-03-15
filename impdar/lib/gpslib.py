@@ -78,13 +78,6 @@ class nmea_info:
     times = None
     scans = None
 
-    def rev(self):
-        self.all_data = np.flipud(self.all_data)
-        if self.lat is not None:
-            self.lat = np.flip(self.lat)
-        if self.lon is not None:
-            self.lon = np.flip(self.lon)
-
     def get_all(self):
         self.glat()
         self.glon()
@@ -150,20 +143,6 @@ class nmea_info:
         m = (self.times % 10000 - s) / 100
         h = (self.times - m * 100 - s) / 10000
         return (h + m / 60.0 + s / 3600.0) / 24.0
-
-
-def nmea_to_ll(list_of_sentences):
-    """Take in a list of raw sentences in GGA format and return a lon, lat list"""
-    def _gga_sentence_to_ll(sentence):
-        vals = sentence.split(',')
-        lat = float(vals[2])
-        lon = float(vals[4])
-        return (lon, lat)
-
-    if list_of_sentences[0].split(',')[0] == '$GPGGA':
-        return np.array([_gga_sentence_to_ll(sentence) for sentence in list_of_sentences]) / 100.0
-    else:
-        raise ValueError('I can only do gga sentences right now')
 
 
 def nmea_all_info(list_of_sentences):
