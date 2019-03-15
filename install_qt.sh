@@ -24,22 +24,16 @@ sudo make install
 cd ..
 
 # Install PyQt5
-if [ -d PyQt5_gpl-$PYQT_VERSION ]; then
-    cd PyQt5_gpl-$PYQT_VERSION
-    cat Makefile
-    exit
-    sudo make install
-fi
+export PYTHONPATH=$PYTHONPATH:PyQt5_install-$PYQT_VERSION
 
 python -c 'import PyQt5' 
-
 if [ "$?" -eq "0" ]; then
       echo "PyQt5 imported"
 else
     wget --retry-connrefused https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-$PYQT_VERSION/PyQt5_gpl-$PYQT_VERSION.tar.gz
     tar -xzf PyQt5_gpl-$PYQT_VERSION.tar.gz
     cd PyQt5_gpl-$PYQT_VERSION
-    python configure.py --confirm-license --qmake=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
+    python configure.py --confirm-license --qmake=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake --destdir $HOME/PyQt5_install-$PYQT_VERSION
     make
     sudo make install
 fi
