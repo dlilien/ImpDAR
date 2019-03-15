@@ -236,7 +236,7 @@ class RadarData(RadarDataSaving):
         #	(Note: trig is the air wave arrival)
         # switched from rounding whole right side to just rounding (tair/dt)
         #    -L. Smith, 6/16/03
-        nair = int((self.trig + 1) - np.round(tair / self.dt))
+        nair = int((self.trig) - np.round(tair / self.dt))
 
         #calculate sample location for direct ice wave arrival
         # switched from rounding whole right side to just rounding (tice/dt)

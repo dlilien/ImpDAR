@@ -41,16 +41,44 @@ class TestRadarDataMethods(unittest.TestCase):
 
     def setUp(self):
         self.data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        self.data.x_coord = np.arange(40)
+        self.data.travel_time = np.arange(0, 0.2, 0.01)
+        self.data.dt = 1.0e-8
+        self.data.trig = 0.
 
     def test_Reverse(self):
-        self.data.x_coord = np.array([1, 2])
         data_unrev = self.data.data.copy()
         self.data.reverse()
         self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
-        self.assertTrue(np.allclose(self.data.x_coord, np.array([2, 1])))
+        self.assertTrue(np.allclose(self.data.x_coord, np.arange(39, -1, -1)))
         self.data.reverse()
         self.assertTrue(np.allclose(self.data.data, data_unrev))
-        self.assertTrue(np.allclose(self.data.x_coord, np.array([1, 2])))
+        self.assertTrue(np.allclose(self.data.x_coord, np.arange(40)))
+
+    def test_CropTWTT(self):
+        self.data.crop(0.165, 'bottom', dimension='twtt')
+        self.assertTrue(self.data.data.shape == (17, 40))
+        self.data.crop(0.055, 'top', dimension='twtt')
+        self.assertTrue(self.data.data.shape == (11, 40))
+
+    def test_CropSNUM(self):
+        self.data.crop(17, 'bottom', dimension='snum')
+        self.assertTrue(self.data.data.shape == (17, 40))
+        self.data.crop(6, 'top', dimension='snum')
+        self.assertTrue(self.data.data.shape == (11, 40))
+
+    def test_CropDepthOnTheFly(self):
+        self.data.crop(0.165, 'bottom', dimension='twtt', uice=2.0e6)
+        self.assertTrue(self.data.data.shape == (17, 40))
+        self.data.crop(0.055, 'top', dimension='twtt', uice=2.0e6)
+        self.assertTrue(self.data.data.shape == (11, 40))
+
+    def test_CropDepthWithNMO(self):
+        self.data.nmo(0., uice=2.0e6, uair=2.0e6)
+        self.data.crop(0.165, 'bottom', dimension='twtt')
+        self.assertTrue(self.data.data.shape == (17, 40))
+        self.data.crop(0.055, 'top', dimension='twtt')
+        self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_NMO_noexcpetion(self):
         # If velocity is 2
