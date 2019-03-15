@@ -1,6 +1,6 @@
 language: python
 python:
-    #- '2.7'
+- '2.7'
     #- '3.5'
 - '3.6'
   #- 3.7-dev
@@ -20,6 +20,11 @@ install:
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
+
+cache:
+    directories:
+      - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1
+      - $HOME/.cache/pip
 
 deploy:
   provider: pypi
