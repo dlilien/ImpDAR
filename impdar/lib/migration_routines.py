@@ -18,7 +18,7 @@ benjaminhhills@gmail.com
 University of Washington
 Earth and Space Sciences
 
-Tue Mar 12 11:01:05 2019
+Mar 12 2019
 
 """
 
@@ -56,7 +56,7 @@ def migrationKirchhoff(xs,ts,D,vel=1.68e8,nearfield=False):
 
     print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(len(xs),len(ts)))
     # check that the arrays are compatible
-    if np.shape(D,0) != np.shape(xs) or np.shape(D,1) != np.shape(ts):
+    if np.size(D,1) != np.size(xs) or np.size(D,0) != np.size(ts):
         raise Exception('The input array, D, must be of size (len(xs),len(ts))')
     # start the timer
     start = time.time()
@@ -122,9 +122,9 @@ def migrationStolt(xs,ts,D,vel=1.68e8):
 
     print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(len(xs),len(ts)))
     # check that the arrays are compatible
-    if np.shape(D,0) != np.shape(xs) or np.shape(D,1) != np.shape(ts):
+    if np.size(D,1) != np.size(xs) or np.size(D,0) != np.size(ts):
         raise Exception('The input array, D, must be of size (len(xs),len(ts))')
-    # save the start time
+   # save the start time
     start = time.time()
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(len(ts))/np.log(2))).astype(int)
@@ -148,7 +148,7 @@ def migrationStolt(xs,ts,D,vel=1.68e8):
     for zj in range(len(omega)):
         kzj = omega[zj]*2./vel
         if zj%100 == 0:
-            print(round(kzj,2),'1/m')
+            print(round(omega[zj]/1e6,2),'MHz')
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -297,6 +297,8 @@ def getVelocityProfile(vels_in,nlay,ns,ntr,dt,ts,firstz=0.,firstt=0.):
         vmig[ns-1] = vmig[ns-2]
     return vmig
 
+
+
 def phaseShiftConstantVel(ns, ntr, dt, dx, vmigc, FK):
     """
 
@@ -348,6 +350,8 @@ def phaseShiftConstantVel(ns, ntr, dt, dx, vmigc, FK):
     TK /= nw
     return TK
 
+
+
 def phaseShiftLayeredVel(ns, ntr, dt, dx, vmigv, FK):
     """
 
@@ -372,7 +376,6 @@ def phaseShiftLayeredVel(ns, ntr, dt, dx, vmigv, FK):
     The foundation of this script was taken from Matlab code written by Andreas Tzanis,
     Dept. of Geophysics, University of Athens (2005)
     **
-
 
     """
     # Set up iteration constants
