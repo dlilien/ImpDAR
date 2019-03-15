@@ -61,7 +61,7 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False):
     print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
     if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise Exception('The input array must be of size (tnum,snum)')
+        raise ValueError('The input array must be of size (tnum,snum)')
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
@@ -103,7 +103,7 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False):
 
 # -----------------------------------------------------------------------------
 
-def migrationStolt(xs,ts,D,vel=1.68e8):
+def migrationStolt(dat,vel=1.68e8):
     """
 
     Stolt Migration (Stolt, 1978, Geophysics)
@@ -113,34 +113,30 @@ def migrationStolt(xs,ts,D,vel=1.68e8):
 
     Parameters
     ---------
-    xs: 1-D array of trace distances along track (m)
-    ts: 1-D array of two-way travel times for each trace (s)
-    D: 2-D array of data
-    vel: wave velocity (m/s)
+    dat: data as a dictionary in the ImpDAR format
+    vel: wave velocity, default is for ice
 
     Output
     ---------
-    migD: migrated data
+    dat.migdata: migrated data
 
     """
 
-    print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(len(xs),len(ts)))
+    print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(D,1) != np.size(xs) or np.size(D,0) != np.size(ts):
-        raise Exception('The input array, D, must be of size (len(xs),len(ts))')
-   # save the start time
+    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
+        raise ValueError('The input array must be of size (tnum,snum)')
+    # save the start time
     start = time.time()
     # pad the array with zeros up to the next power of 2 for discrete fft
-    nt = 2**(np.ceil(np.log(len(ts))/np.log(2))).astype(int)
-    nx = 2**(np.ceil(np.log(len(xs))/np.log(2))).astype(int)
+    nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
+    nx = 2**(np.ceil(np.log(dat.tnum)/np.log(2))).astype(int)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,omega)
-    FK = np.fft.fft2(D,(nt,nx))
+    FK = np.fft.fft2(dat.data,(nt,nx))
     # get the temporal frequencies
-    dt = np.mean(np.gradient(ts))
-    omega = np.fft.fftfreq(nt, d=dt)
+    omega = np.fft.fftfreq(nt, d=dat.dt)
     # get the horizontal wavenumbers
-    xstep = xs[1]-xs[0]
-    kx = np.fft.fftfreq(nx, d=xstep)
+    kx = np.fft.fftfreq(nx, d=np.mean(dat.trace_int))
     # interpolate from frequency (omega) into wavenumber (kz)
     from scipy.interpolate import interp2d
     interp_real = interp2d(kx,omega,FK.real)
@@ -152,7 +148,7 @@ def migrationStolt(xs,ts,D,vel=1.68e8):
     for zj in range(len(omega)):
         kzj = omega[zj]*2./vel
         if zj%100 == 0:
-            print(round(omega[zj]/1e6,2),'MHz')
+            print('Interpolating',int(omega[zj]/1e6),'MHz')
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -168,15 +164,15 @@ def migrationStolt(xs,ts,D,vel=1.68e8):
     scaling = kZ/np.sqrt(kX**2.+kZ**2.)
     KK *= scaling
     # the DC frequency should be 0.
-    KK[0,0] = 0. + 1j*0.
+    KK[0,0] = 0.+0j
     # 2D Inverse Fourier Transform to get back to distance spce, D(x,z,t=0)
-    migD = np.real(np.fft.ifft2(KK))
+    dat.migdata = np.real(np.fft.ifft2(KK))
     # Cut array to input matrix dimensions
-    migD = migD[:len(ts),:len(xs)]
+    dat.migdata = dat.migdata[:dat.snum,:dat.tnum]
     # print the total time
     print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(len(xs),len(ts),time.time()-start))
-    return migD
+          %(dat.tnum,dat.snum,time.time()-start))
+    return dat
 
 # -----------------------------------------------------------------------------
 
