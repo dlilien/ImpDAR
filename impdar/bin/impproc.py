@@ -86,7 +86,7 @@ def _get_args():
 
     # Migration
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
-    parser_mig.add_argument('mtype', type=str , help='Migration Routine')
+    parser_mig.add_argument('--mtype', type=str , default='stolt', help='Migration Routine')
     parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
     add_def_args(parser_mig)
 

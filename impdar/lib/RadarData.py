@@ -208,9 +208,9 @@ class RadarData():
         if mtype == 'kirchhoff':
             migrationKirchhoff(self,**kwargs)
         elif mtype == 'stolt':
-            migrationStolt(self)
+            migrationStolt(self,**kwargs)
         elif mtype == 'gazdag':
-            migrationGazdag(self)
+            migrationGazdag(self,**kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 
