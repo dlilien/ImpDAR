@@ -24,7 +24,7 @@ sudo make install
 cd ..
 
 # Install PyQt5
-if [ -f PyQt5_gpl-$PYQT_VERSION ]; then
+if [ -d PyQt5_gpl-$PYQT_VERSION ]; then
     cd PyQt5_gpl-$PYQT_VERSION
     sudo make install
 fi
