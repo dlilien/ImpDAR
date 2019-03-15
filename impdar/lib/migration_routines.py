@@ -25,9 +25,15 @@ Mar 12 2019
 import numpy as np
 import time
 
+
+def mig(dat,*args,**kwargs):
+
+    return dat
+
+
 # -----------------------------------------------------------------------------
 
-def migrationKirchhoff(xs,ts,D,vel=1.68e8,nearfield=False):
+def migrationKirchhoff(dat,vel=1.69e8,nearfield=False):
     """
 
     Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
@@ -42,60 +48,58 @@ def migrationKirchhoff(xs,ts,D,vel=1.68e8,nearfield=False):
 
     Parameters
     ---------
-    xs: 1-D array of trace distances along track (m)
-    ts: 1-D array of two-way travel times for each trace (s)
-    D: 2-D array of data
-    vel: wave velocity (m/s)
+    dat: data as a dictionary in the ImpDAR format
+    vel: wave velocity, default is for ice
     nearfield: boolean to indicate whether or not to use the nearfield term in summation
 
     Output
     ---------
-    migD: migrated data
+    dat.migdata: migrated data
 
     """
 
-    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(len(xs),len(ts)))
+    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(D,1) != np.size(xs) or np.size(D,0) != np.size(ts):
-        raise Exception('The input array, D, must be of size (len(xs),len(ts))')
+    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
+        raise Exception('The input array must be of size (tnum,snum)')
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(D,ts,axis=0)
+    gradD = np.gradient(dat.data,dat.travel_time,axis=0)
     # Create an empty array to fill with migrated data
-    migD = np.zeros_like(D)
+    dat.migdata = np.zeros_like(dat.data)
     # Loop through all traces
-    for xi in range(len(D[0])):
+    for xi in range(dat.tnum):
         print('Migrating trace number:',xi)
         # get the trace distance
-        x = xs[xi]
+        x = dat.dist[xi]
         # Loop through all samples
-        for ti in range(len(D)):
+        for ti in range(dat.snum):
             # get the sample time
-            t = ts[ti]
+            t = dat.travel_time[ti]
             # convert to depth
             z = vel*t/2.
             # get the radial distances between input point and output point
-            rs = np.sqrt((xs-x)**2.+z**2.)
+            rs = np.sqrt((dat.dist-x)**2.+z**2.)
             # find the cosine of the angle of the tangent line, correct for obliquity factor
             costheta = z/rs
             # get the exact indices from the array (closest to rs)
-            Didx = [np.argmin(abs(ts-2.*r/vel)) for r in rs]
+            Didx = [np.argmin(abs(dat.travel_time-2.*r/vel)) for r in rs]
             # integrate the farfield term
             gradDhyp = np.array([gradD[Didx[i],i] for i in range(len(Didx))])
-            gradDhyp[2.*rs/vel>max(ts)] = 0.    # zero points that are outside of the domain
+            gradDhyp[2.*rs/vel>max(dat.travel_time)] = 0.    # zero points that are outside of the domain
             integral = np.nansum(gradDhyp*costheta/vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
             # integrate the nearfield term
             if nearfield == True:
-                Dhyp = np.array([D[Didx[i],i] for i in range(len(Didx))])
-                Dhyp[2.*rs/vel>max(ts)] = 0.    # zero points that are outside of the domain
+                Dhyp = np.array([dat.data[Didx[i],i] for i in range(len(Didx))])
+                Dhyp[2.*rs/vel>max(dat.travel_time)] = 0.    # zero points that are outside of the domain
                 integral += np.nansum(Dhyp*costheta/rs**2.)
             # sum the integrals and output
-            migD[ti,xi] = 1/(2.*np.pi)*integral
+            dat.migdata[ti,xi] = 1/(2.*np.pi)*integral
     # print the total time
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(len(xs),len(ts),time.time()-start))
-    return migD
+          %(len(dat.dist),len(dat.travel_time),time.time()-start))
+    return dat
 
 # -----------------------------------------------------------------------------
 
