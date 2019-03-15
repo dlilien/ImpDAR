@@ -335,7 +335,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             Minimum trace spacing. If there is not this much separation, toss the next shot. Set high to keep everything. Default 1.0e-2.
         """
         # eliminate an interpolation error by masking out little movement
-        good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000) >= min_movement))
+        good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
         new_dists = np.arange(np.min(self.dist[good_vals]), np.max(self.dist[good_vals]), step=spacing / 1000.0)
         self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
 
@@ -353,19 +353,21 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.interp[1] = spacing
 
     def elev_correct(self, v=1.69e8):
+        if self.nmo_depth is None:
+            raise ValueError('nmo must have been run before elev_correct so that we have depth scale')
         # calculate number of rows that must be added
         elev_diffs = np.max(self.elev) - self.elev
         max_diff = np.max(elev_diffs)
 
         dz = self.dt * (v / 2.)
-        max_samp = int(np.ceil(max_diff / dz))
+        max_samp = int(np.floor(max_diff / dz))
 
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] + max_samp, data_old.shape[1]))
         self.data[:, :] = np.nan
 
         for i in range(self.data.shape[1]):
-            self.data[int(elev_diffs[i] // dz):-(max_samp - int((elev_diffs[i]) // dz)), i] = data_old[:, i]
+            self.data[int(elev_diffs[i] // dz): int(elev_diffs[i] // dz) + data_old.shape[0], i] = data_old[:, i]
 
         self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1

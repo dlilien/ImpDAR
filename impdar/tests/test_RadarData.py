@@ -88,6 +88,38 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
 
+    def test_restack_odd(self):
+        self.data.restack(5)
+        self.assertTrue(self.data.data.shape == (20, 8))
+
+    def test_restack_even(self):
+        self.data.restack(4)
+        self.assertTrue(self.data.data.shape == (20, 8))
+
+    def test_elev_correct(self):
+        self.data.elev = np.arange(self.data.data.shape[1]) * 0.002
+        with self.assertRaises(ValueError):
+            self.data.elev_correct()
+        self.data.nmo(0, 2.0e6)
+        self.data.elev_correct(v=2.0e6)
+        self.data.save('tst.mat')
+
+        new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
+        print(self.data.data.shape)
+        self.assertTrue(self.data.data.shape == (27, 40))
+
+    def test_constant_space(self):
+        distlims = (self.data.dist[0], self.data.dist[-1])
+        space = 100.
+        self.data.constant_space(space)
+        self.assertTrue(self.data.data.shape == (20, np.ceil((distlims[-1] - distlims[0]) * 1000. / space)))
+        self.assertTrue(self.data.x_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.y_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.lat.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.long.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.elev.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.decday.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))

@@ -35,7 +35,23 @@ class TestLoad(unittest.TestCase):
             data = load.load('bad', os.path.join(THIS_DIR, 'input_data', 'small_data.bad'))
 
     def test_load_and_exitmat(self):
+        data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), o=os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')))
+
+    def test_load_and_exitcustomfn(self):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')))
+
+    def test_load_and_exiterror(self):
+        # We are blocking multiple outputs with o kwarg
+        with self.assertRaises(ValueError):
+            load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
+
+    def tearDown(self):
+        if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')):
+            os.remove(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat'))
+        if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')):
+            os.remove(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
 
 
 if __name__ == '__main__':
