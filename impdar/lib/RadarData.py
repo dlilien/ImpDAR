@@ -14,8 +14,8 @@ import numpy as np
 from scipy.io import loadmat, savemat
 from scipy.signal import butter, filtfilt
 from scipy.interpolate import interp1d
-from .horizontal_filters import hfilt, adaptivehfilt
 from ._RadarDataSaving import RadarDataSaving
+from ._RadarDataFiltering import RadarDataFiltering
 from .RadarFlags import RadarFlags
 from .Picks import Picks
 
@@ -26,7 +26,7 @@ except ImportError:
     conversions_enabled = False
 
 
-class RadarData(RadarDataSaving):
+class RadarData(RadarDataSaving, RadarDataFiltering):
     """A class that holds the relevant information for a radar profile.
     
     We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
@@ -90,86 +90,6 @@ class RadarData(RadarDataSaving):
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
-
-    def vertical_band_pass(self, low, high, order=5, *args, **kwargs):
-        """Vertically bandpass the data
-
-        This function uses a forward-backward Butterworth filter to filter the data. Returns power that is not near the wavelength of the transmitter is assumed to be noise, so the limits for the filtering should generally surround the radar frequency. Some experimentation to see what provides the clearest results is probably needed for any given dataset.
-
-        Parameters
-        ----------
-        low: float
-            Lowest frequency passed, in MHz
-        high: float
-            Highest frequency passed, in MHz
-        order: int
-            Filter order (default 5)
-        """
-        # adapted from bandpass.m  v3.1 - this function performs a banspass filter in the
-        # time-domain of the radar data to remove environmental noise.  The routine
-        # currently uses a 5th order Butterworth filter.
-        # We have a lot of power to mess with this because scipy. Keeping the butter for now.
-        #	
-        #Created as stand alone script bandpass.m prior to 1997
-        #  Modification history:
-        #   1) Input changes made by A. Weitzel 7/10/97
-        #   2) Switched to 5th-order Butterworth filter - P. Pearson, 7/2001
-        #   3) Coverted for use in StoDeep and added pre-allocation of filtdata
-        #       variable - B. Welch 10/2001
-        #   4) Filters "stackdata" by default (if it exists),
-        #		otherwise filters "data" - Peter Pearson, 2/13/02
-        #   5) Now user can filter any standard StoDeep data variable that exists in
-        #       memory using a menu displayed for the user - L. Smith, 5/27/03
-        #   6) Converted to function and data variable is now passed to the function
-        #       rather than selected within the script. - B. Welch, 5/1/06
-        #	7) Updated input and outputs to include flags structure. Also added
-        #		code to update flags structure - J. Olson 7/10/08
-        #	
-        # first determine the cut-off corner frequencies - expressed as a
-        #	fraction of the Nyquist frequency (half the sample freq).
-        # 	Note: all of this is in Hz
-        Sample_Freq = 1.0 / self.dt  	# dt=time/sample (seconds)
-
-        #calculate the Nyquist frequency
-        Nyquist_Freq = 0.5 * Sample_Freq
-
-        Low_Corner_Freq = low * 1.0e6
-        High_Corner_Freq = high * 1.0e6
-
-        corner_freq = np.zeros((2,))
-        corner_freq[0] = Low_Corner_Freq / Nyquist_Freq
-        corner_freq[1] = High_Corner_Freq / Nyquist_Freq
-
-        b, a = butter(order, corner_freq, 'bandpass')
-
-        # provide feedback to the user
-        print('Bandpassing from {:4.1f} to {:4.1f} MHz...'.format(low, high))
-        self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
-        print('Bandpass filter complete.')
-
-        # set flags structure components
-        self.flags.bpass[0] = 1
-        self.flags.bpass[1] = low
-        self.flags.bpass[2] = high
-
-    def hfilt(self, ftype='hfilt', bounds=None):
-        """Horizontally filter the data.
-
-        This is a wrapper around other filter types. Horizontal filters are implemented (and documented) in the :mod:`impdar.lib.horizontal_filters` module.
-
-        Parameters
-        ----------
-        ftype: str, optional
-            The filter type. Options are :func:`hfilt <impdar.lib.horizontal_filters.hfilt>` and :func:`adaptive <impdar.lib.horizontal_filters.adaptivehfilt>`. Default hfilt
-        bounds: tuple, optional
-            Bounds for the hfilt. Default is None, but required if ftype is hfilt.
-        """
-        if ftype == 'hfilt':
-            hfilt(self, bounds[0], bounds[1])
-        elif ftype == 'adaptive':
-            adaptivehfilt(self)
-        else:
-            raise ValueError('Unrecognized filter type')
 
     def reverse(self):
         """Reverse radar data
