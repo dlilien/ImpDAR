@@ -26,6 +26,8 @@ cd ..
 # Install PyQt5
 if [ -d PyQt5_gpl-$PYQT_VERSION ]; then
     cd PyQt5_gpl-$PYQT_VERSION
+    cat Makefile
+    exit
     sudo make install
 fi
 
