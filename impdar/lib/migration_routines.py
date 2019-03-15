@@ -170,7 +170,7 @@ def migrationStolt(dat,vel=1.68e8):
 
 # -----------------------------------------------------------------------------
 
-def migrationGazdag(xs,ts,D,vels_in):
+def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     """
 
     Gazdag Migration (Gazdag 1978, Geophysics)
@@ -182,16 +182,14 @@ def migrationGazdag(xs,ts,D,vels_in):
 
     Parameters
     ---------
-    xs: 1-D array of trace distances along track (m)
-    ts: 1-D array of two-way travel times for each trace (s)
-    D: 2-D array of data
+    dat: data as a dictionary in the ImpDAR format
     vels_in: 2-D array of layered wave velocities (m/s) and layer thickness (m)
         Structure is velocities in first column, layer thicknesses in second
         If only one layer (i.e. constant velocity) input one layer with zero thickness.
 
     Output
     ---------
-    migD: migrated data
+    dat.migdata: migrated data
 
 
     **
@@ -201,24 +199,150 @@ def migrationGazdag(xs,ts,D,vels_in):
 
     """
 
-    # Data structure
-    ns,ntr = np.shape(D)
-    dt = np.mean(np.gradient(ts))
-    dx = np.mean(np.gradient(xs))
+    print('Gazdag Migration (phase-shift migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    # check that the arrays are compatible
+    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
+        raise ValueError('The input array must be of size (tnum,snum)')
+    # save the start time
+    start = time.time()
     # Velocity structure from input
     nlay, vpairs = np.shape(vels_in)
-    vmig = getVelocityProfile(vels_in,ns,ntr,dt,ts)
+    vmig = getVelocityProfile(vels_in,nlay,dat.snum,dat.tnum,dat.dt,dat.travel_time)
     # Fourier transform to frequency-wavenumber (FKx) domain
-    FK = np.fft.fft2(D)
+    FK = np.fft.fft2(dat.data)
     FK = np.fft.fftshift(FK)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     if nlay == 1:
-        TK = phaseShiftConstantVel(ns, ntr, dt, dx, vmig, FK)
+        TK = phaseShiftConstantVel(dat, vmig, FK)
     elif nlay > 1:
-        TK = phaseShiftLayeredVel(ns, ntr, dt, dx, vmig, FK)
+        TK = phaseShiftLayeredVel(dat, vmig, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
-    migD = np.fft.ifft(np.fft.ifftshift(TK,1)).real
-    return migD
+    dat.migdata = np.fft.ifft(np.fft.ifftshift(TK,1)).real
+    # print the total time
+    print('Gazdag Migration of %.0fx%.0f matrix complete in %.2f seconds'
+          %(dat.tnum,dat.snum,time.time()-start))
+    return dat.migdata
+
+
+
+
+def phaseShiftConstantVel(dat, vmigc, FK):
+    """
+
+    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
+    This is in the case of a constant velocity medium. For variable velocity see phaseShiftLayeredVel().
+
+    Parameters
+    ---------
+    ns: number of samples
+    ntr: number of traces
+    dt: time step between samples (s)
+    dx: horizontal step between traces (m)
+    vmigc: constant migration velocity (m/s)
+    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
+
+    Output
+    ---------
+    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
+
+    **
+    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
+    Dept. of Geophysics, University of Athens (2005)
+    **
+
+    """
+
+    # initialize the time-wavenumber array to be filled
+    TK = np.zeros((dat.snum,dat.tnum))+0j
+    # get frequencies, TODO: why the 2pi?
+    dx = np.mean(dat.trace_int)
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=dx)
+    kx = np.fft.fftshift(kx)
+    ws = 2.*np.pi*np.fft.fftfreq(dat.snum,d=dat.dt)
+    ws = np.fft.fftshift(ws)
+    for iw in range(dat.snum):
+        w = ws[iw]
+        if w == 0.0:
+            w = 1e-10/dat.dt
+        if iw%100 == 0:
+            print('Frequency',int(w/1e6/2.*np.pi),'MHz')
+        vkx2 = (vmigc*vmigc * kx**2.)/4.
+        ik = np.argwhere(vkx2 < w**2.)
+        FFK = FK[iw,ik]
+        phase = (-w*dat.dt*np.sqrt(1.0 - vkx2[ik]/w**2.)).real
+        cc    = np.conj(np.cos(phase)+1j*np.sin(phase))
+        # Accumulate image summed over all frequencies
+        for itau in range(dat.snum):
+             FFK *= cc
+             TK[itau,ik] += FFK
+    # Normalize for inverse FFT
+    TK /= dat.snum
+    return TK
+
+
+
+def phaseShiftLayeredVel(dat, vmigv, FK):
+    """
+
+    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
+    This is in the case of a layered velocity medium (i.e. horizontally homogenous, but vertically
+    variable). For constant velocity see phaseShiftConstantVel().
+
+    Parameters
+    ---------
+    ns: number of samples
+    ntr: number of traces
+    dt: time step between samples (s)
+    dx: horizontal step between traces (m)
+    vmigv: 1-D array of migration velocities of length=ns (m/s)
+    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
+
+    Output
+    ---------
+    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
+
+    **
+    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
+    Dept. of Geophysics, University of Athens (2005)
+    **
+
+    """
+    # Set up iteration constants
+    dx = np.mean(dat.trace_int)
+    ns = dat.snum
+    dt = dat.dt
+    ntr = dat.tnum
+
+    nw, w0, dw = ns, -np.pi/dt, 2.*np.pi/(ns*dt)
+    nx, kx0 = ntr, -np.pi/dx
+    dkx = 2.*np.pi/(nx*dx)
+    ntau, dtau = ns, dt
+    ft = 0
+    ftau, tmax = ft, ft+(ntau-1)*dtau
+    # initialize image array
+    TK = np.zeros((ns,ntr))+0j
+
+    kx = np.arange(kx0,-kx0,dkx)
+    for ikx in range(nx):
+        kx = kx0 + (ikx)*dkx
+        for itau in range(ntau):
+            tau = ftau + (itau)*dtau
+            for iw in range(nw):
+                w = w0 + (iw)*dw
+                if w == 0.0:
+                    w = 1e-10/dt
+                coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
+                if coss > (tau/tmax)**2.:
+                    phase = (-w*dt*np.sqrt(coss)).real
+                    cc = np.conj(np.cos(phase)+1j*np.sin(phase))
+                    FK[iw,ikx] *= cc
+                else:
+                    FK[iw,ikx] = complex(0.0,0.0)
+                TK[itau,ikx] += FK[iw,ikx]
+    # Normalize for inverse FFT
+    TK /= nw
+    return TK
+
 
 
 
@@ -292,113 +416,3 @@ def getVelocityProfile(vels_in,nlay,ns,ntr,dt,ts,firstz=0.,firstt=0.):
     return vmig
 
 
-
-def phaseShiftConstantVel(ns, ntr, dt, dx, vmigc, FK):
-    """
-
-    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
-    This is in the case of a constant velocity medium. For variable velocity see phaseShiftLayeredVel().
-
-    Parameters
-    ---------
-    ns: number of samples
-    ntr: number of traces
-    dt: time step between samples (s)
-    dx: horizontal step between traces (m)
-    vmigc: constant migration velocity (m/s)
-    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
-
-    Output
-    ---------
-    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
-
-    **
-    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
-    Dept. of Geophysics, University of Athens (2005)
-    **
-
-    """
-    # Set up iteration constants
-    nw, w0, dw = ns, -np.pi/dt, 2.*np.pi/(ns*dt)
-    nx, kx0 = ntr, -np.pi/dx
-    dkx = 2.*np.pi/(nx*dx)
-    ntau, dtau = ns, dt
-    # initialize image array
-    TK = np.zeros((ns,ntr))+0j
-
-    kx = np.arange(kx0,-kx0,dkx)
-    for iw in range(nw):
-        w = w0 + (iw)*dw
-        if w == 0.0:
-            w = 1e-10/dt
-        vkx2 = (vmigc*vmigc * kx**2.)/4.
-        ik = np.argwhere(vkx2 < w**2.)
-        FFK = FK[iw,ik]
-        phase = (-w*dtau*np.sqrt(1.0 - vkx2[ik]/w**2.)).real
-        cc    = np.conj(np.cos(phase)+1j*np.sin(phase))
-        # Accumulate image summed over all frequencies
-        for itau in range(ntau):
-             FFK *= cc
-             TK[itau,ik] += FFK
-    # Normalize for inverse FFT
-    TK /= nw
-    return TK
-
-
-
-def phaseShiftLayeredVel(ns, ntr, dt, dx, vmigv, FK):
-    """
-
-    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
-    This is in the case of a layered velocity medium (i.e. horizontally homogenous, but vertically
-    variable). For constant velocity see phaseShiftConstantVel().
-
-    Parameters
-    ---------
-    ns: number of samples
-    ntr: number of traces
-    dt: time step between samples (s)
-    dx: horizontal step between traces (m)
-    vmigv: 1-D array of migration velocities of length=ns (m/s)
-    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
-
-    Output
-    ---------
-    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
-
-    **
-    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
-    Dept. of Geophysics, University of Athens (2005)
-    **
-
-    """
-    # Set up iteration constants
-    nw, w0, dw = ns, -np.pi/dt, 2.*np.pi/(ns*dt)
-    nx, kx0 = ntr, -np.pi/dx
-    dkx = 2.*np.pi/(nx*dx)
-    ntau, dtau = ns, dt
-    ft = 0
-    ftau, tmax = ft, ft+(ntau-1)*dtau
-    # initialize image array
-    TK = np.zeros((ns,ntr))+0j
-
-    kx = np.arange(kx0,-kx0,dkx)
-    for ikx in range(nx):
-        kx = kx0 + (ikx)*dkx
-        for itau in range(ntau):
-            tau = ftau + (itau)*dtau
-            for iw in range(nw):
-                w = w0 + (iw)*dw
-                if w == 0.0:
-                    w = 1e-10/dt
-                coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
-                if coss > (tau/tmax)**2.:
-                    phase = (-w*dt*np.sqrt(coss)).real
-                    cc = np.conj(np.cos(phase)+1j*np.sin(phase))
-                    FK[iw,ikx] *= cc
-                else:
-                    FK[iw,ikx] = complex(0.0,0.0)
-                TK[itau,ikx] += FK[iw,ikx]
-    # Normalize for inverse FFT
-    TK /= nw
-    return TK
