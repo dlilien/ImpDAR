@@ -105,7 +105,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.save('tst.mat')
 
         new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
-        print(self.data.data.shape)
         self.assertTrue(self.data.data.shape == (27, 40))
 
     def test_constant_space(self):
