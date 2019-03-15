@@ -24,7 +24,13 @@ sudo make install
 cd ..
 
 # Install PyQt5
+if [ -f PyQt5_gpl-$PYQT_VERSION ]; then
+    cd PyQt5_gpl-$PYQT_VERSION
+    sudo make install
+fi
+
 python -c 'import PyQt5' 
+
 if [ "$?" -eq "0" ]; then
       echo "PyQt5 imported"
 else
