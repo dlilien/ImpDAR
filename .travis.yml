@@ -1,15 +1,15 @@
 language: python
 python:
 - '2.7'
-- '3.5'
+  #- '3.5'
 - '3.6'
-- 3.6-dev
-- 3.7-dev
+  #- 3.6-dev
+  #- 3.7-dev
 
 env:
-    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true
+    #- segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
+    #- segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
+    #- segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true
     - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true
 
 before_install:
@@ -19,7 +19,7 @@ before_install:
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
-- if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; pip install gdal==1.10.0; fi
+- if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; export CPLUS_INCLUDE_PATH=/usr/include/gdal; export C_INCLUDE_PATH=/usr/include/gdal; pip install gdal==1.10.0; fi
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
