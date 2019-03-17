@@ -208,7 +208,6 @@ def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     # Velocity structure from input
     nlay, vpairs = np.shape(vels_in)
     vmig = getVelocityProfile(dat,vels_in)
-    return vmig
     # Fourier transform to frequency-wavenumber (FKx) domain
     FK = np.fft.fft2(dat.data)
     FK = np.fft.fftshift(FK)
@@ -222,7 +221,7 @@ def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     # print the total time
     print('Gazdag Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
-    return dat.migdata
+    return dat
 
 
 
@@ -314,24 +313,27 @@ def phaseShiftLayeredVel(dat, vmigv, FK):
     kx = np.fft.fftshift(kx)
     ws = 2.*np.pi*np.fft.fftfreq(dat.snum,d=dat.dt)
     ws = np.fft.fftshift(ws)
-    # iterate through all frequencies
-    for ikx in range(dat.tnum):
+    # iterate through all output travel times
+    for itau in range(dat.snum):
+        tau = dat.travel_time[itau]
+        if itau%100 == 0:
+            print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]))
         # iterate through all frequencies
-        for itau in range(dat.snum):
-            tau = dat.travel_time[itau]
-            # iterate through all frequencies
-            for iw in range(dat.snum):
-                w = ws[iw]
-                if w == 0.0:
-                    w = 1e-10/dat.dt
-                coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
-                if coss > (tau/dat.travel_time[-1])**2.:
-                    phase = (-w*dat.dt*np.sqrt(coss)).real
-                    cc = np.conj(np.cos(phase)+1j*np.sin(phase))
-                    FK[iw,ikx] *= cc
-                else:
-                    FK[iw,ikx] = complex(0.0,0.0)
-                TK[itau,ikx] += FK[iw,ikx]
+        for iw in range(dat.snum):
+            w = ws[iw]
+            if w == 0.0:
+                w = 1e-10/dat.dt
+            # cosine squared
+            coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
+            # calculate phase for shift
+            phase = (-w*dat.dt*np.sqrt(coss)).real
+            cc = np.conj(np.cos(phase)+1j*np.sin(phase))
+            FK[iw] *= cc
+            # zero if outside domain
+            idx = coss <= (tau/dat.travel_time[-1])**2.
+            FK[iw,idx] = complex(0.0,0.0)
+            # sum over all frequencies
+            TK[itau] += FK[iw]
     # Normalize for inverse FFT
     TK /= dat.snum
     return TK
