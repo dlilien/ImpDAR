@@ -207,7 +207,8 @@ def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     start = time.time()
     # Velocity structure from input
     nlay, vpairs = np.shape(vels_in)
-    vmig = getVelocityProfile(vels_in,nlay,dat.snum,dat.tnum,dat.dt,dat.travel_time)
+    vmig = getVelocityProfile(dat,vels_in)
+    return vmig
     # Fourier transform to frequency-wavenumber (FKx) domain
     FK = np.fft.fft2(dat.data)
     FK = np.fft.fftshift(FK)
@@ -234,11 +235,64 @@ def phaseShiftConstantVel(dat, vmigc, FK):
 
     Parameters
     ---------
-    ns: number of samples
-    ntr: number of traces
-    dt: time step between samples (s)
-    dx: horizontal step between traces (m)
+    dat: data as a dictionary in the ImpDAR format
     vmigc: constant migration velocity (m/s)
+    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
+
+    Output
+    ---------
+    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
+
+    **
+    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
+    Dept. of Geophysics, University of Athens (2005)
+    **
+
+    """
+
+    # initialize the time-wavenumber array to be filled with complex values
+    TK = np.zeros((dat.snum,dat.tnum))+0j
+    # get frequencies and wavenumbers, TODO: why the 2pi?
+    dx = np.mean(dat.trace_int)
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=dx)
+    kx = np.fft.fftshift(kx)
+    ws = 2.*np.pi*np.fft.fftfreq(dat.snum,d=dat.dt)
+    ws = np.fft.fftshift(ws)
+    # iterate through all frequencies
+    for iw in range(dat.snum):
+        w = ws[iw]
+        if w == 0.0:
+            w = 1e-10/dat.dt
+        if iw%100 == 0:
+            print('Frequency',int(w/1e6/(2.*np.pi)),'MHz')
+        # remove frequencies outside of the domain
+        vkx2 = (vmigc*kx/2.)**2.
+        ik = np.argwhere(vkx2 < w**2.)
+        FFK = FK[iw,ik]
+        # get the phase for shift
+        phase = (-w*dat.dt*np.sqrt(1.0 - vkx2[ik]/w**2.)).real
+        cc = np.conj(np.cos(phase)+1j*np.sin(phase))
+        # Accumulate output image (time-wavenumber space) summed over all frequencies
+        for itau in range(dat.snum):
+             FFK *= cc
+             TK[itau,ik] += FFK
+    # Normalize for inverse FFT
+    TK /= dat.snum
+    return TK
+
+
+
+def phaseShiftLayeredVel(dat, vmigv, FK):
+    """
+
+    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
+    This is in the case of a layered velocity medium (i.e. horizontally homogenous, but vertically
+    variable). For constant velocity see phaseShiftConstantVel().
+
+    Parameters
+    ---------
+    dat: data as a dictionary in the ImpDAR format
+    vmigv: 1-D array of migration velocities of length=ns (m/s)
     FK: 2-D array of the data image in frequency-wavenumber space (FKx)
 
     Output
@@ -260,109 +314,40 @@ def phaseShiftConstantVel(dat, vmigc, FK):
     kx = np.fft.fftshift(kx)
     ws = 2.*np.pi*np.fft.fftfreq(dat.snum,d=dat.dt)
     ws = np.fft.fftshift(ws)
-    for iw in range(dat.snum):
-        w = ws[iw]
-        if w == 0.0:
-            w = 1e-10/dat.dt
-        if iw%100 == 0:
-            print('Frequency',int(w/1e6/2.*np.pi),'MHz')
-        vkx2 = (vmigc*vmigc * kx**2.)/4.
-        ik = np.argwhere(vkx2 < w**2.)
-        FFK = FK[iw,ik]
-        phase = (-w*dat.dt*np.sqrt(1.0 - vkx2[ik]/w**2.)).real
-        cc    = np.conj(np.cos(phase)+1j*np.sin(phase))
-        # Accumulate image summed over all frequencies
+    # iterate through all frequencies
+    for ikx in range(dat.tnum):
+        # iterate through all frequencies
         for itau in range(dat.snum):
-             FFK *= cc
-             TK[itau,ik] += FFK
-    # Normalize for inverse FFT
-    TK /= dat.snum
-    return TK
-
-
-
-def phaseShiftLayeredVel(dat, vmigv, FK):
-    """
-
-    Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
-    This is in the case of a layered velocity medium (i.e. horizontally homogenous, but vertically
-    variable). For constant velocity see phaseShiftConstantVel().
-
-    Parameters
-    ---------
-    ns: number of samples
-    ntr: number of traces
-    dt: time step between samples (s)
-    dx: horizontal step between traces (m)
-    vmigv: 1-D array of migration velocities of length=ns (m/s)
-    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
-
-    Output
-    ---------
-    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
-
-    **
-    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
-    Dept. of Geophysics, University of Athens (2005)
-    **
-
-    """
-    # Set up iteration constants
-    dx = np.mean(dat.trace_int)
-    ns = dat.snum
-    dt = dat.dt
-    ntr = dat.tnum
-
-    nw, w0, dw = ns, -np.pi/dt, 2.*np.pi/(ns*dt)
-    nx, kx0 = ntr, -np.pi/dx
-    dkx = 2.*np.pi/(nx*dx)
-    ntau, dtau = ns, dt
-    ft = 0
-    ftau, tmax = ft, ft+(ntau-1)*dtau
-    # initialize image array
-    TK = np.zeros((ns,ntr))+0j
-
-    kx = np.arange(kx0,-kx0,dkx)
-    for ikx in range(nx):
-        kx = kx0 + (ikx)*dkx
-        for itau in range(ntau):
-            tau = ftau + (itau)*dtau
-            for iw in range(nw):
-                w = w0 + (iw)*dw
+            tau = dat.travel_time[itau]
+            # iterate through all frequencies
+            for iw in range(dat.snum):
+                w = ws[iw]
                 if w == 0.0:
-                    w = 1e-10/dt
+                    w = 1e-10/dat.dt
                 coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
-                if coss > (tau/tmax)**2.:
-                    phase = (-w*dt*np.sqrt(coss)).real
+                if coss > (tau/dat.travel_time[-1])**2.:
+                    phase = (-w*dat.dt*np.sqrt(coss)).real
                     cc = np.conj(np.cos(phase)+1j*np.sin(phase))
                     FK[iw,ikx] *= cc
                 else:
                     FK[iw,ikx] = complex(0.0,0.0)
                 TK[itau,ikx] += FK[iw,ikx]
     # Normalize for inverse FFT
-    TK /= nw
+    TK /= dat.snum
     return TK
 
 
-
-
-def getVelocityProfile(vels_in,nlay,ns,ntr,dt,ts,firstz=0.,firstt=0.):
+def getVelocityProfile(dat,vels_in):
     """
 
     Map the layered velocity structure into the shape of the data.
 
     Parameters
     ---------
+    dat: data as a dictionary in the ImpDAR format
     vels_in: 2-D array of layered wave velocities (m/s) and layer thickness (m)
         Structure is velocities in first column, layer thicknesses in second
         If only one layer (i.e. constant velocity) input one layer with zero thickness.
-    nlay: number of layers
-    ns: number of samples
-    ntr: number of traces
-    dt: time step between samples (s)
-    ts: 1-D array of sample times (s)
-    firstz: uppermost depth (m)
-    firstt: start time of trace (s)
 
     Output
     ---------
@@ -377,42 +362,31 @@ def getVelocityProfile(vels_in,nlay,ns,ntr,dt,ts,firstz=0.,firstt=0.):
     """
 
     # velocity layers
+    nlay,vpairs = np.shape(vels_in)
     layer_velocity  = vels_in[:,0]
     layer_thickness = vels_in[:,1]
     # constant velocity
     if nlay == 1:
         vmig = layer_velocity[0]
+    # variable velocity
     elif nlay > 1:
         # Depth of layer boundaries from input thicknesses
-        zs = np.max(layer_velocity)*ts/2.    # depth array for maximum possible penetration
-        zboundaries = np.append(np.insert(np.cumsum(layer_thickness[:nlay-1]),0,0),max(zs))
+        zs = np.max(layer_velocity)*dat.travel_time/2.    # depth array for maximum possible penetration
+        layer_thickness[-1] = max(zs)-sum(layer_thickness[:-1])
+        zboundaries = np.insert(np.cumsum(layer_thickness),0,zs[0])
         # Compute layer times from input velocity/thickness array (vels_in)
-        # TODO: this could be shortened
-        tofz_layers = np.empty((nlay+1))
-        tofz_layers[0] = firstt
-        for iz in np.arange(0,nlay-1):
-            tofz_layers[iz+1] = tofz_layers[iz] + 2.0*layer_thickness[iz]/layer_velocity[iz]
-        tofz_layers[nlay] = tofz_layers[nlay-1] + 2.0*(max(zs)-sum(layer_thickness[:-1]))/layer_velocity[nlay-1]
+        t_layers = 2.*layer_thickness/layer_velocity
+        tboundaries = np.insert(np.cumsum(t_layers),0,dat.travel_time[0])
         # Interpolate to get t(z) for maximum penetration depth array
         from scipy.interpolate import interp1d
-        tinterp = interp1d(zboundaries,tofz_layers)
+        tinterp = interp1d(zboundaries,tboundaries)
         tofz = tinterp(zs)
-        # Compute z(t) from t(z)
+        # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
-        zoft = zinterp(np.arange(firstt,firstt+ns*dt,dt))
-        vfz = layer_velocity[0]             # initial velocity
-        vlz = layer_velocity[nlay-1]        # final velocity at depth z
-        dz = np.mean(np.gradient(zs))
-        lz  = firstz+(ns-1)*dz
-        idx = np.argwhere(ts < tofz[0])             # out of range values
-        zoft[idx] = 0.5*ts[idx]*vfz
-        idx = np.argwhere(ts >= tofz[-1])
-        zoft[idx] = lz + 0.5*(ts[idx] - tofz[-1])*vlz
+        zoft = zinterp(dat.travel_time)
+        # TODO: does this need more rigorous testing? Will the interpolated range always be big enough?
+        if dat.travel_time[-1] > tofz[-1]:
+            raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
-        vmig = np.empty((ns))
-        for it in range(ns-1):
-            vmig[it] = 2.0*(zoft[it+1] - zoft[it])/dt
-        vmig[ns-1] = vmig[ns-2]
+        vmig = 2.*np.gradient(zoft,dat.dt)
     return vmig
-
-
