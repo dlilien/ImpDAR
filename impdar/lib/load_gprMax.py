@@ -33,7 +33,7 @@ class h5(RadarData):
         self.trig_level = np.zeros((self.tnum, ))
         self.pressure = np.zeros((self.tnum, ))
         self.flags = RadarFlags()
-        self.travel_time = self.dt*1e6*np.arange(self.snum)
+        self.travel_time = self.dt*np.arange(self.snum)
         self.trig = np.zeros((self.tnum,))
         self.lat = np.zeros((self.tnum,))
         self.long = np.zeros((self.tnum,))

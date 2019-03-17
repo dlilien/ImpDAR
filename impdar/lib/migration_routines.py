@@ -48,7 +48,7 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
 
     Output
     ---------
-    dat.migdata: migrated data
+    dat.data: migrated data
 
     """
 
@@ -61,7 +61,7 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
     # Calculate the time derivative of the input data
     gradD = np.gradient(dat.data,dat.travel_time,axis=0)
     # Create an empty array to fill with migrated data
-    dat.migdata = np.zeros_like(dat.data)
+    dat.data = np.zeros_like(dat.data)
     # Loop through all traces
     for xi in range(dat.tnum):
         print('Migrating trace number:',xi)
@@ -89,7 +89,7 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
                 Dhyp[2.*rs/vel>max(dat.travel_time)] = 0.    # zero points that are outside of the domain
                 integral += np.nansum(Dhyp*costheta/rs**2.)
             # sum the integrals and output
-            dat.migdata[ti,xi] = 1/(2.*np.pi)*integral
+            dat.data[ti,xi] = 1/(2.*np.pi)*integral
     # print the total time
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(len(dat.dist),len(dat.travel_time),time.time()-start))
@@ -112,7 +112,7 @@ def migrationStolt(dat,vel=1.68e8):
 
     Output
     ---------
-    dat.migdata: migrated data
+    dat.data: migrated data
 
     """
 
@@ -137,7 +137,7 @@ def migrationStolt(dat,vel=1.68e8):
     interp_imag = interp2d(kx,omega,FK.imag)
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
-    print('Interpolating from temporal frequency ($\omega$) to vertical wavenumber (kz):')
+    print('Interpolating from temporal frequency (omega) to vertical wavenumber (kz):')
     # for all temporal frequencies
     for zj in range(len(omega)):
         kzj = omega[zj]*2./vel
@@ -155,14 +155,15 @@ def migrationStolt(dat,vel=1.68e8):
     # grid wavenumbers for scaling calculation
     kX,kZ = np.meshgrid(kx,kz)
     # scaling for obliquity factor (Yilmaz equation C.56)
-    scaling = kZ/np.sqrt(kX**2.+kZ**2.)
+    with np.errstate(invalid='ignore'):
+        scaling = kZ/np.sqrt(kX**2.+kZ**2.)
     KK *= scaling
     # the DC frequency should be 0.
     KK[0,0] = 0.+0j
     # 2D Inverse Fourier Transform to get back to distance spce, D(x,z,t=0)
-    dat.migdata = np.real(np.fft.ifft2(KK))
+    dat.data = np.real(np.fft.ifft2(KK))
     # Cut array to input matrix dimensions
-    dat.migdata = dat.migdata[:dat.snum,:dat.tnum]
+    dat.data = dat.data[:dat.snum,:dat.tnum]
     # print the total time
     print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
@@ -170,7 +171,7 @@ def migrationStolt(dat,vel=1.68e8):
 
 # -----------------------------------------------------------------------------
 
-def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
+def migrationGazdag(dat,vel=np.array([[1.69e8,0]]),vel_fn=None):
     """
 
     Gazdag Migration (Gazdag 1978, Geophysics)
@@ -183,13 +184,13 @@ def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     Parameters
     ---------
     dat: data as a dictionary in the ImpDAR format
-    vels_in: 2-D array of layered wave velocities (m/s) and layer thickness (m)
+    vel: 2-D array of layered wave velocities (m/s) and layer thickness (m)
         Structure is velocities in first column, layer thicknesses in second
         If only one layer (i.e. constant velocity) input one layer with zero thickness.
 
     Output
     ---------
-    dat.migdata: migrated data
+    dat.data: migrated data
 
 
     **
@@ -206,18 +207,26 @@ def migrationGazdag(dat,vels_in=np.array([[1.69e8,0]])):
     # save the start time
     start = time.time()
     # Velocity structure from input
-    nlay, vpairs = np.shape(vels_in)
-    vmig = getVelocityProfile(dat,vels_in)
+    if vel_fn is not None:
+        try:
+            vel = np.genfromtxt(vel_fn)
+            print('Velocities loaded from %s.'%vel_fn)
+        except:
+            raise TypeError('File %s given for layered velocity array, but cannot be loaded. Please reformat.'%vel_fn)
+    nlay, vpairs = np.shape(vel)
+    vmig = getVelocityProfile(dat,vel)
     # Fourier transform to frequency-wavenumber (FKx) domain
     FK = np.fft.fft2(dat.data)
     FK = np.fft.fftshift(FK)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     if nlay == 1:
+        print('Constant velocity %s'%vmig)
         TK = phaseShiftConstantVel(dat, vmig, FK)
     elif nlay > 1:
+        print(nlay,'layers with velocities (m/s),',' '.join('%.2e'%v for v in vel[:,0]),', and thicknesses (m),',' '.join('%.1f'%t for t in vel[:,1]))
         TK = phaseShiftLayeredVel(dat, vmig, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
-    dat.migdata = np.fft.ifft(np.fft.ifftshift(TK,1)).real
+    dat.data = np.fft.ifft(np.fft.ifftshift(TK,1)).real
     # print the total time
     print('Gazdag Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
@@ -324,7 +333,7 @@ def phaseShiftLayeredVel(dat, vmigv, FK):
             if w == 0.0:
                 w = 1e-10/dat.dt
             # cosine squared
-            coss = 1.0 - (0.5 * vmigv[itau]*kx/w)**2.
+            coss = 1.0+0j - (0.5 * vmigv[itau]*kx/w)**2.
             # calculate phase for shift
             phase = (-w*dat.dt*np.sqrt(coss)).real
             cc = np.conj(np.cos(phase)+1j*np.sin(phase))
