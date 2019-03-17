@@ -36,7 +36,7 @@ def load(filetype, fns):
     elif filetype == 'mat':
         dat = [load_mat(fn) for fn in fns]
     elif filetype == 'gprMax':
-        dat = [load_gprMax(fn) for fn in fns]
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     else:
         raise Exception('Unrecognized filetype')
     return dat
