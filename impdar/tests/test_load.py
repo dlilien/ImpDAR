@@ -30,6 +30,9 @@ class TestLoad(unittest.TestCase):
     def test_loadgssi(self):
         data = load.load('gssi', os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT'))
 
+    def test_loadpe(self):
+        data = load.load('pe', os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
+
     def test_loadbad(self):
         with self.assertRaises(ValueError):
             data = load.load('bad', os.path.join(THIS_DIR, 'input_data', 'small_data.bad'))
