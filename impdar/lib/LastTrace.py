@@ -10,6 +10,8 @@
 LastTrace
 """
 
+import numpy as np
+
 
 class LastTrace():
     """The sample and trace of the last trace for picking"""
@@ -28,6 +30,13 @@ class LastTrace():
             self.snum = [snum]
             self.tnum = [tnum]
         else:
+            # we may load these as arrays and then want to append
+            if type(self.snum) == np.ndarray:
+                self.snum = self.snum.flatten().tolist()
+            if type(self.tnum) == np.ndarray:
+                self.tnum = self.tnum.flatten().tolist()
+            
+            # If we have started anew, we only need these lines
             self.snum.append(snum)
             self.tnum.append(tnum)
 

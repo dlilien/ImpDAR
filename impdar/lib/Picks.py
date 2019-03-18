@@ -56,30 +56,59 @@ class Picks():
             self.samp3 = np.zeros((1, self.radardata.tnum))
             self.time = np.zeros((1, self.radardata.tnum))
             self.power = np.zeros((1, self.radardata.tnum))
+            self.samp1[0, :] = np.nan
+            self.samp2[0, :] = np.nan
+            self.samp3[0, :] = np.nan
+            self.time[0, :] = np.nan
+            self.power[0, :] = np.nan
             self.picknums = [picknum]
             self.lasttrace.add_pick(-9999, 0)
-
         elif np.all(np.isnan(self.samp1[-1, :])):
             # If the last pick is blank, we just overwrite it. Zero the pick.
-            self.mod_line(self.samp1.shape[0], 0, 0)
+            self.samp1[-1, :] = np.nan
+            self.samp2[-1, :] = np.nan
+            self.samp3[-1, :] = np.nan
+            self.time[-1, :] = np.nan
+            self.power[-1, :] = np.nan
+            self.picknums[-1] = picknum
         else:
+            # If loading from matlab, need to cast picknums as a list
+            if type(self.picknums) == np.ndarray:
+                self.picknums = self.picknums.flatten().tolist()
+            if picknum in self.picknums:
+                raise ValueError('We already have that pick')
+
             # We are just adding a row to the existing matrices of samples etc.
             self.samp1 = np.vstack((self.samp1, np.zeros((1, self.radardata.tnum))))
             self.samp2 = np.vstack((self.samp2, np.zeros((1, self.radardata.tnum))))
             self.samp3 = np.vstack((self.samp3, np.zeros((1, self.radardata.tnum))))
             self.time = np.vstack((self.time, np.zeros((1, self.radardata.tnum))))
             self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
+            self.samp1[-1, :] = np.nan
+            self.samp2[-1, :] = np.nan
+            self.samp3[-1, :] = np.nan
+            self.time[-1, :] = np.nan
+            self.power[-1, :] = np.nan
             self.lasttrace.add_pick(-9999, 0)
+
             self.picknums.append(picknum)
         # We return the row number of the sample, which gives access to all its info
         return self.samp1.shape[0]
 
     def update_pick(self, picknum, pick_info):
-        self.samp1[picknum, :] = pick_info[0, :]
-        self.samp2[picknum, :] = pick_info[1, :]
-        self.samp3[picknum, :] = pick_info[2, :]
-        self.time[picknum, :] = pick_info[3, :]
-        self.power[picknum, :] = pick_info[4, :]
+        try:
+            ind = self.picknums.index(picknum)
+        except ValueError:
+            raise ValueError('picknum provided is not a pick; you must you use a picknum not an index')
+
+        if pick_info.shape != (5, self.radardata.tnum):
+            raise ValueError('pick_info must be a 5xtnum array')
+
+        self.samp1[ind, :] = pick_info[0, :]
+        self.samp2[ind, :] = pick_info[1, :]
+        self.samp3[ind, :] = pick_info[2, :]
+        self.time[ind, :] = pick_info[3, :]
+        self.power[ind, :] = pick_info[4, :]
 
     def to_struct(self):
         mat = {}
