@@ -29,8 +29,11 @@ def midpoint(len_tnums, snum_start, snum_end):
 
 
 def packet_power(trace, plength, midpoint):
+
+    if len(trace.shape) > 1:
+        raise ValueError('Need a single, flat trace')
     # Calculate top snum from plength and midpoint
-    topsnum = int(midpoint - ((plength / 2.) - 1.))
+    topsnum = int(midpoint - ((plength / 2.)))
 
     # Calculate bottom snum from plenght and midpoint
     bottom = int(midpoint + (plength / 2.))
@@ -42,24 +45,26 @@ def packet_power(trace, plength, midpoint):
 
 def packet_pick(trace, pickparams, midpoint):
     powerpacket, topsnum = packet_power(trace, pickparams.plength, midpoint)
-    
+
     # Check if we are taking a bad slice
     if len(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW]) == 0:
         raise ValueError('Your choice of frequency (too low) is causing the pick window to be too large')
 
     # Find the center peak
-    cpeak = int(np.argmax(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW] * pickparams.pol) + pickparams.scst - 1)
+    cpeak = int(np.argmax(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW] * pickparams.pol) + pickparams.scst)
 
     # Find a peak with opposite polarity higher up
     if cpeak > pickparams.FWW:
-        tpeak = int(np.argmin(powerpacket[cpeak - pickparams.FWW:cpeak] * pickparams.pol)) + (cpeak - pickparams.FWW - 1)
+        tpeak = int(np.argmin(powerpacket[cpeak - pickparams.FWW:cpeak] * pickparams.pol)) + (cpeak - pickparams.FWW)
     else:
-        tpeak = int(np.argmin(powerpacket[0:cpeak] * pickparams.pol))
+        tpeak = int(np.argmin(powerpacket[:cpeak] * pickparams.pol))
 
     # Find a peak with opposite polarity lower down
     if cpeak + pickparams.FWW < pickparams.plength:
-        bpeak = int(np.argmin(powerpacket[cpeak:cpeak + pickparams.FWW] * pickparams.pol)) + cpeak - 1
+        bpeak = int(np.argmin(powerpacket[cpeak:cpeak + pickparams.FWW] * pickparams.pol)) + cpeak
     else:
-        bpeak = int(np.argmin(powerpacket[cpeak:pickparams.plength] * pickparams.pol)) + cpeak - 1
+        # I can't seem to hit this line in tests. Might be due to offset between matlab and python
+        bpeak = int(np.argmin(powerpacket[cpeak:] * pickparams.pol)) + cpeak
     power = np.sum(powerpacket[tpeak:bpeak] ** 2. / (bpeak - tpeak + 1))
-    return [tpeak + topsnum - 1, cpeak + topsnum - 1, bpeak + topsnum - 1, np.nan, power]
+
+    return [tpeak + topsnum, cpeak + topsnum, bpeak + topsnum, np.nan, power]
