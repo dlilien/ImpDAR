@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 from impdar.lib.RadarData import RadarData
 from impdar.lib.RadarFlags import RadarFlags
+from impdar.lib import process
 
 data_dummy = np.ones((500, 400))
 
@@ -119,6 +120,26 @@ class TestRadarDataHfiltWrapper(unittest.TestCase):
         radardata.hfilt('hfilt', (0, 100))
         # We taper in the hfilt, so this is not just zeros
         self.assertTrue(np.all(radardata.data == radardata.hfilt_target_output))
+
+
+class TestProcessWrapper(unittest.TestCase):
+    def test_process_ahfilt(self):
+        radardata = NoInitRadarData()
+        process.process([radardata], ahfilt=True)
+        # We taper in the hfilt, so this is not just zeros
+        self.assertTrue(np.all(radardata.data == radardata.ahfilt_target_output))
+
+    def test_process_hfilt(self):
+        radardata = NoInitRadarData()
+        process.process([radardata], hfilt=(0, 100))
+        # We taper in the hfilt, so this is not just zeros
+        self.assertTrue(np.all(radardata.data == radardata.hfilt_target_output))
+
+    def test_process_vbp(self):
+        radardata = NoInitRadarData()
+        process.process([radardata], vbp=(0.1, 100.))
+        # The filter is not too good, so we have lots of residual
+        self.assertTrue(np.all(np.abs(radardata.data) < 1.0e-4))
 
 
 if __name__ == '__main__':
