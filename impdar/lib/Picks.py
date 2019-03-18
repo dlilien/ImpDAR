@@ -26,7 +26,7 @@ class Picks():
             for attr in self.attrs:
                 setattr(self, attr, pick_struct[attr][0][0])
                 # Convert matlab zeros to Nones
-                if getattr(self, attr) == np.zeros((1, 1)):
+                if getattr(self, attr).shape == (1, 1) and getattr(self, attr)[0][0] == 0:
                     setattr(self, attr, None)
             self.lasttrace = LastTrace(pick_struct['lasttrace'])
             self.lt = LeaderTrailer(radardata, pick_struct['lt'])

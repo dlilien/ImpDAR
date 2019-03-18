@@ -43,6 +43,10 @@ def packet_power(trace, plength, midpoint):
 def packet_pick(trace, pickparams, midpoint):
     powerpacket, topsnum = packet_power(trace, pickparams.plength, midpoint)
     
+    # Check if we are taking a bad slice
+    if len(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW]) == 0:
+        raise ValueError('Your choice of frequency (too low) is causing the pick window to be too large')
+
     # Find the center peak
     cpeak = int(np.argmax(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW] * pickparams.pol) + pickparams.scst - 1)
 
