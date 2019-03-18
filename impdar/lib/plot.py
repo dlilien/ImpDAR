@@ -59,6 +59,7 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
     else:
+        plt.tight_layout()
         plt.show()
 
 

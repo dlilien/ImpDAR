@@ -222,7 +222,7 @@ def migrationGazdag(dat,vel=np.array([[1.69e8,0]]),vel_fn=None):
     FK = np.fft.fftshift(FK)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     if nlay == 1:
-        print('Constant velocity %s m/usec'%vmig/1e6)
+        print('Constant velocity %s m/usec'%(vmig/1e6))
         TK = phaseShiftConstantVel(dat, vmig, FK)
     elif nlay > 1:
         print(nlay,'layers with velocities',' '.join('%.2e'%v for v in vel[:,0]),'(m/s), and thicknesses',' '.join('%.1f'%t for t in vel[:,1]),'(m).')
