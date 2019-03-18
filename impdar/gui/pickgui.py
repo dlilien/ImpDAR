@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 from .ui import RawPickGUI
-from ..lib import plot, RadarData, picklib, horizontal_filters
+from ..lib import plot, RadarData, picklib
 import numpy as np
 import os.path
 import matplotlib.gridspec as gridspec
@@ -107,12 +107,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             if x_range[-1] == -1:
                 self.x_range = (x_range[0], self.dat.tnum)
 
-            self.lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]], (10, 90))
+            self.lims = np.percentile(dat.data[:, self.x_range[0]:self.x_range[-1]], (10, 90))
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
             self.minSpinner.setValue(self.lims[0])
             self.maxSpinner.setValue(self.lims[1])
             self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
-
             if hasattr(dat.flags, 'elev') and dat.flags.elev:
                 yd = dat.elevation
                 self.ax.set_ylabel('Elevation (m)')
@@ -129,10 +128,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     self.ax.set_ylabel('Depth (m)')
 
             if xdat == 'tracenum':
-                self.xd = np.arange(int(self.dat.tnum))[x_range[0]:x_range[-1]]
+                self.xd = np.arange(int(self.dat.tnum))[self.x_range[0]:self.x_range[-1]]
                 self.ax.set_xlabel('Trace number')
             elif xdat == 'dist':
-                self.xd = self.dat.dist[x_range[0]:x_range[-1]]
+                self.xd = self.dat.dist[self.x_range[0]:self.x_range[-1]]
                 self.ax.set_xlabel('Distance (km)')
 
             self.im = self.ax.imshow(dat.data[:, self.x_range[0]:self.x_range[-1]], cmap=plt.cm.gray, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
@@ -234,16 +233,17 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         left click with n depressed (nanpick)
         or right click (delete)
         """
+        tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
         if len(self.cline) == 0:
             self._add_pick()
-        tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
-        if event.button == 1:
-            if self._n_pressed:
-                self._add_nanpick(snum, tnum)
-            else:
-                self._add_point_pick(snum, tnum)
-        elif event.button == 3:
-            self._delete_picks(snum, tnum)
+        else:
+            if event.button == 1:
+                if self._n_pressed:
+                    self._add_nanpick(snum, tnum)
+                else:
+                    self._add_point_pick(snum, tnum)
+            elif event.button == 3:
+                self._delete_picks(snum, tnum)
 
         self.update_lines()
         self.fig.canvas.draw()
@@ -385,7 +385,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.progressLabel.setText('Horizontally filtering...')
         self.progressBar.setProperty("value", 25)
         QtWidgets.QApplication.processEvents()
-        horizontal_filters.adaptivehfilt(self.dat)
+        self.dat.adaptivefilt()
         self.progressBar.setProperty("value", 75)
         QtWidgets.QApplication.processEvents()
         self.update_radardata()
