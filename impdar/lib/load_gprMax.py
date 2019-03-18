@@ -26,25 +26,35 @@ class h5(RadarData):
         with h5py.File(fn) as f:
             self.dt = f.attrs['dt']
             self.data = np.array(f['/rxs/rx1/Ez'])
+
+        # Remove pretrigger
+        trig_threshold = 0.5 # trigger when mean trace gets up to 50% of maximum
+        mean_trace = np.nanmean(np.abs(self.data),axis=1)
+        idx_threshold = np.argwhere(mean_trace>trig_threshold*np.nanmax(mean_trace))
+        idx_trig = np.nanmin(idx_threshold)
+        self.data = self.data[idx_trig:]
+
         # other variables are from the array shape
         self.snum = self.data.shape[0]
         self.tnum = self.data.shape[1]
         self.trace_num = np.arange(self.data.shape[1]) + 1
-        self.trig_level = np.zeros((self.tnum, ))
-        self.pressure = np.zeros((self.tnum, ))
+        self.trig_level = np.zeros((self.tnum,))
+        self.pressure = np.zeros((self.tnum,))
         self.flags = RadarFlags()
-        self.travel_time = self.dt*np.arange(self.snum)
+        self.travel_time = self.dt*1e6*np.arange(self.snum)
         self.trig = np.zeros((self.tnum,))
         self.lat = np.zeros((self.tnum,))
         self.long = np.zeros((self.tnum,))
         self.x_coord = np.zeros((self.tnum,))
         self.y_coord = np.zeros((self.tnum,))
-        self.dist = np.zeros((self.tnum,))
         self.elev = np.zeros((self.tnum,))
         self.decday = np.arange(self.tnum)
         self.trace_int = np.ones((self.tnum,))
 
-        for attr in ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
+        self.dist = np.arange(self.tnum)
+        self.chan = -99.
+
+        for attr in ['chan','data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
             if getattr(self, attr) is None:
                 print(attr + ' is not defined')
                 setattr(self, attr, 0)

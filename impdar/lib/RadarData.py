@@ -214,6 +214,9 @@ class RadarData():
         else:
             raise ValueError('Unrecognized migration routine')
 
+        # change migration flag
+        self.flags.mig = mtype
+
 
     def reverse(self):
         """Reverse radar data
@@ -550,7 +553,9 @@ class RadarFlags():
         Elements: (1) 1 if horizontally filtered; (2) Filter type
     interp: 2x1 :class:`numpy.ndarray`
         Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
-    """
+    mig: 2x1 :class: String
+        None if no migration done, mtype if migration done.
+     """
 
     def __init__(self):
         self.batch = False
@@ -563,12 +568,12 @@ class RadarFlags():
         self.crop = np.zeros((3,))
         self.nmo = np.zeros((2,))
         self.interp = np.zeros((2,))
-        self.mig = False
+        self.mig = 'none'
         self.elev = 0
         self.elevation = 0
-        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None]
-        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
+        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev','mig']
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
+        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`

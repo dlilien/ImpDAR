@@ -25,17 +25,30 @@ class TestMigration(unittest.TestCase):
             os.mkdir(OUT_DIR)
         out_fn = os.path.join(OUT_DIR,'rectangle_Stolt.mat')
         data.save(out_fn)
-    """
+
     def test_Kirchhoff(self):
         data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
         data = migration_routines.migrationKirchhoff(data)
+        if not os.path.isdir(OUT_DIR):
+            os.mkdir(OUT_DIR)
+        out_fn = os.path.join(OUT_DIR,'rectangle_Kirchhoff.mat')
+        data.save(out_fn)
 
     def test_GazdagConstant(self):
         data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
         data = migration_routines.migrationGazdag(data)
+        if not os.path.isdir(OUT_DIR):
+            os.mkdir(OUT_DIR)
+        out_fn = os.path.join(OUT_DIR,'rectangle_GazdagConstant.mat')
+        data.save(out_fn)
+
     def test_GazdagVariable(self):
         data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
         data = migration_routines.migrationGazdag(data,vel_fn='./input_data/velocity_layers.txt')
-    """
+        if not os.path.isdir(OUT_DIR):
+            os.mkdir(OUT_DIR)
+        out_fn = os.path.join(OUT_DIR,'rectangle_GazdagVariable.mat')
+        data.save(out_fn)
+
 if __name__ == '__main__':
     unittest.main()

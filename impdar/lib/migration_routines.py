@@ -27,7 +27,7 @@ import time
 
 # -----------------------------------------------------------------------------
 
-def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
+def migrationKirchhoff(dat,vel=1.69e8,nearfield=False):
     """
 
     Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
@@ -59,9 +59,9 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data,dat.travel_time,axis=0)
+    gradD = np.gradient(dat.data,dat.travel_time/1e6,axis=0)
     # Create an empty array to fill with migrated data
-    dat.data = np.zeros_like(dat.data)
+    migdata = np.zeros_like(dat.data)
     # Loop through all traces
     for xi in range(dat.tnum):
         print('Migrating trace number:',xi)
@@ -70,29 +70,31 @@ def migrationKirchhoff(dat,vel=1.69e8,nearfield=False,**kwargs):
         # Loop through all samples
         for ti in range(dat.snum):
             # get the sample time
-            t = dat.travel_time[ti]
+            t = dat.travel_time[ti]/1e6
             # convert to depth
             z = vel*t/2.
             # get the radial distances between input point and output point
             rs = np.sqrt((dat.dist-x)**2.+z**2.)
             # find the cosine of the angle of the tangent line, correct for obliquity factor
-            costheta = z/rs
+            with np.errstate(invalid='ignore'):
+                costheta = z/rs
             # get the exact indices from the array (closest to rs)
-            Didx = [np.argmin(abs(dat.travel_time-2.*r/vel)) for r in rs]
+            Didx = [np.argmin(abs(dat.travel_time/1e6-2.*r/vel)) for r in rs]
             # integrate the farfield term
             gradDhyp = np.array([gradD[Didx[i],i] for i in range(len(Didx))])
-            gradDhyp[2.*rs/vel>max(dat.travel_time)] = 0.    # zero points that are outside of the domain
+            gradDhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
             integral = np.nansum(gradDhyp*costheta/vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
             # integrate the nearfield term
             if nearfield == True:
                 Dhyp = np.array([dat.data[Didx[i],i] for i in range(len(Didx))])
-                Dhyp[2.*rs/vel>max(dat.travel_time)] = 0.    # zero points that are outside of the domain
+                Dhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
                 integral += np.nansum(Dhyp*costheta/rs**2.)
             # sum the integrals and output
-            dat.data[ti,xi] = 1/(2.*np.pi)*integral
+            migdata[ti,xi] = 1./(2.*np.pi)*integral
+    dat.data = migdata.copy()
     # print the total time
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(len(dat.dist),len(dat.travel_time),time.time()-start))
+          %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
 # -----------------------------------------------------------------------------
@@ -220,10 +222,10 @@ def migrationGazdag(dat,vel=np.array([[1.69e8,0]]),vel_fn=None):
     FK = np.fft.fftshift(FK)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     if nlay == 1:
-        print('Constant velocity %s'%vmig)
+        print('Constant velocity %s m/usec'%vmig/1e6)
         TK = phaseShiftConstantVel(dat, vmig, FK)
     elif nlay > 1:
-        print(nlay,'layers with velocities (m/s),',' '.join('%.2e'%v for v in vel[:,0]),', and thicknesses (m),',' '.join('%.1f'%t for t in vel[:,1]))
+        print(nlay,'layers with velocities',' '.join('%.2e'%v for v in vel[:,0]),'(m/s), and thicknesses',' '.join('%.1f'%t for t in vel[:,1]),'(m).')
         TK = phaseShiftLayeredVel(dat, vmig, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
     dat.data = np.fft.ifft(np.fft.ifftshift(TK,1)).real
@@ -324,9 +326,9 @@ def phaseShiftLayeredVel(dat, vmigv, FK):
     ws = np.fft.fftshift(ws)
     # iterate through all output travel times
     for itau in range(dat.snum):
-        tau = dat.travel_time[itau]
+        tau = dat.travel_time[itau]/1e6
         if itau%100 == 0:
-            print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]))
+            print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
         # iterate through all frequencies
         for iw in range(dat.snum):
             w = ws[iw]
@@ -339,7 +341,7 @@ def phaseShiftLayeredVel(dat, vmigv, FK):
             cc = np.conj(np.cos(phase)+1j*np.sin(phase))
             FK[iw] *= cc
             # zero if outside domain
-            idx = coss <= (tau/dat.travel_time[-1])**2.
+            idx = coss <= (tau/dat.travel_time[-1]/1e6)**2.
             FK[iw,idx] = complex(0.0,0.0)
             # sum over all frequencies
             TK[itau] += FK[iw]
@@ -382,21 +384,21 @@ def getVelocityProfile(dat,vels_in):
     # variable velocity
     elif nlay > 1:
         # Depth of layer boundaries from input thicknesses
-        zs = np.max(layer_velocity)*dat.travel_time/2.    # depth array for maximum possible penetration
+        zs = np.max(layer_velocity)*dat.travel_time/1e6/2.    # depth array for maximum possible penetration
         layer_thickness[-1] = max(zs)-sum(layer_thickness[:-1])
         zboundaries = np.insert(np.cumsum(layer_thickness),0,zs[0])
         # Compute layer times from input velocity/thickness array (vels_in)
         t_layers = 2.*layer_thickness/layer_velocity
-        tboundaries = np.insert(np.cumsum(t_layers),0,dat.travel_time[0])
+        tboundaries = np.insert(np.cumsum(t_layers),0,dat.travel_time[0]/1e6)
         # Interpolate to get t(z) for maximum penetration depth array
         from scipy.interpolate import interp1d
         tinterp = interp1d(zboundaries,tboundaries)
         tofz = tinterp(zs)
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
-        zoft = zinterp(dat.travel_time)
+        zoft = zinterp(dat.travel_time/1e6)
         # TODO: does this need more rigorous testing? Will the interpolated range always be big enough?
-        if dat.travel_time[-1] > tofz[-1]:
+        if dat.travel_time[-1]/1e6 > tofz[-1]:
             raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
         vmig = 2.*np.gradient(zoft,dat.dt)
