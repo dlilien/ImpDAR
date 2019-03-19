@@ -12,7 +12,6 @@ Make an executable for single actions of impulse radar processing.
 All functionality probably overlaps with impdar, but the call is much cleaner. You get a lot more flexibility on things like keyword arguments. However, you are limited to one processing step.
 """
 
-import numpy as np
 import os.path
 import argparse
 from impdar.lib.load import load
@@ -89,7 +88,8 @@ def _get_args():
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
     parser_mig.add_argument('--mtype', type=str , default='stolt', help='Migration Routine')
     parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
-    parser_mig.add_argument('--vel_fn', type=str, default=None, help='Filename for layered velocity array. Column 1: layer thickness, Column 2: velocity in layer')
+    parser_mig.add_argument('--vel_fn', type=str, default=None, help='Filename for inupt velocity array. Column 1: velocities, Column 2: z locations, Column 3: x locations (optional)')
+    parser_mig.add_argument('--nearfield', type=bool, default=False, help='Boolean for nearfield operator in Kirchhoff migration.')
     add_def_args(parser_mig)
 
     return parser
@@ -208,11 +208,8 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove)
 
 
-def mig(dat, mtype='stolt',vel=1.69e8,vel_fn=None, **kwargs):
-    if mtype=='gazdag':
-        dat.migrate(mtype,vel=np.array([[vel,0]]),vel_fn=vel_fn)
-    else:
-        dat.migrate(mtype,vel=vel)
+def mig(dat, mtype='stolt',vel=1.69e8,vel_fn=None, nearfield=False, **kwargs):
+    dat.migrate(mtype,vel=vel,nearfield=nearfield)
 
 
 if __name__ == '__main__':

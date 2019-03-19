@@ -202,15 +202,15 @@ class RadarData():
         Parameters
         ----------
         mtype: str, optional
-            The chosen migration routine. Options are: kirchhoff, stolt, gazdag.
+            The chosen migration routine. Options are: kirch, stolt, phsh.
             Default: stolt
         """
-        if mtype == 'kirchhoff':
+        if mtype == 'kirch':
             migrationKirchhoff(self,**kwargs)
         elif mtype == 'stolt':
             migrationStolt(self,**kwargs)
-        elif mtype == 'gazdag':
-            migrationGazdag(self,**kwargs)
+        elif mtype == 'phsh':
+            migrationPhaseShift(self,**kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 
@@ -571,7 +571,7 @@ class RadarFlags():
         self.mig = 'none'
         self.elev = 0
         self.elevation = 0
-        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev','mig']
+        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
         self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
         self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
 
