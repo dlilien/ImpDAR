@@ -24,6 +24,8 @@ Mar 12 2019
 
 import numpy as np
 import time
+from scipy import sparse
+from scipy.interpolate import interp2d, interp1d
 
 # -----------------------------------------------------------------------------
 
@@ -134,7 +136,6 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
     # get the horizontal wavenumbers
     kx = 2.*np.pi*np.fft.fftfreq(nx, d=np.mean(dat.trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
-    from scipy.interpolate import interp2d
     interp_real = interp2d(kx,ws,FK.real)
     interp_imag = interp2d(kx,ws,FK.imag)
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
@@ -306,6 +307,9 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             raise ValueError('Interpolated velocity profile is not the length of the number of samples in a trace.')
         if hasattr(vmig[0],"__len__"):
             print('2-D velocity structure, Fourier Finite-Difference Migration')
+            # Finite Difference Stencil
+            stencil = Sp_Matr(dat.tnum,-2,1,1)
+            FFX_last = 0.
         else:
             print('1-D velocity structure, Gazdag Migration')
             print('Velocities (m/s): %.2e',vels_in[:,0])
@@ -337,6 +341,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                 FK[iw] *= cshift
 
                 if hasattr(vmig[itau],"__len__"):
+                    print('Entering FFD loop for w=%.2e MHz and time %.2e'%(w/1e6,tau))
                     # inverse fourier tranform to frequency-space domain
                     FFX = np.fft.ifft(FK[iw])
 
@@ -346,7 +351,9 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                     FFX *= cshift2
 
                     ### Diffraction term, Finite Difference operator
-                    FFX = fourierFiniteDiff(dat,vfg,w,FFX)
+                    if itau > 0:
+                        FFX = fourierFiniteDiff(dat,vfg,w,FFX,FFX_last,stencil)
+                    FFX_last = FFX
 
                     # Fourier transform back to frequency-wavenumber domain
                     FK[iw] = np.fft.fft(FFX)
@@ -365,7 +372,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
 
 # -----------------------------------------------------------------------------
 
-def fourierFiniteDiff(dat, vmfg, w, FFX):
+def fourierFiniteDiff(dat, vs, w, FFX, FFX_last, stencil, alpha=0.5,beta=0.25):
     """
 
     Fourier Finite-Difference operator to correct for diffraction in the phase-shift method.
@@ -374,9 +381,12 @@ def fourierFiniteDiff(dat, vmfg, w, FFX):
     Parameters
     ---------
     dat: data as a dictionary in the ImpDAR format
-    vmig: 2-D array of migration velocity (m/s)
-    ws: 1-D array of temporal frequencies
+    vs: 1-D array of migration velocity (m/s)
+    w: scalar temporal frequency
     FFX: 2-D array of the data image in frequency-space (FX)
+    FFX_last: same as FFX but for the last iteration (i.e. tau-1)
+    alpha: coefficient on second order term, default to 0.5 for 45-degree equation
+    beta: coefficient on third order term, default to 0.25 for 45-degree equation
 
     Output
     ---------
@@ -384,17 +394,31 @@ def fourierFiniteDiff(dat, vmfg, w, FFX):
 
     """
 
-    #**  aa = - alpha /( (0.,-1.)*omega )
-    #**  c = -aa a = -aa; b = 1.+2.*aa;
-    #**  do ix= 2, nx-1
-    #**      cd(ix) = aa*cp(ix+1,iw) + (1.-2.*aa)*cp(ix,iw) + aa*cp(ix-1,iw)
-    #**  cd(1) = 0.; cd(nx) = 0.
-    #**  call ctris( nx, -a, a, b, c, -c, cd, cp(1,iw))
-    #**  cshift = cexp( cmplx( 0.,-omega*dtau))
-    #**  do ix= 1, nx
-    #**      cp(ix,iw) = cp(ix,iw) * cshift do
+    # Coefficients
+    dx = np.mean(dat.trace_int)
+    coeff1 = dat.dt*alpha*vs**2./(1j*4.*w*dx**2.)
+    coeff2 = -beta*vs**2./(4.*w**2.*dx**2.)
 
+    # Update equation, explicit backward Euler
+    FFX = FFX_last + coeff1*(stencil*FFX) + coeff2*(stencil*FFX - stencil*FFX_last)
     return FFX
+
+# -----------------------------------------------------------------------------
+
+# Define a function to write a sparse matrix
+def Sp_Matr(N,diag,k1,k2,k3=0,k4=0,nx=0):
+    A = sparse.lil_matrix((N, N))           #Function to create a sparse Matrix
+    A.setdiag((diag)*np.ones(N))            #Set the diagonal
+    A.setdiag((k1)*np.ones(N-1),k=1)        #Set the first upward off-diagonal.
+    A.setdiag((k2)*np.ones(N-1),k=-1)       #Set the first downward off-diagonal
+    A.setdiag((k3)*np.ones(N-nx),k=nx)      #Set for diffusion from above node
+    A.setdiag((k4)*np.ones(N-nx),k=-nx)     #Set for diffusion from below node
+    # Set Dirichlet boundary conditions
+    A[0,0] = 1
+    A[0,1:] = 0
+    A[-1,-1] = 1
+    A[-1,:-1] = 1
+    return A
 
 # -----------------------------------------------------------------------------
 
@@ -431,10 +455,11 @@ def getVelocityProfile(dat,vels_in):
     vel_v = vels_in[:,0]
     vel_z = vels_in[:,1]
 
+    twtt = dat.travel_time/1e6
     ### Layered Velocity
     if nlay > 1 and dimension == 2:
-        zs = np.max(vel_v)/2.*dat.travel_time    # depth array for maximum possible penetration
-        zs[0] = dat.travel_time[0]*vel_v[0]/2.
+        zs = np.max(vel_v)/2.*twtt      # depth array for maximum possible penetration
+        zs[0] = twtt[0]*vel_v[0]/2.
         # If an input point is closest to a boundary push it to the boundary
         if vel_z[0] > np.nanmin(zs):
             vel_z[0] = np.nanmin(zs)
@@ -443,23 +468,22 @@ def getVelocityProfile(dat,vels_in):
         # Compute times from input velocity/location array (vels_in)
         vel_t = 2.*vel_z/vel_v
         # Interpolate to get t(z) for maximum penetration depth array
-        from scipy.interpolate import interp1d
         tinterp = interp1d(vel_z,vel_t)
         tofz = tinterp(zs)
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
-        zoft = zinterp(dat.travel_time)
-        if dat.travel_time[-1] > tofz[-1]:
+        zoft = zinterp(twtt)
+        if twtt[-1] > tofz[-1]:
             raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
-        vmig = 2.*np.gradient(zoft,dat.travel_time)
+        vmig = 2.*np.gradient(zoft,twtt)
 
     ### Lateral Velocity Variations TODO: I need to check this more rigorously too.
     elif nlay > 1 and dimension == 3:
         vel_x = vels_in[:,2]    # Input velocities
         # Depth array for largest penetration range
-        zs = np.linspace(np.min(vel_v)*dat.travel_time[0],
-                 np.max(vel_v)*dat.travel_time[-1],
+        zs = np.linspace(np.min(vel_v)*twtt[0],
+                 np.max(vel_v)*twtt[-1],
                  dat.snum)/2.
         # Use nearest neighbor interpolation to grid the input points onto a mesh
         from scipy.interpolate import griddata,interp1d
@@ -481,11 +505,11 @@ def getVelocityProfile(dat,vels_in):
             tofz = tinterp(zs)
             # Compute z(t) from monotonically increasing t
             zinterp = interp1d(tofz,zs)
-            zoft = zinterp(dat.travel_time)
-            if dat.travel_time[-1] > tofz[-1]:
+            zoft = zinterp(twtt)
+            if twtt[-1] > tofz[-1]:
                 raise ValueError('Two-way travel time array extends outside of interpolation range')
             # Compute vmig(t) from z(t)
-            vmig[:,i] = 2.*np.gradient(zoft,dat.travel_time)
+            vmig[:,i] = 2.*np.gradient(zoft,twtt)
 
     print('Velocity profile finished in %.2f seconds.'%(time.time()-start))
 
