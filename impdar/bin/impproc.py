@@ -209,7 +209,7 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
 
 
 def mig(dat, mtype='stolt',vel=1.69e8,vel_fn=None, nearfield=False, **kwargs):
-    dat.migrate(mtype,vel=vel,nearfield=nearfield)
+    dat.migrate(mtype,vel=vel,vel_fn=vel_fn,nearfield=nearfield)
 
 
 if __name__ == '__main__':

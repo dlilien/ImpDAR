@@ -218,12 +218,9 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
     kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(dat.trace_int))
-    kx = np.fft.fftshift(kx)
     ws = 2.*np.pi*np.fft.fftfreq(nt,d=dat.dt)
-    ws = np.fft.fftshift(ws)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(nt,dat.tnum))
-    FK = np.fft.fftshift(FK)
     # Velocity structure from input
     if vel_fn is not None:
         try:
@@ -235,7 +232,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     TK = phaseShift(dat, vmig, vel, kx, ws, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
-    dat.data = np.fft.ifft(np.fft.ifftshift(TK,1)).real
+    dat.data = np.fft.ifft(TK).real
     # print the total time
     print('Phase-Shift Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
@@ -297,76 +294,68 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             FFK = FK[iw,ik]
             # get the phase for shift
             phase = (-w*dat.dt*np.sqrt(1.0 - vkx2[ik]/w**2.)).real
-            cc = np.conj(np.cos(phase)+1j*np.sin(phase))
+            cp = np.conj(np.cos(phase)+1j*np.sin(phase))
             # Accumulate output image (time-wavenumber space) summed over all frequencies
             for itau in range(dat.snum):
-                 FFK *= cc
+                 FFK *= cp
                  TK[itau,ik] += FFK
 
     else:
-        # Layered velocity case, vmig=v(z)
-        if len(np.shape(vmig)) == 1:
-            if len(vmig) != dat.snum:
-                raise ValueError('Interpolated velocity profile is not the length of the number of samples in a trace.')
-            print('1-D velocity structure, Gazdag Migration')
-            print(np.shape(vels_in)[0]-1,'layers with velocities',
-                    ' '.join('%.2e'%v for v in vels_in[:,0]),'(m/s), at depths',
-                    ' '.join('%.1f'%t for t in vels_in[:,1]),'(m).')
-            # iterate through all output travel times
-            for itau in range(dat.snum):
-                tau = dat.travel_time[itau]/1e6
-                if itau%100 == 0:
-                    print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
-                # iterate through all frequencies
-                for iw in range(len(ws)):
-                    w = ws[iw]
-                    if w == 0.0:
-                        w = 1e-10/dat.dt
-                    # cosine squared
-                    coss = 1.0+0j - (0.5 * vmig[itau]*kx/w)**2.
-                    # calculate phase for shift
-                    phase = (-w*dat.dt*np.sqrt(coss)).real
-                    cc = np.conj(np.cos(phase)+1j*np.sin(phase))
-                    FK[iw] *= cc
-                    # zero if outside domain
-                    idx = coss <= (tau/dat.travel_time[-1]/1e6)**2.
-                    FK[iw,idx] = complex(0.0,0.0)
-                    # sum over all frequencies
-                    TK[itau] += FK[iw]
-
-        # Lateral velocity case, vmig=v(x,z)
-        elif len(np.shape(vmig)) == 2:
-            meanv = np.mean(vmig[:])
+        # Layered and/or lateral velocity case, vmig=v(x,z)
+        if len(vmig) != dat.snum:
+            raise ValueError('Interpolated velocity profile is not the length of the number of samples in a trace.')
+        if hasattr(vmig[0],"__len__"):
             print('2-D velocity structure, Fourier Finite-Difference Migration')
-            # iterate through all output travel times
-            for itau in range(dat.snum):
-                tau = dat.travel_time[itau]/1e6
-                if itau%100 == 0:
-                    print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
-                # iterate through all frequencies
-                for iw in range(len(ws)):
-                    w = ws[iw]
-                    if w == 0.0:
-                        w = 1e-10/dat.dt
+        else:
+            print('1-D velocity structure, Gazdag Migration')
+            print('Velocities (m/s): %.2e',vels_in[:,0])
+            print('Depths (m):',vels_in[:,1])
+        # iterate through all output travel times
+        for itau in range(dat.snum):
+            tau = dat.travel_time[itau]/1e6
+            if itau%100 == 0:
+                print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
+            # iterate through all frequencies
+            for iw in range(len(ws)):
+                w = ws[iw]
+                if w == 0.0:
+                    w = 1e-10/dat.dt
 
-                    ### First term
-                    # cosine squared
-                    coss = 1.0+0j - (0.5 * meanv*kx/w)**2.
-                    # calculate phase for shift
-                    phase = (-w*dat.dt*np.sqrt(coss)).real
-                    cc1 = np.conj(np.cos(phase)+1j*np.sin(phase))
+                # Get foreground and background velocities
+                if hasattr(vmig[itau],"__len__"):
+                    vbg = np.min(vmig[itau])
+                    vfg = vmig[itau]-vbg
+                else:
+                    vbg = vmig[itau]
 
-                    ### Second term, thin lens for vertical velocity variations
-                    cc2 = 0.
-                    ### Third term, Finite Difference operator
-                    cc3 = 0.#finiteDiff(dat,vmig,kx,ws,FK)
+                ### Retardation term
+                # cosine squared
+                coss = 1.0+0j - (0.5*vbg*kx/w)**2.
+                # calculate phase for shift
+                phase = (-w*dat.dt*np.sqrt(coss)).real
+                cshift = np.conj(np.cos(phase)+1j*np.sin(phase))
+                FK[iw] *= cshift
 
-                    FK[iw] *= (cc1+cc2+cc3)
-                    # zero if outside domain
-                    idx = coss <= (tau/dat.travel_time[-1]/1e6)**2.
-                    FK[iw,idx] = complex(0.0,0.0)
-                    # sum over all frequencies
-                    TK[itau] += FK[iw]
+                if hasattr(vmig[itau],"__len__"):
+                    # inverse fourier tranform to frequency-space domain
+                    FFX = np.fft.ifft(FK[iw])
+
+                    ### Thin-lens term (Stoffa et al. 1990)
+                    phase2 = (1./vbg - 2./vfg)*w*dat.dt # TODO: I am pretty sure that this is wrong
+                    cshift2 = np.cos(phase2) + 1j*np.sin(phase2)
+                    FFX *= cshift2
+
+                    ### Diffraction term, Finite Difference operator
+                    FFX = fourierFiniteDiff(dat,vfg,w,FFX)
+
+                    # Fourier transform back to frequency-wavenumber domain
+                    FK[iw] = np.fft.fft(FFX)
+
+                # zero if outside domain
+                idx = coss <= (tau/dat.travel_time[-1]/1e6)**2.
+                FK[iw,idx] = 0.0 + 0j
+                # sum over all frequencies
+                TK[itau] += FK[iw]
 
     # Cut to original array size
     TK = TK[:,:dat.tnum]
@@ -376,32 +365,36 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
 
 # -----------------------------------------------------------------------------
 
-def finiteDiff(dat, vmig, kx, ws, FK):
+def fourierFiniteDiff(dat, vmfg, w, FFX):
     """
 
-    Fourier Finite-Difference operator to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
+    Fourier Finite-Difference operator to correct for diffraction in the phase-shift method.
     This is for variable velocity v(x,z).
 
     Parameters
     ---------
     dat: data as a dictionary in the ImpDAR format
     vmig: 2-D array of migration velocity (m/s)
-    kx: 1-D array of horizontal wavenumbers
     ws: 1-D array of temporal frequencies
-    FK: 2-D array of the data image in frequency-wavenumber space (FKx)
+    FFX: 2-D array of the data image in frequency-space (FX)
 
     Output
     ---------
-    cc3
-
-    **
-    The foundation of this script was taken from Seis Unix script sumigffd.c
-    Credits: CWP Baoniu Han, July 21th, 1997
-    **
+    FFX: Updated input term, 2-D array of the data image in frequency-space (FX)
 
     """
 
-    return
+    #**  aa = - alpha /( (0.,-1.)*omega )
+    #**  c = -aa a = -aa; b = 1.+2.*aa;
+    #**  do ix= 2, nx-1
+    #**      cd(ix) = aa*cp(ix+1,iw) + (1.-2.*aa)*cp(ix,iw) + aa*cp(ix-1,iw)
+    #**  cd(1) = 0.; cd(nx) = 0.
+    #**  call ctris( nx, -a, a, b, c, -c, cd, cp(1,iw))
+    #**  cshift = cexp( cmplx( 0.,-omega*dtau))
+    #**  do ix= 1, nx
+    #**      cp(ix,iw) = cp(ix,iw) * cshift do
+
+    return FFX
 
 # -----------------------------------------------------------------------------
 
@@ -455,8 +448,6 @@ def getVelocityProfile(dat,vels_in):
         tofz = tinterp(zs)
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
-        print(tofz)
-        print(dat.travel_time)
         zoft = zinterp(dat.travel_time)
         if dat.travel_time[-1] > tofz[-1]:
             raise ValueError('Two-way travel time array extends outside of interpolation range')
