@@ -52,5 +52,13 @@ class TestMigration(unittest.TestCase):
         out_fn = os.path.join(OUT_DIR,out_prefix+'_PhaseShiftVariable.mat')
         data.save(out_fn)
 
+    def test_PhaseShiftLateral(self):
+        data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', in_file))
+        data = migration_routines.migrationPhaseShift(data,vel_fn='./input_data/velocity_lateral.txt')
+        if not os.path.isdir(OUT_DIR):
+            os.mkdir(OUT_DIR)
+        out_fn = os.path.join(OUT_DIR,out_prefix+'_PhaseShiftLateral.mat')
+        data.save(out_fn)
+
 if __name__ == '__main__':
     unittest.main()
