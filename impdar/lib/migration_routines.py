@@ -334,8 +334,9 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                     # sum over all frequencies
                     TK[itau] += FK[iw]
 
-        # Layered velocity case, vmig=v(x,z)
-        elif np.shape(vmig)[1] == 3:
+        # Lateral velocity case, vmig=v(x,z)
+        elif len(np.shape(vmig)) == 2:
+            meanv = np.mean(vmig[:])
             print('2-D velocity structure, Fourier Finite-Difference Migration')
             # iterate through all output travel times
             for itau in range(dat.snum):
@@ -348,17 +349,19 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                     if w == 0.0:
                         w = 1e-10/dat.dt
 
-                    ###
-                    # add FD operator
-                    # add thin lens term
-                    ###
-
+                    ### First term
                     # cosine squared
-                    coss = 1.0+0j - (0.5 * vmig[itau]*kx/w)**2.
+                    coss = 1.0+0j - (0.5 * meanv*kx/w)**2.
                     # calculate phase for shift
                     phase = (-w*dat.dt*np.sqrt(coss)).real
-                    cc = np.conj(np.cos(phase)+1j*np.sin(phase))
-                    FK[iw] *= cc
+                    cc1 = np.conj(np.cos(phase)+1j*np.sin(phase))
+
+                    ### Second term, thin lens for vertical velocity variations
+                    cc2 = 0.
+                    ### Third term, Finite Difference operator
+                    cc3 = 0.#finiteDiff(dat,vmig,kx,ws,FK)
+
+                    FK[iw] *= (cc1+cc2+cc3)
                     # zero if outside domain
                     idx = coss <= (tau/dat.travel_time[-1]/1e6)**2.
                     FK[iw,idx] = complex(0.0,0.0)
@@ -373,26 +376,23 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
 
 # -----------------------------------------------------------------------------
 
-def finiteDiff(dat, vel, vel_fn, kx, ws, FK):
+def finiteDiff(dat, vmig, kx, ws, FK):
     """
 
-    Fourier Finite-Difference migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
-    This is for either constant or variable velocity v(x,z).
+    Fourier Finite-Difference operator to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
+    This is for variable velocity v(x,z).
 
     Parameters
     ---------
     dat: data as a dictionary in the ImpDAR format
-    vmig: migration velocity (m/s)
-    vel: 3-column array of wave velocities (m/s) and x/z locations (m)
-        If only one layer (i.e. constant velocity) input one layer with zeroes for x/z.
-    vel_fn: filename for layered velocity input
-    kx: horizontal wavenumbers
-    ws: temporal frequencies
+    vmig: 2-D array of migration velocity (m/s)
+    kx: 1-D array of horizontal wavenumbers
+    ws: 1-D array of temporal frequencies
     FK: 2-D array of the data image in frequency-wavenumber space (FKx)
 
     Output
     ---------
-    TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
+    cc3
 
     **
     The foundation of this script was taken from Seis Unix script sumigffd.c
@@ -427,8 +427,12 @@ def getVelocityProfile(dat,vels_in):
 
     """
 
+    # return the input value if it is a constant
     if not hasattr(vels_in,"__len__"):
         return vels_in
+
+    start = time.time()
+    print('Interpolating the velocity profile.')
 
     nlay,dimension = np.shape(vels_in)
     vel_v = vels_in[:,0]
@@ -436,8 +440,9 @@ def getVelocityProfile(dat,vels_in):
 
     ### Layered Velocity
     if nlay > 1 and dimension == 2:
-        # Depth of layer boundaries from input velocity locations
-        zs = np.max(vel_v)*dat.travel_time/1e6/2.    # depth array for maximum possible penetration
+        zs = np.max(vel_v)/2.*dat.travel_time    # depth array for maximum possible penetration
+        zs[0] = dat.travel_time[0]*vel_v[0]/2.
+        # If an input point is closest to a boundary push it to the boundary
         if vel_z[0] > np.nanmin(zs):
             vel_z[0] = np.nanmin(zs)
         if vel_z[-1] < np.nanmax(zs):
@@ -450,17 +455,47 @@ def getVelocityProfile(dat,vels_in):
         tofz = tinterp(zs)
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
-        zoft = zinterp(dat.travel_time/1e6)
-        # TODO: does this need more rigorous testing? Will the interpolated range always be big enough?
-        if dat.travel_time[-1]/1e6 > tofz[-1]:
+        print(tofz)
+        print(dat.travel_time)
+        zoft = zinterp(dat.travel_time)
+        if dat.travel_time[-1] > tofz[-1]:
             raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
-        vmig = 2.*np.gradient(zoft,dat.dt)
+        vmig = 2.*np.gradient(zoft,dat.travel_time)
 
-    ### Lateral Velocity Variations
+    ### Lateral Velocity Variations TODO: I need to check this more rigorously too.
     elif nlay > 1 and dimension == 3:
-        vel_x = vels_in[:,2]
-        print(vel_x)
-        vmig = vel_v
+        vel_x = vels_in[:,2]    # Input velocities
+        # Depth array for largest penetration range
+        zs = np.linspace(np.min(vel_v)*dat.travel_time[0],
+                 np.max(vel_v)*dat.travel_time[-1],
+                 dat.snum)/2.
+        # Use nearest neighbor interpolation to grid the input points onto a mesh
+        from scipy.interpolate import griddata,interp1d
+        if all(dat.dist == 0):
+            raise ValueError('The distance vector was never set.')
+        XS,ZS = np.meshgrid(dat.dist,zs)
+        VS = griddata(np.transpose([vel_x,vel_z]),vel_v,np.transpose([XS.flatten(),ZS.flatten()]),method='nearest')
+        VS = np.reshape(VS,np.shape(XS))
+
+        # convert velocities into travel_time space for all traces
+        vmig = np.zeros_like(VS)
+        for i in range(dat.tnum):
+            vel_z = ZS[:,i]
+            vel_v = VS[:,i]
+            # Compute times from input velocity/location array (vels_in)
+            vel_t = 2*np.array([np.trapz(1./vel_v[:j],vel_z[:j]) for j in range(dat.snum)])
+            # Interpolate to get t(z) for maximum penetration depth array
+            tinterp = interp1d(ZS[:,i],vel_t)
+            tofz = tinterp(zs)
+            # Compute z(t) from monotonically increasing t
+            zinterp = interp1d(tofz,zs)
+            zoft = zinterp(dat.travel_time)
+            if dat.travel_time[-1] > tofz[-1]:
+                raise ValueError('Two-way travel time array extends outside of interpolation range')
+            # Compute vmig(t) from z(t)
+            vmig[:,i] = 2.*np.gradient(zoft,dat.travel_time)
+
+    print('Velocity profile finished in %.2f seconds.'%(time.time()-start))
 
     return vmig
