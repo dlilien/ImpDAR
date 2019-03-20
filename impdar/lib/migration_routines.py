@@ -25,7 +25,7 @@ Mar 12 2019
 import numpy as np
 import time
 from scipy import sparse
-from scipy.interpolate import interp2d, interp1d
+from scipy.interpolate import griddata, interp2d, interp1d
 
 # -----------------------------------------------------------------------------
 
@@ -317,7 +317,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
         # iterate through all output travel times
         for itau in range(dat.snum):
             tau = dat.travel_time[itau]/1e6
-            if itau%100 == 0:
+            if itau%10 == 0:
                 print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
             # iterate through all frequencies
             for iw in range(len(ws)):
@@ -341,7 +341,6 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                 FK[iw] *= cshift
 
                 if hasattr(vmig[itau],"__len__"):
-                    print('Entering FFD loop for w=%.2e MHz and time %.2e'%(w/1e6,tau))
                     # inverse fourier tranform to frequency-space domain
                     FFX = np.fft.ifft(FK[iw])
 
@@ -455,16 +454,18 @@ def getVelocityProfile(dat,vels_in):
     vel_v = vels_in[:,0]
     vel_z = vels_in[:,1]
 
-    twtt = dat.travel_time/1e6
+    twtt = dat.travel_time.copy()/1e6
     ### Layered Velocity
     if nlay > 1 and dimension == 2:
         zs = np.max(vel_v)/2.*twtt      # depth array for maximum possible penetration
         zs[0] = twtt[0]*vel_v[0]/2.
         # If an input point is closest to a boundary push it to the boundary
         if vel_z[0] > np.nanmin(zs):
-            vel_z[0] = np.nanmin(zs)
+            vel_v = np.insert(vel_v,0,vel_v[np.argmin(vel_z)])
+            vel_z = np.insert(vel_z,0,np.nanmin(zs))
         if vel_z[-1] < np.nanmax(zs):
-            vel_z[-1] = np.nanmax(zs)
+            vel_v = np.append(vel_v,vel_v[np.argmax(vel_z)])
+            vel_z = np.append(vel_z,np.nanmax(zs))
         # Compute times from input velocity/location array (vels_in)
         vel_t = 2.*vel_z/vel_v
         # Interpolate to get t(z) for maximum penetration depth array
@@ -486,7 +487,6 @@ def getVelocityProfile(dat,vels_in):
                  np.max(vel_v)*twtt[-1],
                  dat.snum)/2.
         # Use nearest neighbor interpolation to grid the input points onto a mesh
-        from scipy.interpolate import griddata,interp1d
         if all(dat.dist == 0):
             raise ValueError('The distance vector was never set.')
         XS,ZS = np.meshgrid(dat.dist,zs)
