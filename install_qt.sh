@@ -24,7 +24,7 @@ sudo make install
 cd ..
 
 # Install PyQt5
-export PYTHONPATH=$PYTHONPATH:PyQt5_install-$PYQT_VERSION
+export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-$PYQT_VERSION
 ls PyQt5_install-$PYQT_VERSION
 
 python -c 'import PyQt5' 
@@ -37,4 +37,9 @@ else
     python configure.py --confirm-license --qmake=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake --destdir $HOME/PyQt5_install-$PYQT_VERSION
     make
     sudo make install
+fi
+
+python -c 'import PyQt5' 
+if [ "$?" -eq "0" ]; then
+      echo "PyQt5 imported"
 fi
