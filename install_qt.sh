@@ -39,7 +39,7 @@ else
     sudo make install
 fi
 
-python -c 'import PyQt5' 
+python -c 'from PyQt5 import QtCore' 
 if [ "$?" -eq "0" ]; then
       echo "PyQt5 imported"
 fi

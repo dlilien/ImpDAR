@@ -27,7 +27,7 @@ install:
 cache:
     directories:
       - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1
-      - /home/travis/build/dlilien/ImpDAR/PyQt5_install-5.7.1
+      - /home/travis/PyQt5_install-5.7.1
       - $HOME/.cache/pip
 
 deploy:
