@@ -29,7 +29,7 @@ class TestPickMods(unittest.TestCase):
 
     def test_add_pick_loaded(self):
         data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
-        data.picks.add_pick(1)
+        data.picks.add_pick(2)
         self.assertTrue(data.picks.samp1.shape == (3, data.tnum))
 
     def test_add_pick_blank(self):
