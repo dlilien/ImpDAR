@@ -17,6 +17,7 @@ try:
     from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5, QtGui
     from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
     from PyQt5.QtTest import QTest
+    app = QtWidgets.QApplication(sys.argv)
     qt = True
 except ImportError:
     qt = False
@@ -24,8 +25,6 @@ from impdar.lib.RadarData import RadarData
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-app = QtWidgets.QApplication(sys.argv)
 
 
 class DummyEvent:
