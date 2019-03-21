@@ -15,7 +15,6 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.figure import Figure
-from scipy.spatial import cKDTree as KDTree
 from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5, QtGui
 if is_pyqt5():
     from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
@@ -122,16 +121,20 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             if hasattr(dat.flags, 'elev') and dat.flags.elev:
                 yd = dat.elevation
                 self.ax.set_ylabel('Elevation (m)')
+                self.y = 'depth'
             else:
                 self.ax.invert_yaxis()
                 if ydat == 'twtt':
                     self.yd = dat.travel_time
                     self.ax.set_ylabel('Two way travel time (usec)')
+                    self.y = 'twtt'
                 elif ydat == 'depth':
                     if dat.nmo_depth is not None:
                         self.yd = dat.nmo_depth
+                        self.y = 'nmo_depth'
                     else:
                         self.yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+                        self.y = 'depth'
                     self.ax.set_ylabel('Depth (m)')
 
             if xdat == 'tracenum':
@@ -397,38 +400,23 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         fn, test = QFileDialog.getOpenFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn, "All Files (*);;mat Files (*.mat)")
         if fn:
             dat_cross = RadarData.RadarData(fn)
-            if dat_cross.picks is None or dat_cross.picks.picknums is None or len(dat_cross.picks.picknums) == 0 or dat_cross.picks.samp1 is None:
-                msg = QtWidgets.QMessageBox()
-                msg.setIcon(QtWidgets.QMessageBox.Warning)
-
-                msg.setText('No cross picks')
-                msg.setInformativeText('There are no picks in the crossprofile for us to load')
-                msg.setWindowTitle("No picks")
-                msg.setStandardButtons(QMessageBox.Ok)
-                retval = msg.exec_()
+            try:
+                out_tnums, out_snums = picklib.get_intersection(self.dat, dat_cross)
+            except AttributeError:
+                warn('No picks', 'There are no picks in the crossprofile for us to load')
                 return
 
             # Check if we are in depth or time space
-            if np.all(self.yd == self.dat.travel_time):
+            if self.y == 'twtt':
                 y_coords_plot = dat_cross.travel_time
-            else:
+            elif self.y in ['depth', 'nmo_depth']:
                 if dat_cross.nmo_depth is not None:
                     y_coords_plot = dat_cross.nmo_depth
                 else:
                     y_coords_plot = dat_cross.travel_time / 2.0 * 1.69e8 * 1.0e-6
-
-            tree = KDTree(np.vstack((self.dat.x_coord.flatten(), self.dat.y_coord.flatten())).transpose())
-            for i, pn in enumerate(dat_cross.picks.picknums):
-                mask_pick_not_nan = ~np.isnan(dat_cross.picks.samp1[i])
-                closest_dist, closest_inds = tree.query(np.vstack((dat_cross.x_coord[mask_pick_not_nan].flatten(), dat_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
-
-                # need the spot in the cross profile that is closest
-                ind_dat_cross = np.argmin(closest_dist)
-
-                # Where to plot this on the main profile
-                tnum = closest_inds[ind_dat_cross]
-
-                yv = y_coords_plot[dat_cross.picks.samp1[i, :][mask_pick_not_nan][ind_dat_cross].astype(int)]
+            
+            for tnum, snum, pn in zip(out_tnums, out_snums, dat_cross.picks.picknums):
+                yv = y_coords_plot[snum]
                 self.ax.plot([tnum], [yv], linestyle='none', marker=symbols_for_cps[self.cp], color='k', markersize=10)
                 self.ax.text(tnum, yv, str(pn), color='w', ha='center', va='center', fontsize=8)
 
@@ -558,7 +546,7 @@ class VBPInputDialog(QDialog):
         layout.addRow(self.minlabel, self.minspin)
         layout.addRow(self.maxlabel, self.maxspin)
         self.cancel = QtWidgets.QPushButton("Cancel")
-        self.ok = QtWidgets.QPushButton("Ok")
+        self.ok = QtWidgets.QPushButton("Ok")(dat_cross.picks.picknums)
         layout.addRow(self.cancel, self.ok)
         self.ok.clicked.connect(self.clickOK)
         self.cancel.clicked.connect(self.close)
@@ -572,8 +560,6 @@ class VBPInputDialog(QDialog):
         self.lims = (self.minspin.value(), self.maxspin.value())
         self.accept()
 
-
-class CropInputDialog(QDialog):
     def __init__(self, parent=None):
         super(CropInputDialog, self).__init__(parent)
         layout = QtWidgets.QFormLayout()
@@ -626,6 +612,17 @@ class CropInputDialog(QDialog):
         if val == 'depth':
             self.spinnerlabel.setText('Cutoff in depth (m):')
             self.spinner.setDecimals(2)
+
+
+def warn(message, long_message):
+    msg = QtWidgets.QMessageBox()
+    msg.setIcon(QtWidgets.QMessageBox.Warning)
+
+    msg.setText(message)
+    msg.setInformativeText(long_message)
+    msg.setWindowTitle(message)
+    msg.setStandardButtons(QMessageBox.Ok)
+    return msg.exec_()
 
 
 # We want to add this fancy colormap
