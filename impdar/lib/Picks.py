@@ -18,13 +18,17 @@ from .PickParameters import PickParameters
 class Picks():
     """Information about picks"""
     attrs = ['samp1', 'samp2', 'samp3', 'time', 'power', 'picknums']
+    flatten = [False, False, False, False, False, True]
     spec_attrs = ['lasttrace', 'lt', 'pickparams']
 
     def __init__(self, radardata, pick_struct=None):
         if pick_struct is not None:
             # Loading from a file
-            for attr in self.attrs:
+            for attr, flat in zip(self.attrs, self.flatten):
                 setattr(self, attr, pick_struct[attr][0][0])
+                if flat:
+                    setattr(self, attr, getattr(self, attr).flatten())
+
                 # Convert matlab zeros to Nones
                 if getattr(self, attr).shape == (1, 1) and getattr(self, attr)[0][0] == 0:
                     setattr(self, attr, None)

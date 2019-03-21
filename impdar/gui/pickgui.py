@@ -146,6 +146,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                         colors = 'byy'
                     self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
                     self._pick_ind = i
+                    self.pickNumberBox.setValue(self.dat.picks.picknums[i])
                     self.update_lines(colors=colors, picker=5)
 
             self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
@@ -163,6 +164,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.FrequencySpin.valueChanged.connect(self._freq_update)
             self.modeButton.clicked.connect(self._mode_update)
             self.newpickButton.clicked.connect(self._add_pick)
+            self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
 
             plt.show(self.fig)
         except KeyboardInterrupt:
@@ -188,6 +190,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _freq_update(self, val):
         self.dat.picks.pickparams.freq_update(val)
         self.freq = val
+
+    def _pickNumberUpdate(self, val):
+        # Do not use picks that already exist
+        if self.dat.picks is not None and self.dat.picks.picknums is not None:
+            if val not in self.dat.picks.picknums:
+                self.dat.picks.picknums[self._pick_ind] = val
+            elif self.dat.picks.picknums[self._pick_ind] == val:
+                pass
+            else:
+                self.pickNumberBox.setValue(val + 1)
 
     def _mode_update(self):
         _translate = QtCore.QCoreApplication.translate
@@ -235,7 +247,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """
         tnum, snum = np.argmin(np.abs(self.xd - event.xdata)), np.argmin(np.abs(self.yd - event.ydata))
         if len(self.cline) == 0:
-            self._add_pick()
+            self._add_pick(snum=snum, tnum=tnum)
         else:
             if event.button == 1:
                 if self._n_pressed:
@@ -254,7 +266,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """We are given a snum, tnum location in the image: follow layer to that point, plot it"""
         picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum], self.dat.picks.lasttrace.snum[self._pick_ind], snum, pickparams=self.dat.picks.pickparams)
         self.current_pick[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum] = picks
-        self.dat.picks.update_pick(self._pick_ind, self.current_pick)
+        self.dat.picks.update_pick(self.dat.picks.picknums[self._pick_ind], self.current_pick)
         self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
         self.dat.picks.lasttrace.snum[self._pick_ind] = snum
 
@@ -318,6 +330,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     c.set_color('b')
                     b.set_color('y')
                     t.set_color('y')
+
+        self.pickNumberBox.setValue(self.dat.picks.picknums[self._pick_ind])
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -417,7 +431,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.progressLabel.setText('Cropping...')
             self.progressBar.setProperty("value", 25)
             QtWidgets.QApplication.processEvents()
-            self.dat.crop(dialog.val, dimension=dialog.inputtype, top_or_bottom=dialog.top_or_bottom)
+            self.dat.crop(dialog.val, dimension=dialpickNumberBox.og.inputtype, top_or_bottom=dialog.top_or_bottom)
             self.progressBar.setProperty("value", 75)
             QtWidgets.QApplication.processEvents()
             self.update_radardata()
@@ -439,7 +453,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if event.key == 'n':
             self._n_pressed = False
 
-    def _add_pick(self):
+    def _add_pick(self, tnum=None, snum=None):
         # Give the user a visual clue to what is being picked by using different colors for the old lines
         # I think that c, b, t should always be the same length, if this doesnt work I think it means there is a deeper bug
         for cl, bl, tl in zip(self.cline, self.bline, self.tline):
@@ -453,11 +467,25 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.cline.append(None)
         self.bline.append(None)
         self.tline.append(None)
-        pick_ind = self.dat.picks.add_pick()
-        self._pick_ind = pick_ind - 1
+        pickNum = self.pickNumberBox.value() + 1
+        newp = False
+        while not newp:
+            try:
+                pick_ind = self.dat.picks.add_pick(pickNum)
+                self._pick_ind = pick_ind - 1
+                self.pickNumberBox.setValue(pickNum)
+                newp = True
+            except ValueError:
+                pickNum += 1
         d = np.zeros((5, self.dat.tnum))
         d[d == 0] = np.nan
         self.current_pick = d
+        if snum is not None:
+            if tnum is None:
+                tnum = 0
+            self.current_pick[:, tnum] = picklib.packet_pick(self.dat.data[:, tnum], self.dat.picks.pickparams, snum)
+            self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+            self.dat.picks.lasttrace.snum[self._pick_ind] = snum
 
 
 class VBPInputDialog(QDialog):
