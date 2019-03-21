@@ -6,6 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
+import sys
 from .ui import RawPickGUI
 from ..lib import plot, RadarData, picklib
 import numpy as np
@@ -14,7 +15,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.figure import Figure
-import sys
+from scipy.spatial import cKDTree as KDTree
 from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5, QtGui
 if is_pyqt5():
     from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
@@ -22,6 +23,8 @@ if is_pyqt5():
 else:
     from matplotlib.backends.backend_qt4agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
     from PyQt4.QtWidgets import QFileDialog, QMessageBox, QDialog
+
+symbols_for_cps = ['o', 'd', 's']
 
 
 def pick(radardata, guard_save=True, xd=False, yd=False):
@@ -59,6 +62,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actionClose.triggered.connect(self.close)
 
         #pick menu
+        self.actionLoad_crossprofile.triggered.connect(self._load_cp)
 
         # Process menu
         self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
@@ -92,6 +96,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.pick_pts = []
         self.dat = dat
         self.current_pick = None
+
+        # For loading cross profiles, we want to use multiple symbols
+        self.cp = 0
 
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
@@ -384,6 +391,50 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self._saved = True
         self.actionSave_pick.triggered.disconnect()
         self.actionSave_pick.triggered.connect(self._save_as)
+
+    def _load_cp(self, event=None):
+        """Load a cross profile"""
+        fn, test = QFileDialog.getOpenFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn, "All Files (*);;mat Files (*.mat)")
+        if fn:
+            dat_cross = RadarData.RadarData(fn)
+            if dat_cross.picks is None or dat_cross.picks.picknums is None or len(dat_cross.picks.picknums) == 0 or dat_cross.picks.samp1 is None:
+                msg = QtWidgets.QMessageBox()
+                msg.setIcon(QtWidgets.QMessageBox.Warning)
+
+                msg.setText('No cross picks')
+                msg.setInformativeText('There are no picks in the crossprofile for us to load')
+                msg.setWindowTitle("No picks")
+                msg.setStandardButtons(QMessageBox.Ok)
+                retval = msg.exec_()
+                return
+
+            # Check if we are in depth or time space
+            if np.all(self.yd == self.dat.travel_time):
+                y_coords_plot = dat_cross.travel_time
+            else:
+                if dat_cross.nmo_depth is not None:
+                    y_coords_plot = dat_cross.nmo_depth
+                else:
+                    y_coords_plot = dat_cross.travel_time / 2.0 * 1.69e8 * 1.0e-6
+
+            tree = KDTree(np.vstack((self.dat.x_coord.flatten(), self.dat.y_coord.flatten())).transpose())
+            for i, pn in enumerate(dat_cross.picks.picknums):
+                mask_pick_not_nan = ~np.isnan(dat_cross.picks.samp1[i])
+                closest_dist, closest_inds = tree.query(np.vstack((dat_cross.x_coord[mask_pick_not_nan].flatten(), dat_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
+
+                # need the spot in the cross profile that is closest
+                ind_dat_cross = np.argmin(closest_dist)
+
+                # Where to plot this on the main profile
+                tnum = closest_inds[ind_dat_cross]
+
+                yv = y_coords_plot[dat_cross.picks.samp1[i, :][mask_pick_not_nan][ind_dat_cross].astype(int)]
+                self.ax.plot([tnum], [yv], linestyle='none', marker=symbols_for_cps[self.cp], color='k', markersize=10)
+                self.ax.text(tnum, yv, str(pn), color='w', ha='center', va='center', fontsize=8)
+
+            self.cp += 1
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     ######
     # Decorators for processing

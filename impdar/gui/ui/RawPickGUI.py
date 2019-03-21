@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1031, 726)
+        MainWindow.resize(999, 715)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)
@@ -119,7 +119,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addLayout(self.verticalLayout_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1031, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 999, 22))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -168,6 +168,8 @@ class Ui_MainWindow(object):
         self.actionCrop.setObjectName("actionCrop")
         self.actionReverse = QtWidgets.QAction(MainWindow)
         self.actionReverse.setObjectName("actionReverse")
+        self.actionLoad_crossprofile = QtWidgets.QAction(MainWindow)
+        self.actionLoad_crossprofile.setObjectName("actionLoad_crossprofile")
         self.menuSave_mat.addAction(self.actionSave_pick)
         self.menuSave_mat.addAction(self.actionSave_as)
         self.menuSave_figure.addAction(self.actionSave_as_png)
@@ -181,6 +183,8 @@ class Ui_MainWindow(object):
         self.menuPick.addAction(self.actionPrevious)
         self.menuPick.addSeparator()
         self.menuPick.addAction(self.actionExport)
+        self.menuPick.addSeparator()
+        self.menuPick.addAction(self.actionLoad_crossprofile)
         self.menuProcess.addAction(self.actionVertical_band_pass)
         self.menuProcess.addAction(self.actionAdaptive_Horizontal_filter)
         self.menuProcess.addAction(self.actionCrop)
@@ -236,6 +240,7 @@ class Ui_MainWindow(object):
         self.actionAdaptive_Horizontal_filter.setText(_translate("MainWindow", "Adaptive Horizontal filter..."))
         self.actionCrop.setText(_translate("MainWindow", "Crop..."))
         self.actionReverse.setText(_translate("MainWindow", "Reverse"))
+        self.actionLoad_crossprofile.setText(_translate("MainWindow", "Load crossprofile"))
 
 from .mplfigcanvaswidget import MplFigCanvasWidget
 

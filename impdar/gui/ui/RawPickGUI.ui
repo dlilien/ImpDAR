@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1031</width>
-    <height>726</height>
+    <width>999</width>
+    <height>715</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -294,7 +294,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1031</width>
+     <width>999</width>
      <height>22</height>
     </rect>
    </property>
@@ -335,6 +335,8 @@
     <addaction name="actionPrevious"/>
     <addaction name="separator"/>
     <addaction name="actionExport"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoad_crossprofile"/>
    </widget>
    <widget class="QMenu" name="menuProcess">
     <property name="title">
@@ -437,6 +439,11 @@
   <action name="actionReverse">
    <property name="text">
     <string>Reverse</string>
+   </property>
+  </action>
+  <action name="actionLoad_crossprofile">
+   <property name="text">
+    <string>Load crossprofile</string>
    </property>
   </action>
  </widget>
