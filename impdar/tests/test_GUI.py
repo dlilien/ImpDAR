@@ -15,13 +15,14 @@ import unittest
 import numpy as np
 import matplotlib
 matplotlib.use('QT5Agg')
-from PyQt5 import QtCore, QtWidgets, QtGui
-from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
-from PyQt5.QtTest import QTest
-app = QtWidgets.QApplication(sys.argv)
-qt = True
-#except ImportError:
-#    qt = False
+try:
+    from PyQt5 import QtCore, QtWidgets, QtGui
+    from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
+    from PyQt5.QtTest import QTest
+    app = QtWidgets.QApplication(sys.argv)
+    qt = True
+except ImportError:
+    qt = False
 from impdar.lib.RadarData import RadarData
 
 
