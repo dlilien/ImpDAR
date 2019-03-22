@@ -6,6 +6,9 @@ python:
   #- 3.6-dev
   #- 3.7-dev
 
+services:
+      - xvfb
+
 env:
     #    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
     #    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
@@ -40,7 +43,7 @@ deploy:
   skip_existing: true
   distributions: "sdist bdist_wheel"
 
-script: coverage run --source impdar --omit=impdar/tests/*,impdar/bin/* setup.py test
+script: xvfb-run --server-args="-screen 0 1200x1080x24" coverage run --source impdar --omit=impdar/tests/*,impdar/bin/* setup.py test
 
 
 after_success:
