@@ -16,13 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtWidgets, QtGui
-from matplotlib.backends.qt_compat import is_pyqt5
-if is_pyqt5():
-    from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-    from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
-else:
-    from matplotlib.backends.backend_qt4agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-    from PyQt4.QtWidgets import QFileDialog, QMessageBox, QDialog
+from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 
 symbols_for_cps = ['o', 'd', 's']
 
