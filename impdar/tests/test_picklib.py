@@ -17,6 +17,8 @@ from impdar.lib import picklib, Picks, RadarData
 
 traces = np.random.random((300, 200))
 
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class BareRadarData(RadarData.RadarData):
 
@@ -26,7 +28,7 @@ class BareRadarData(RadarData.RadarData):
         self.picks = Picks.Picks(self)
 
 
-class TestPick(unittest.TestCase):
+class TestPickLib(unittest.TestCase):
 
     def test_midpoint(self):
         # Fully test that we find midpoints as expected
@@ -91,6 +93,17 @@ class TestPick(unittest.TestCase):
         picks = picklib.pick(easy_pick_traces, 99, 105, data.picks.pickparams)
         self.assertTrue(np.all(picks[0, :] == 95))
         self.assertTrue(np.all(picks[1, :] == 101))
+
+    def test_intersection(self):
+        thisdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'along_picked.mat'))
+        thatdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'cross_picked.mat'))
+        nopickdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        tnum, sn = picklib.get_intersection(thisdata, thatdata)
+        self.assertTrue(len(sn) == len(thatdata.picks.picknums))
+        tnum, sn = picklib.get_intersection(thatdata, thisdata)
+        self.assertTrue(len(sn) == len(thisdata.picks.picknums))
+        with self.assertRaises(AttributeError):
+            tnum, sn = picklib.get_intersection(thisdata, nopickdata)
 
 
 if __name__ == '__main__':

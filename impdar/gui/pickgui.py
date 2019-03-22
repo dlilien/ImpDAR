@@ -6,7 +6,6 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-import sys
 from .ui import RawPickGUI
 from ..lib import plot, RadarData, picklib
 import numpy as np
@@ -20,25 +19,6 @@ from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 
 symbols_for_cps = ['o', 'd', 's']
-
-
-def pick(radardata, guard_save=True, xd=False, yd=False):
-    if xd:
-        x = 'dist'
-    else:
-        x = 'tracenum'
-    if yd:
-        y = 'depth'
-    else:
-        y = 'twtt'
-
-    if not hasattr(radardata, 'picks') or radardata.picks is None:
-        radardata.picks = RadarData.Picks(radardata)
-
-    app = QtWidgets.QApplication(sys.argv)
-    ip = InteractivePicker(radardata, xdat=x, ydat=y)
-    ip.show()
-    sys.exit(app.exec_())
 
 
 class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
@@ -101,11 +81,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         try:
             if xdat not in ['tracenum', 'dist']:
                 raise ValueError('x axis choices are tracenum or dist')
-            if ydat not in ['twtt', 'depth']:
+            if ydat not in ['twtt', 'depth', 'elev']:
                 raise ValueError('y axis choices are twtt or depth')
 
             if x_range is None:
-                self.x_range = (0, -1)
+                x_range = (0, -1)
             if x_range[-1] == -1:
                 self.x_range = (x_range[0], self.dat.tnum)
 
@@ -114,10 +94,13 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.minSpinner.setValue(self.lims[0])
             self.maxSpinner.setValue(self.lims[1])
             self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
-            if hasattr(dat.flags, 'elev') and dat.flags.elev:
-                yd = dat.elevation
-                self.ax.set_ylabel('Elevation (m)')
-                self.y = 'depth'
+            if ydat == 'elev':
+                if hasattr(dat.flags, 'elev') and dat.flags.elev:
+                    self.yd = dat.elevation
+                    self.ax.set_ylabel('Elevation (m)')
+                    self.y = 'elev'
+                else:
+                    raise ValueError('No elevation variable to use')
             else:
                 self.ax.invert_yaxis()
                 if ydat == 'twtt':
@@ -136,9 +119,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             if xdat == 'tracenum':
                 self.xd = np.arange(int(self.dat.tnum))[self.x_range[0]:self.x_range[-1]]
                 self.ax.set_xlabel('Trace number')
+                self.x = 'tnum'
             elif xdat == 'dist':
                 self.xd = self.dat.dist[self.x_range[0]:self.x_range[-1]]
                 self.ax.set_xlabel('Distance (km)')
+                self.x = 'dist'
 
             self.im = self.ax.imshow(dat.data[:, self.x_range[0]:self.x_range[-1]], cmap=plt.cm.gray, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             if self.dat.picks.samp1 is not None:

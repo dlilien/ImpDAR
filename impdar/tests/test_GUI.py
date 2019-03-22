@@ -40,6 +40,32 @@ class TestInteractivePicker(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.ip = InteractivePicker(data)
 
+    def test_other_lims(self):
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        ip = InteractivePicker(data, xdat='dist')
+        self.assertEqual(ip.x, 'dist')
+        with self.assertRaises(ValueError):
+            ip = InteractivePicker(data, xdat='dum')
+        ip = InteractivePicker(data, ydat='twtt')
+        self.assertEqual(ip.y, 'twtt')
+        ip = InteractivePicker(data, ydat='depth')
+        self.assertEqual(ip.y, 'depth')
+        data.nmo_depth = data.travel_time
+        ip = InteractivePicker(data, ydat='depth')
+        self.assertEqual(ip.y, 'nmo_depth')
+        with self.assertRaises(ValueError):
+            ip = InteractivePicker(data, ydat='dum')
+
+        with self.assertRaises(ValueError):
+            ip = InteractivePicker(data, ydat='elev')
+        data.elevation = np.arange(ip.dat.tnum)
+        data.flags.elev = True
+        ip = InteractivePicker(data, ydat='elev')
+        self.assertEqual(ip.y, 'elev')
+
+        ip = InteractivePicker(data, x_range=None)
+        self.assertEqual(ip.x_range, (0, ip.dat.tnum))
+
     def test_PickNum(self):
         self.ip.pickNumberBox.setValue(1)
 
