@@ -353,7 +353,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _save_cancel_close(self, event):
         dialog = QMessageBox()
-        dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel)
+        dialog.setStandardButtons(QMessageBox.Save, QMessageBox.Close, QMessageBox.Cancel)
         result = dialog.exec()
         if result == QMessageBox.Cancel:
             event.ignore()
