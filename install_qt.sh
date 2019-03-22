@@ -24,7 +24,7 @@ sudo make install
 cd ..
 
 # Install PyQt5
-export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-$PYQT_VERSION
+export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
 
 python -c 'import PyQt5' 
 if [ "$?" -eq "0" ]; then

@@ -13,6 +13,7 @@ env:
       #    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true
 
 before_install:
+ - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
  - sudo add-apt-repository --yes ppa:ubuntu-sdk-team/ppa
  - sudo apt-get update -qq
 
@@ -20,6 +21,7 @@ install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
 - if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; export CPLUS_INCLUDE_PATH=/usr/include/gdal; export C_INCLUDE_PATH=/usr/include/gdal; pip install gdal==1.10.0; fi
+- export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
 - pip install -r requirements.txt
 - pip install coveralls
 - pip install .
