@@ -354,7 +354,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _save_cancel_close(self, event):
         dialog = QMessageBox()
         dialog.setStandardButtons(QMessageBox.Save, QMessageBox.Close, QMessageBox.Cancel)
-        result = dialog.exec()
+        result = dialog.exec_()
         if result == QMessageBox.Cancel:
             event.ignore()
         elif result == QMessageBox.Close:
@@ -443,7 +443,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _vbp(self, event):
         dialog = VBPInputDialog()
-        result = dialog.exec()
+        result = dialog.exec_()
         if result != 0:
             self.progressLabel.setText('Vertically Bandpassing...')
             self.progressBar.setProperty("value", 25)
@@ -461,7 +461,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _crop(self, event):
         dialog = CropInputDialog()
-        result = dialog.exec()
+        result = dialog.exec_()
         if result != 0:
             self.progressLabel.setText('Cropping...')
             self.progressBar.setProperty("value", 25)
@@ -542,7 +542,7 @@ class VBPInputDialog(QDialog):
         layout.addRow(self.minlabel, self.minspin)
         layout.addRow(self.maxlabel, self.maxspin)
         self.cancel = QtWidgets.QPushButton("Cancel")
-        self.ok = QtWidgets.QPushButton("Ok")(dat_cross.picks.picknums)
+        self.ok = QtWidgets.QPushButton("Ok")
         layout.addRow(self.cancel, self.ok)
         self.ok.clicked.connect(self.clickOK)
         self.cancel.clicked.connect(self.close)
@@ -556,6 +556,8 @@ class VBPInputDialog(QDialog):
         self.lims = (self.minspin.value(), self.maxspin.value())
         self.accept()
 
+
+class CropInputDialog(QDialog):
     def __init__(self, parent=None):
         super(CropInputDialog, self).__init__(parent)
         layout = QtWidgets.QFormLayout()
