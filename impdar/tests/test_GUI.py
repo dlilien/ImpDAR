@@ -14,7 +14,7 @@ import os
 import unittest
 import numpy as np
 #try:
-from matplotlib.backends.qt_compat import QtCore, QtWidgets, is_pyqt5, QtGui
+from PyQt5 import QtCore, QtWidgets, QtGui
 from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
 from PyQt5.QtTest import QTest
 app = QtWidgets.QApplication(sys.argv)
