@@ -118,9 +118,24 @@ class TestInteractivePicker(unittest.TestCase):
 
     def test_color_select(self):
         self.ip._color_select('bone')
-        self.assertTrue(self.im.get_cmap(), 'bone')
+        self.assertTrue(self.ip.im.get_cmap(), 'bone')
         self.ip._color_select('CEGSIC')
-        self.assertTrue(self.im.get_cmap(), 'CEGSIC')
+        self.assertTrue(self.ip.im.get_cmap(), 'CEGSIC')
+
+    def test_lim_update(self):
+        self.ip._update_lims(-100, 100)
+        self.assertEqual(self.ip.im.get_clim(), (-100, 100))
+        with self.assertRaises(ValueError):
+            self.ip._update_lims(100, -100)
+        self.ip.minSpinner.setValue(-999)
+        self.ip.maxSpinner.setValue(999)
+        self.assertEqual(self.ip.im.get_clim(), (-999, 999))
+        self.ip.minSpinner.setValue(1000)
+        self.assertEqual(self.ip.im.get_clim(), (1000, 1001))
+
+    def test_mode_update(self):
+        self.ip._mode_update()
+        self.ip._mode_update()
 
 
 @unittest.skipIf(not qt, 'No Qt')

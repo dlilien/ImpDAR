@@ -172,7 +172,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _lim_update(self, val):
         if self.maxSpinner.value() < self.minSpinner.value():
             self.maxSpinner.setValue(self.minSpinner.value() + 1)
-        self.im.set_clim(vmin=self.minSpinner.value(), vmax=self.maxSpinner.value())
+        return self._update_lims(self.minSpinner.value(), self.maxSpinner.value())
+
+    def _update_lims(self, vmin, vmax):
+        if vmin >= vmax:
+            raise ValueError('Min must be less than max')
+        self.im.set_clim(vmin=vmin, vmax=vmax)
         self.lims[0] = self.minSpinner.value()
         self.lims[1] = self.maxSpinner.value()
         self.fig.canvas.draw()
