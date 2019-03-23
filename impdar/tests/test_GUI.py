@@ -116,6 +116,12 @@ class TestInteractivePicker(unittest.TestCase):
         self.ip._add_pick(snum=10, tnum=None)
         self.assertTrue(self.ip.current_pick[1, 0] > 5)
 
+    def test_color_select(self):
+        self.ip._color_select('bone')
+        self.assertTrue(self.im.get_cmap(), 'bone')
+        self.ip._color_select('CEGSIC')
+        self.assertTrue(self.im.get_cmap(), 'CEGSIC')
+
 
 @unittest.skipIf(not qt, 'No Qt')
 class TestVBP(unittest.TestCase):
