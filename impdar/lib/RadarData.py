@@ -19,6 +19,8 @@ from ._RadarDataFiltering import RadarDataFiltering
 from .RadarFlags import RadarFlags
 from .Picks import Picks
 
+from .horizontal_filters import hfilt, adaptivehfilt
+from .migration_routines import *
 try:
     from osgeo import osr, ogr
     conversions_enabled = True
@@ -28,7 +30,7 @@ except ImportError:
 
 class RadarData(RadarDataSaving, RadarDataFiltering):
     """A class that holds the relevant information for a radar profile.
-    
+
     We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
 
     
@@ -90,6 +92,137 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
+
+    def save(self, fn):
+        """Save the radar data
+
+        Parameters
+        ----------
+        fn: str
+            Filename. Should have a .mat extension
+        """
+        mat = {}
+        for attr in self.attrs_guaranteed:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                # this guards against error in matlab format
+                mat[attr] = 0
+        for attr in self.attrs_optional:
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+        if hasattr(self, 'picks') and self.picks is not None:
+            mat['picks'] = self.picks.to_struct()
+        if self.flags is not None:
+            mat['flags'] = self.flags.to_matlab()
+        else:
+            # We want the structure available to prevent read errors from corrupt files
+            mat['flags'] = RadarFlags().to_matlab()
+        savemat(fn, mat)
+
+    def vertical_band_pass(self, low, high, order=5, *args, **kwargs):
+        """Vertically bandpass the data
+
+        This function uses a forward-backward Butterworth filter to filter the data. Returns power that is not near the wavelength of the transmitter is assumed to be noise, so the limits for the filtering should generally surround the radar frequency. Some experimentation to see what provides the clearest results is probably needed for any given dataset.
+
+        Parameters
+        ----------
+        low: float
+            Lowest frequency passed, in MHz
+        high: float
+            Highest frequency passed, in MHz
+        order: int
+            Filter order (default 5)
+        """
+        # adapted from bandpass.m  v3.1 - this function performs a banspass filter in the
+        # time-domain of the radar data to remove environmental noise.  The routine
+        # currently uses a 5th order Butterworth filter.
+        # We have a lot of power to mess with this because scipy. Keeping the butter for now.
+        #
+        #Created as stand alone script bandpass.m prior to 1997
+        #  Modification history:
+        #   1) Input changes made by A. Weitzel 7/10/97
+        #   2) Switched to 5th-order Butterworth filter - P. Pearson, 7/2001
+        #   3) Coverted for use in StoDeep and added pre-allocation of filtdata
+        #       variable - B. Welch 10/2001
+        #   4) Filters "stackdata" by default (if it exists),
+        #		otherwise filters "data" - Peter Pearson, 2/13/02
+        #   5) Now user can filter any standard StoDeep data variable that exists in
+        #       memory using a menu displayed for the user - L. Smith, 5/27/03
+        #   6) Converted to function and data variable is now passed to the function
+        #       rather than selected within the script. - B. Welch, 5/1/06
+        #	7) Updated input and outputs to include flags structure. Also added
+        #		code to update flags structure - J. Olson 7/10/08
+        #
+        # first determine the cut-off corner frequencies - expressed as a
+        #	fraction of the Nyquist frequency (half the sample freq).
+        # 	Note: all of this is in Hz
+        Sample_Freq = 1.0 / self.dt  	# dt=time/sample (seconds)
+
+        #calculate the Nyquist frequency
+        Nyquist_Freq = 0.5 * Sample_Freq
+
+        Low_Corner_Freq = low * 1.0e6
+        High_Corner_Freq = high * 1.0e6
+
+        corner_freq = np.zeros((2,))
+        corner_freq[0] = Low_Corner_Freq / Nyquist_Freq
+        corner_freq[1] = High_Corner_Freq / Nyquist_Freq
+
+        b, a = butter(order, corner_freq, 'bandpass')
+
+        # provide feedback to the user
+        print('Bandpassing from {:4.1f} to {:4.1f} MHz...'.format(low, high))
+        self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
+        print('Bandpass filter complete.')
+
+        # set flags structure components
+        self.flags.bpass[0] = 1
+        self.flags.bpass[1] = low
+        self.flags.bpass[2] = high
+
+    def hfilt(self, ftype='hfilt', bounds=None):
+        """Horizontally filter the data.
+
+        This is a wrapper around other filter types. Horizontal filters are implemented (and documented) in the :mod:`impdar.lib.horizontal_filters` module.
+
+        Parameters
+        ----------
+        ftype: str, optional
+            The filter type. Options are :func:`hfilt <impdar.lib.horizontal_filters.hfilt>` and :func:`adaptive <impdar.lib.horizontal_filters.adaptivehfilt>`. Default hfilt
+        bounds: tuple, optional
+            Bounds for the hfilt. Default is None, but required if ftype is hfilt.
+        """
+        if ftype == 'hfilt':
+            hfilt(self, bounds[0], bounds[1])
+        elif ftype == 'adaptive':
+            adaptivehfilt(self)
+        else:
+            raise ValueError('Unrecognized filter type')
+
+    def migrate(self, mtype='stolt', **kwargs):
+        """Migrate the data.
+
+        This is a wrapper around all the migration routines in migration_routines.py.
+
+        Parameters
+        ----------
+        mtype: str, optional
+            The chosen migration routine. Options are: kirch, stolt, phsh.
+            Default: stolt
+        """
+        if mtype == 'kirch':
+            migrationKirchhoff(self,**kwargs)
+        elif mtype == 'stolt':
+            migrationStolt(self,**kwargs)
+        elif mtype == 'phsh':
+            migrationPhaseShift(self,**kwargs)
+        else:
+            raise ValueError('Unrecognized migration routine')
+
+        # change migration flag
+        self.flags.mig = mtype
+
 
     def reverse(self):
         """Reverse radar data
@@ -197,7 +330,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         #calculate the new variables for the y-axis after NMO is complete
         self.travel_time = np.arange((-self.trig) * self.dt, (nmodata.shape[0] - nair) * self.dt, self.dt) * 1.0e6
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
-        
+
         self.data = nmodata
 
         self.flags.nmo[0] = 1
@@ -324,7 +457,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         """Restack the radar data to a constant spacing.
 
         This method uses the GPS information (i.e. the distance, x, y, lat, and lon), to do a 1-d interpolation to get new values in the radargram. It also updates related variables like lat, long, elevation, and coordinates. To avoid retaining sections of the radargram when the antenna was in fact stationary, some minimum movement between traces is enforced. This value is in meters, and should change to be commensurate with the collection strategy (e.g. skiing a radar is slower than towing it with a snowmobile).
-        
+
         This function comprises the second half of what was done by StoDeep's interpdeep. If you have GPS data from an external, high-precision GPS, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data.
 
         Parameters
@@ -371,3 +504,322 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
 
         self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1
+
+    def output_shp(self, fn, t_srs=4326):
+        if not conversions_enabled:
+            raise ImportError('osgeo was not imported')
+        out_srs = osr.SpatialReference()
+        out_srs.ImportFromEPSG(t_srs)
+        in_srs = osr.SpatialReference()
+        in_srs.ImportFromEPSG(4326)
+        cT = osr.CoordinateTransformation(in_srs, out_srs)
+
+        driver = ogr.GetDriverByName('ESRI Shapefile')
+        data_source = driver.CreateDataSource(fn)
+        layer = data_source.CreateLayer('traces', out_srs, ogr.wkbPoint)
+        layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
+        if hasattr(self, 'layers') and self.layers is not None:
+            for i in range(len(self.layers)):
+                layer.CreateField(ogr.FieldDefn('Layer {:d}'.format(i), ogr.OFTReal))
+
+        # Process the text file and add the attributes and features to the shapefile
+        for trace in range(self.tnum):
+            feature = ogr.Feature(layer.GetLayerDefn())
+            feature.SetField('TraceNum', trace)
+            if hasattr(self, 'layers') and self.layers is not None:
+                for i in range(len(self.layers)):
+                    feature.SetField('Layer {:d}'.format(i), self.layers[i][trace])
+            x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])
+            wkt = 'POINT({:f} {:f})'.format(x, y)
+            point = ogr.CreateGeometryFromWkt(wkt)
+            feature.SetGeometry(point)
+            layer.CreateFeature(feature)
+            feature = None
+        data_source = None
+
+
+class RadarFlags():
+    """Flags that indicate the processing that has been used on the data.
+
+    These are used for figuring out whether different processing steps have been performed. They also contain some information about the input arguments for some (but not all) of the processing steps.
+
+    Attributes
+    ----------
+    batch: bool
+        Legacy indication of whether we are batch processing. Always False.
+    agc: bool
+        Automatic gain control has been applied.
+    reverse: bool
+        Data have been reversed.
+    restack: bool
+        Data have been restacked.
+    rgain: bool
+        Data have a linear range gain applied.
+    bpass: 3x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
+    hfilt: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if horizontally filtered; (2) Filter type
+    interp: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
+    mig: 2x1 :class: String
+        None if no migration done, mtype if migration done.
+     """
+
+    def __init__(self):
+        self.batch = False
+        self.bpass = np.zeros((3,))
+        self.hfilt = np.zeros((2,))
+        self.rgain = False
+        self.agc = False
+        self.restack = False
+        self.reverse = False
+        self.crop = np.zeros((3,))
+        self.nmo = np.zeros((2,))
+        self.interp = np.zeros((2,))
+        self.mig = 'none'
+        self.elev = 0
+        self.elevation = 0
+        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
+        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
+
+    def to_matlab(self):
+        """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
+        """
+        outmat = {att: getattr(self, att) for att in self.attrs}
+        for attr in self.bool_attrs:
+            outmat[attr] = 1 if outmat[attr] else 0
+        return outmat
+
+    def from_matlab(self, matlab_struct):
+        """Associate all values from an incoming .mat file (i.e. a dictionary from :func:`scipy.io.loadmat`) with appropriate attributes
+        """
+        for attr, attr_dim in zip(self.attrs, self.attr_dims):
+            setattr(self, attr, matlab_struct[attr][0][0][0])
+            # Use this because matlab inputs may have zeros for flags that
+            # were lazily appended to be arrays, but we preallocate
+            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+                setattr(self, attr, np.zeros((attr_dim, )))
+
+        for attr in self.bool_attrs:
+            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)
+
+
+class Picks():
+    """Information about picks"""
+    attrs = ['samp1', 'samp2', 'samp3', 'time', 'power', 'picknums']
+    spec_attrs = ['lasttrace', 'lt', 'pickparams']
+
+    def __init__(self, radardata, pick_struct=None):
+        if pick_struct is not None:
+            # Loading from a file
+            for attr in self.attrs:
+                setattr(self, attr, pick_struct[attr][0][0])
+                # Convert matlab zeros to Nones
+                if getattr(self, attr) == np.zeros((1, 1)):
+                    setattr(self, attr, None)
+            self.lasttrace = LastTrace(pick_struct['lasttrace'])
+            self.lt = LeaderTrailer(radardata, pick_struct['lt'])
+            self.pickparams = PickParameters(radardata, pick_struct['pickparams'])
+        else:
+            # Blank initialization
+            self.samp1 = None
+            self.samp2 = None
+            self.samp3 = None
+            self.time = None
+            self.power = None
+            self.picknums = None
+            self.lasttrace = LastTrace()
+            self.lt = LeaderTrailer(radardata)
+            self.pickparams = PickParameters(radardata)
+
+        # These are not in StoInterpret, but I'm using them to keep life more object oriented
+        self.radardata = radardata
+        # This will contain the handles for all the lines plotted so we can do some selection
+        self.lines = []
+
+    def add_pick(self, picknum=0):
+        if self.samp1 is None:
+            # We have no matrices yet
+            self.samp1 = np.zeros((1, self.radardata.tnum))
+            self.samp2 = np.zeros((1, self.radardata.tnum))
+            self.samp3 = np.zeros((1, self.radardata.tnum))
+            self.time = np.zeros((1, self.radardata.tnum))
+            self.power = np.zeros((1, self.radardata.tnum))
+            self.picknums = [picknum]
+            self.lasttrace.add_pick(-9999, 0)
+        elif np.all(np.isnan(self.samp1[-1, :])):
+            # If the last pick is blank, we just overwrite it. Zero the pick.
+            self.mod_line(self.samp1.shape[0], 0, 0)
+        else:
+            # We are just adding a row to the existing matrices of samples etc.
+            self.samp1 = np.vstack((self.samp1, np.zeros((1, self.radardata.tnum))))
+            self.samp2 = np.vstack((self.samp2, np.zeros((1, self.radardata.tnum))))
+            self.samp3 = np.vstack((self.samp3, np.zeros((1, self.radardata.tnum))))
+            self.time = np.vstack((self.time, np.zeros((1, self.radardata.tnum))))
+            self.power = np.vstack((self.power, np.zeros((1, self.radardata.tnum))))
+            self.lasttrace.add_pick(-9999, 0)
+            self.picknums.append(picknum)
+        # We return the row number of the sample, which gives access to all its info
+        return self.samp1.shape[0]
+
+    def update_pick(self, picknum, pick_info):
+        self.samp1[picknum, :] = pick_info[0, :]
+        self.samp2[picknum, :] = pick_info[1, :]
+        self.samp3[picknum, :] = pick_info[2, :]
+        self.time[picknum, :] = pick_info[3, :]
+        self.power[picknum, :] = pick_info[4, :]
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        for attr in self.spec_attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr).to_struct()
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class LastTrace():
+    """The sample and trace of the last trace for picking"""
+    attrs = ['snum', 'tnum']
+
+    def __init__(self, lasttrace_struct=None):
+        if lasttrace_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, lasttrace_struct[0][0][attr][0][0].flatten())
+        else:
+            self.snum = None
+            self.tnum = None
+
+    def add_pick(self, snum, tnum):
+        if self.snum is None:
+            self.snum = [snum]
+            self.tnum = [tnum]
+        else:
+            self.snum.append(snum)
+            self.tnum.append(tnum)
+
+    def mod_line(self, ind, snum, tnum):
+        self.snum[ind] = snum
+        self.tnum[ind] = tnum
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class LeaderTrailer():
+    """The lt structure from StoInterpret"""
+    attrs = ['llength', 'tlength', 'ltmatrix']
+
+    def __init__(self, radardata, lt_struct=None):
+        if lt_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, lt_struct[0][0][attr])
+            self.crop = Crop(radardata)
+        else:
+            self.llength = 0
+            self.tlength = 0
+            self.ltmatrix = 0
+            self.crop = Crop(radardata)
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        mat['crop'] = self.crop.to_struct()
+        return mat
+
+
+class Crop():
+    """Crop information. I have no idea what this is for but it is retained for backwards compatibility"""
+    attrs = ['tnum', 'maxsnum', 'mintt', 'maxtt']
+
+    def __init__(self, radardata):
+        self.tnum = radardata.tnum
+        self.maxsnum = radardata.snum
+        self.mintt = np.min(radardata.travel_time)
+        self.maxtt = np.max(radardata.travel_time)
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat
+
+
+class PickParameters():
+    """Some information for picking
+
+    Attributes
+    ----------
+    apickthresh: float
+        Some kind of auto picking threshold that I have not yet used (default 10)
+    freq: float
+        Frequency of the layer pick (default 4)
+    dt: float
+        Time between acquisitions
+    plength: float
+        Some function of dt and freq
+    FWW: float
+        Some function of dt and freq
+    scst: float
+        Some function of plength and FWW
+    pol: int
+        Polarity of the picks
+    apickflag: int
+        I think this just kept track of whether StoDeep was autopicking
+    addpicktype: str
+        Some flag
+    radardata: `RadarData`
+        A link back up to the RadarData object with which this is affiliated
+    """
+    attrs = ['apickthresh', 'freq', 'dt', 'plength', 'FWW', 'scst', 'pol', 'apickflag', 'addpicktype']
+
+    def __init__(self, radardata, pickparams_struct=None):
+        if pickparams_struct is not None:
+            for attr in self.attrs:
+                setattr(self, attr, pickparams_struct[0][0][attr][0][0][0][0])
+        else:
+            self.apickthresh = 10
+            self.freq = 4
+            self.dt = radardata.dt
+            self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.dt)))
+            self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.dt))))
+            self.scst = int(round((self.plength - self.FWW) / 2))
+            self.pol = 1
+            self.apickflag = 1
+            self.addpicktype = 'zero'
+        self.radardata = radardata
+
+    def freq_update(self, val):
+        self.freq = val
+        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
+        self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
+        self.scst = int(round((self.plength - self.FWW) / 2))
+
+    def to_struct(self):
+        mat = {}
+        for attr in self.attrs:
+            if getattr(self, attr) is not None:
+                mat[attr] = getattr(self, attr)
+            else:
+                mat[attr] = 0
+        return mat

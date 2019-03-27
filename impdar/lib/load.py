@@ -10,13 +10,13 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko
+from . import load_gssi, load_pulse_ekko, load_gprMax
+from .RadarData import RadarData
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
-from .RadarData import RadarData
 
 
 def load(filetype, fns):
@@ -26,6 +26,7 @@ def load(filetype, fns):
     ----------
     filetype: str
         The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
     fns: list
         List of files to load
 
@@ -47,6 +48,8 @@ def load(filetype, fns):
             dat = [load_segy.load_segy(fn) for fn in fns]
         else:
             raise ImportError('Failed to import segyio, cannot read segy')
+    elif filetype == 'gprMax':
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
@@ -58,7 +61,7 @@ def load_and_exit(filetype, fn, *args, **kwargs):
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
     fn: list or str
         List of files to load (or a single file)
     """
@@ -79,8 +82,8 @@ def load_and_exit(filetype, fn, *args, **kwargs):
 
 def load_mat(fn):
     """Load a .mat with radar info
-    
-    Just toss this in here so we have similar naming for 
+
+    Just toss this in here so we have similar naming for
 
     Parameters
     ----------
