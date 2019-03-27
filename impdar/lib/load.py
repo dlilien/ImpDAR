@@ -11,10 +11,7 @@ A wrapper around the other loading utilities
 """
 import os.path
 from . import load_gssi, load_pulse_ekko, load_gprMax
-<<<<<<< HEAD
 from .RadarData import RadarData
-=======
->>>>>>> ccc8f7542a42325b8d3d8511e90d9085e3b6940b
 try:
     from . import load_segy
     segy = True
