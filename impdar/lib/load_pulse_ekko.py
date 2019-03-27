@@ -25,7 +25,7 @@ class PE(RadarData):
         true_fn = bn + '.DT1'
         gps_fn = bn + '.GPS'
 
-        with open(hdname, 'r') as fin:
+        with open(hdname, 'rU') as fin:
             for i, line in enumerate(fin):
                 if 'TRACES' in line:
                     self.tnum = int(line.rstrip('\n\r ').split(' ')[-1])

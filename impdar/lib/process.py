@@ -107,10 +107,10 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
             if crop[2] not in ['snum', 'twtt', 'depth']:
                 raise ValueError('Second element of crop must be in ["snum", "twtt", "depth"]')
             try:
-                crop[0] = float(crop[0])
+                crop = (float(crop[0]), crop[1], crop[2])
             except ValueError:
                 raise ValueError('Third element of crop must be convertible to a float')
-        except IndexError:
+        except TypeError:
             raise TypeError('Crop must be subscriptible')
 
     done_stuff = False

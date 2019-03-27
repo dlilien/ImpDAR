@@ -23,5 +23,5 @@ if __name__ == '__main__':
                      license='GNU GPL-3.0',
                      entry_points={'console_scripts': console_scripts},
                      install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
-                     packages=['impdar', 'impdar.lib', 'impdar.bin'],
+                     packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui'],
                      test_suite='nose.collector')

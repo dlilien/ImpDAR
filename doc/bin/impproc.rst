@@ -5,6 +5,10 @@ An executable to perform single processing steps.
 
 This has a lot of convenience in terms of the call since you get more help with commands, more control of arguments, control over the order in which things are done, etc, but has the disadvantage of requiring a call/load/write for every step.
 
+You can get a list of commands with ``impproc -h``
+
+For any individual command, you can get more help by running ``impproc [command] -h``.
+
 Examples
 --------
 
@@ -41,9 +45,7 @@ The same processing steps can be done without separating the output into differe
 
     # Outputs are now sitting around with _vbp_hfilt_nmo before the extension
 
-
-.. _hfilt: #hfilt
-
+A similar example, with visualization of the outputs, is :doc:`here </../examples/processing>`.
 
 Usage
 -----
@@ -52,8 +54,3 @@ Usage
     :module: impdar.bin.impproc
     :func: _get_args
     :prog: impproc.py
-
-
-    `hfilt`_
-
-

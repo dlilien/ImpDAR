@@ -10,23 +10,42 @@
 An executable to start the picker.
 """
 
-
+import sys
 import argparse
+from PyQt5 import QtWidgets
 
-from impdar.lib import pickgui, load
+from impdar.gui import pickgui
 
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Button, TextBox
+from impdar.lib import load
+
 from matplotlib import rc
 rc('text', usetex=False) 
+
+
+def pick(radardata, guard_save=True, xd=False, yd=False):
+    if xd:
+        x = 'dist'
+    else:
+        x = 'tracenum'
+    if yd:
+        y = 'depth'
+    else:
+        y = 'twtt'
+
+    if not hasattr(radardata, 'picks') or radardata.picks is None:
+        radardata.picks = RadarData.Picks(radardata)
+
+    app = QtWidgets.QApplication(sys.argv)
+    ip = pickgui.InteractivePicker(radardata, xdat=x, ydat=y)
+    ip.show()
+    sys.exit(app.exec_())
 
 
 def main():
     parser = _get_args()
     args = parser.parse_args()
     radardata = load.load('mat', [args.fn])[0]
-    ip = pickgui.pick(radardata, guard_save=True, xd=args.xd, yd=args.yd)
+    ip = pick(radardata, guard_save=True, xd=args.xd, yd=args.yd)
 
 
 def _get_args():
