@@ -1,0 +1,4 @@
+The example SEGY data are taken from https://wiki.seg.org/wiki/2004_BP_velocity_estimation_benchmark_model.
+They were first modified to reduce filesize by taking only the traces from the first shot.
+
+Other example data were collected by researchers at UW and may have similarly been modified to reduce filesize.
