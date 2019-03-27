@@ -23,7 +23,7 @@ def _get_args():
 
     parser_load = subparsers.add_parser('load', help='Load data')
     parser_load.set_defaults(func=load.load_and_exit)
-    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'gprMax', 'mat', 'segy'])
+    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'gprMax', 'mat','segy'])
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
 

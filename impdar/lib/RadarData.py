@@ -11,8 +11,7 @@ Define a class that just has the necessary attributes for a StODeep file--this s
 """
 
 import numpy as np
-from scipy.io import loadmat, savemat
-from scipy.signal import butter, filtfilt
+from scipy.io import loadmat
 from scipy.interpolate import interp1d
 from ._RadarDataSaving import RadarDataSaving
 from ._RadarDataFiltering import RadarDataFiltering
@@ -33,7 +32,6 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
 
     We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
 
-    
     Attributes
     ----------
     data: :class:`numpy.ndarray`

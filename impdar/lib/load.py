@@ -11,12 +11,16 @@ A wrapper around the other loading utilities
 """
 import os.path
 from . import load_gssi, load_pulse_ekko, load_gprMax
+<<<<<<< HEAD
 from .RadarData import RadarData
+=======
+>>>>>>> ccc8f7542a42325b8d3d8511e90d9085e3b6940b
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
+from .RadarData import RadarData
 
 
 def load(filetype, fns):
@@ -27,6 +31,7 @@ def load(filetype, fns):
     filetype: str
         The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
         The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
+        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format)
     fns: list
         List of files to load
 
@@ -43,6 +48,8 @@ def load(filetype, fns):
         dat = [load_pulse_ekko.load_pe(fn) for fn in fns]
     elif filetype == 'mat':
         dat = [load_mat(fn) for fn in fns]
+    elif filetype == 'gprMax':
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]

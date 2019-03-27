@@ -12,7 +12,6 @@ Flags to keep track of processing steps
 
 import numpy as np
 
-
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
 
@@ -36,7 +35,9 @@ class RadarFlags():
         Elements: (1) 1 if horizontally filtered; (2) Filter type
     interp: 2x1 :class:`numpy.ndarray`
         Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
-    """
+    mig: 2x1 :class: String
+        None if no migration done, mtype if migration done.
+     """
 
     def __init__(self):
         self.batch = False
@@ -49,12 +50,12 @@ class RadarFlags():
         self.crop = np.zeros((3,))
         self.nmo = np.zeros((2,))
         self.interp = np.zeros((2,))
-        self.mig = False
+        self.mig = 'none'
         self.elev = 0
         self.elevation = 0
         self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None] 
-        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain', 'mig']
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
+        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
@@ -69,7 +70,7 @@ class RadarFlags():
         """
         for attr, attr_dim in zip(self.attrs, self.attr_dims):
             setattr(self, attr, matlab_struct[attr][0][0][0])
-            # Use this because matlab inputs may have zeros for flags that 
+            # Use this because matlab inputs may have zeros for flags that
             # were lazily appended to be arrays, but we preallocate
             if attr_dim is not None and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
