@@ -10,15 +10,13 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_gecko
 from .RadarData import RadarData
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
-from .RadarData import RadarData
-
 
 def load(filetype, fns):
     """Load a list of files of a certain type
@@ -26,10 +24,14 @@ def load(filetype, fns):
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format)
-    fns: list
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
+   fns: list
         List of files to load
 
     Returns
@@ -47,6 +49,8 @@ def load(filetype, fns):
         dat = [load_mat(fn) for fn in fns]
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns]
+    elif filetype == 'gecko':
+        dat = [load_gecko.load_gecko(fn) for fn in fns]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]
@@ -65,7 +69,13 @@ def load_and_exit(filetype, fn, *args, **kwargs):
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
     """
