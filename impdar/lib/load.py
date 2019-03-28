@@ -18,7 +18,7 @@ try:
 except ImportError:
     segy = False
 
-def load(filetype, fns):
+def load(filetype, fns, channel):
     """Load a list of files of a certain type
 
     Parameters
@@ -50,7 +50,7 @@ def load(filetype, fns):
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     elif filetype == 'gecko':
-        dat = [load_gecko.load_gecko(fn) for fn in fns]
+        dat = [load_gecko.load_gecko(fn, channel) for fn in fns]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]
@@ -63,7 +63,7 @@ def load(filetype, fns):
     return dat
 
 
-def load_and_exit(filetype, fn, *args, **kwargs):
+def load_and_exit(filetype, fn, channel, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -81,7 +81,7 @@ def load_and_exit(filetype, fn, *args, **kwargs):
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
-    dat = load(filetype, fn)
+    dat = load(filetype, fn, channel)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']
