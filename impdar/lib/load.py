@@ -18,7 +18,7 @@ try:
 except ImportError:
     segy = False
 
-def load(filetype, fns, channel):
+def load(filetype, fns, channel=1):
     """Load a list of files of a certain type
 
     Parameters
@@ -63,7 +63,7 @@ def load(filetype, fns, channel):
     return dat
 
 
-def load_and_exit(filetype, fn, channel, *args, **kwargs):
+def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters

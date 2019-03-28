@@ -88,7 +88,7 @@ class gecko(RadarData):
             self.RecordInterval = np.fromfile(fid, np.int16, 1)[0]
             self.NumberOfStacks = np.fromfile(fid, np.int16, 1)[0]
             self.SampFreq = np.fromfile(fid, np.int16, 1)[0]*1e6
-            self.dt = 1/self.SampFreq
+            self.dt = 1./self.SampFreq
             self.PreTriggerDepth = np.fromfile(fid, np.int16, 1)[0]
             self.PostTriggerDepth = np.fromfile(fid, np.int16, 1)[0]
             self.snum = self.PreTriggerDepth + self.PostTriggerDepth
@@ -103,7 +103,7 @@ class gecko(RadarData):
             else:
                 Warning('Unkown in Trigger Source')
             # Trigger slope (0 = positive, 1 = negative)
-            self.TriggerSlope = np.fromfile(fid, np.int8, 1)[0]
+            self.TriggerSlope = np.fromfile(fid, np.uint8, 1)[0]
             if self.TriggerSlope == 0:
                 self.TriggerSlopeString = 'Positive'
             elif self.TriggerSlope == 1:
@@ -156,7 +156,7 @@ class gecko(RadarData):
                 # Voltage Range
                 self.VoltRange[nn] = np.fromfile(fid,np.int16,1)[0]
                 # Channel Impedance (0 = 50 Ohm, 1 = 1 MOhm)
-                self.Impedance[nn] = np.fromfile(fid,np.int8,1)[0]
+                self.Impedance[nn] = np.fromfile(fid,np.uint8,1)[0]
                 if self.Impedance[nn] == 0:
                     self.ImpedanceString[nn] = '1 MOhm'
                 elif self.Impedance[nn] == 1:
@@ -185,82 +185,99 @@ class gecko(RadarData):
             # Set trace counter
             nTrc = 0
             while fid.tell() < eof:
-                try:
-                    nTrc += 1
-                    # Preallocate the arrays
-                    if nTrc == 1:
-                        self.trace_num = np.array([])
-                        self.decday = np.array([])
-                        self.trace_int = np.array([])
-                        self.trig_level = np.array([])
-                        self.Odometer = np.array([])
-                        self.pressure = np.array([])
-                        self.lat = np.array([])
-                        self.long = np.array([])
-                        self.elev = np.array([])
-                        self.GPSResolution = np.array([])
-                        self.data = np.empty((0,self.snum))
-                    for nn in range(self.nChannels):
-                        # Read Trace header type (0 = Trace, 1 = Marker, 2 = Comment)
-                        nHeaderType = np.fromfile(fid,np.uint8,1)
-                        # Recording channel number
-                        nChan = np.fromfile(fid,np.uint8,1)[0]
-                        if nChan != nn+1:
-                            raise TypeError('Corrupt Channel header, %s instead of %s'%(nChan,nn+1))
-                        # Trace number in file set
-                        trace_num = np.fromfile(fid,np.int32,1)[0]
+                nTrc += 1
+                if nTrc%100 == 0:
+                    print(fn)
+                    print('Loading... Trace #',nTrc)
+                    print(fid.tell(),eof,self.nChannels)
+                # Preallocate the arrays
+                if nTrc == 1:
+                    self.trace_num = np.array([])
+                    self.decday = np.array([])
+                    self.trace_int = np.array([])
+                    self.trig_level = np.array([])
+                    self.Odometer = np.array([])
+                    self.pressure = np.array([])
+                    self.lat = np.array([])
+                    self.long = np.array([])
+                    self.elev = np.array([])
+                    self.GPSResolution = np.array([])
+                    self.data = np.empty((0,self.snum))
+                for nn in range(self.nChannels):
+                    # Read Trace header type (0 = Trace, 1 = Marker, 2 = Comment)
+                    nHeaderType = np.fromfile(fid,np.uint8,1)
+                    # Recording channel number
+                    nChan = np.fromfile(fid,np.uint8,1)[0]
+                    if nChan != nn+1:
+                        raise TypeError('Corrupt Channel header, %s instead of %s'%(nChan,nn+1))
+                    # Trace number in file set
+                    trace_num = np.fromfile(fid,np.int32,1)[0]
+                    # We add an offset to 1 Jan 1970 to get MATLAB date numbers
+                    decday = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal()
+                    # Stacks/trace
+                    # Unless record mode is stacks, then it is time/trace
+                    trace_int = np.fromfile(fid,np.float32,1)[0]
+                    # Trigger level in percentage of input range in mV
+                    trig_level = np.fromfile(fid,np.int16,1)[0]
+                    # This is a bug that was fixed since no versions have ever used
+                    # an odometer or pressure reading. 3.6 and beyond do not use
+                    # these fields.
+                    if self.Version < 3.21:
+                        # Odometer readings (0 if no Odometer is used)
+                        Odometer = np.fromfile(fid,np.float32,1)[0]
+                        # Pressure gauge (0 if no pressure gauge is used)
+                        pressure = np.fromfile(fid,np.float32,1)[0]
+                    # GPS Lat/Long/elev
+                    lat = np.fromfile(fid,np.float64,1)[0]
+                    long = np.fromfile(fid,np.float64,1)[0]
+                    elev = np.fromfile(fid,np.float32,1)[0]
+                    # GPS accuracy
+                    GPSResolution = np.fromfile(fid,np.float32,1)[0]
+                    # Read and toss last blank bytes
+                    # (Only needed for pre 3.6 version)
+                    if self.Version < 3.6:
+                        if self.Version < 3.2:
+                            buffer = np.fromfile(fid,np.int8,12)
+                        else:
+                            buffer = np.fromfile(fid,np.int8,14)
+                    # If it is actual radar data, not a comment or marker
+                    if nHeaderType == 0:
+                        # Read the trace data
+                        newdata = np.fromfile(fid,np.int16,self.snum)
+                    elif nHeaderType == 1:
+                        # Read marker number
+                        nNumber = np.fromfile(fid,np.int16,1)
+                        # Read trace number
+                        buffer = np.fromfile(fid,np.int32,1)
                         # We add an offset to 1 Jan 1970 to get MATLAB date numbers
-                        decday = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal()
-                        # Stacks/trace
-                        # Unless record mode is stacks, then it is time/trace
-                        trace_int = np.fromfile(fid,np.float32,1)[0]
-                        # Trigger level in percentage of input range in mV
-                        trig_level = np.fromfile(fid,np.int16,1)[0]
-                        # This is a bug that was fixed since no versions have ever used
-                        # an odometer or pressure reading. 3.6 and beyond do not use
-                        # these fields.
+                        buffer = np.fromfile(fid,np.float64,1) + date(1970,1,1);
+                        # GPS Latitude
+                        buffer = np.fromfile(fid,np.float64,1)
+                        # GPS longitude
+                        buffer = np.fromfile(fid,np.float64,1)
+                        # GPS altitude
+                        buffer = np.fromfile(fid,np.float32,1)
+                        # GPS altitude
+                        buffer = np.fromfile(fid,np.float32,1)
+                        # Break the channel loop and restart
+                        break
+                    # These variables are only recorded accurately on the first channel
+                    if nn+1 == 1:
+                        self.trace_num = np.append(self.trace_num,trace_num)
+                        self.decday = np.append(self.decday,decday)
+                        self.trace_int = np.append(self.trace_int,trace_int)
+                        self.trig_level = np.append(self.trig_level,trig_level)
                         if self.Version < 3.21:
-                            # Odometer readings (0 if no Odometer is used)
-                            Odometer = np.fromfile(fid,np.float32,1)[0]
-                            # Pressure gauge (0 if no pressure gauge is used)
-                            pressure = np.fromfile(fid,np.float32,1)[0]
-                        # GPS Lat/Long/elev
-                        lat = np.fromfile(fid,np.float64,1)[0]
-                        long = np.fromfile(fid,np.float64,1)[0]
-                        elev = np.fromfile(fid,np.float32,1)[0]
-                        # GPS accuracy
-                        GPSResolution = np.fromfile(fid,np.float32,1)[0]
-                        # Read and toss last blank bytes
-                        # (Only needed for pre 3.6 version)
-                        if self.Version < 3.6:
-                            if self.Version < 3.2:
-                                buffer = np.fromfile(fid,np.int16,12)
-                            else:
-                                buffer = np.fromfile(fid,np.int16,14)
-                        # If it is actual radar data, not a comment or marker
-                        if nHeaderType == 0:
-                            # Read the trace data
-                            newdata = np.fromfile(fid,np.int16,self.snum)
-                        # If on the desired output channel then write to the class instance
-                        if nn+1 == self.chan:
-                            self.trace_num = np.append(self.trace_num,trace_num)
-                            self.decday = np.append(self.decday,decday)
-                            self.trace_int = np.append(self.trace_int,trace_int)
-                            self.trig_level = np.append(self.trig_level,trig_level)
-                            if self.Version < 3.21:
-                                self.Odometer = np.append(self.Odometer,Odometer)
-                                self.pressure = np.append(self.pressure,pressure)
-                            self.lat = np.append(self.lat,lat)
-                            self.long = np.append(self.long,long)
-                            self.elev = np.append(self.elev,elev)
-                            self.GPSResolution = np.append(self.GPSResolution,GPSResolution)
-                            # Store data
-                            self.data = np.append(self.data,[newdata],axis=0)
-                except:
-                    # Display error message
-                    raise TypeError('Error reading the file: %s'%fn)
-
-
+                            self.Odometer = np.append(self.Odometer,Odometer)
+                            self.pressure = np.append(self.pressure,pressure)
+                        self.lat = np.append(self.lat,lat)
+                        self.long = np.append(self.long,long)
+                        self.elev = np.append(self.elev,elev)
+                        self.GPSResolution = np.append(self.GPSResolution,GPSResolution)
+                    # If on the desired output channel then write to the class instance
+                    if nn+1 == self.chan:
+                        # Store data
+                        self.data = np.append(self.data,[newdata],axis=0)
 
             # -----------------------------------------------------------------------------
             ### Finalize output ###

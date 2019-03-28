@@ -113,6 +113,8 @@ def add_def_args(parser):
     parser.add_argument('-pe', action='store_true', help='Inputs are pulse ekko files')
     parser.add_argument('-gssi', action='store_true', help='Inputs are gssi files')
     parser.add_argument('-gprMax', action='store_true', help='Inputs are gprMax files')
+    parser.add_argument('-gecko', action='store_true', help='Inputs are gecko files')
+    parser.add_argument('-segy', action='store_true', help='Inputs are segy files')
 
 
 def main():
@@ -130,6 +132,10 @@ def main():
         radar_data = load('pe', args.fns)
     elif args.gprMax:
         radar_data = load('gprMax', args.fns)
+    elif args.gecko:
+        radar_data = load('gecko', args.fns)
+    elif args.segy:
+        radar_data = load('segy', args.fns)
     else:
         radar_data = load('mat', args.fns)
 
