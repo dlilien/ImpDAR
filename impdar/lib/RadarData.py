@@ -18,7 +18,6 @@ from ._RadarDataFiltering import RadarDataFiltering
 from .RadarFlags import RadarFlags
 from .Picks import Picks
 
-from .horizontal_filters import hfilt, adaptivehfilt
 from .migration_routines import *
 try:
     from osgeo import osr, ogr
