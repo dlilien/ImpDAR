@@ -89,9 +89,9 @@ class gecko(RadarData):
             self.NumberOfStacks = np.fromfile(fid, np.int16, 1)[0]
             self.SampFreq = np.fromfile(fid, np.int16, 1)[0]*1e6
             self.dt = 1./self.SampFreq
-            self.PreTriggerDepth = np.fromfile(fid, np.int16, 1)[0]
-            self.PostTriggerDepth = np.fromfile(fid, np.int16, 1)[0]
-            self.snum = self.PreTriggerDepth + self.PostTriggerDepth
+            self.trig = np.fromfile(fid, np.int16, 1)[0]
+            self.PostTrigger = np.fromfile(fid, np.int16, 1)[0]
+            self.snum = self.trig + self.PostTrigger
             #Trigger source (1 = Chan A, 2 = Chan B, -1 = External)
             self.TriggerSource = np.fromfile(fid, np.int8, 1)[0]
             if self.TriggerSource == 1:
@@ -185,22 +185,22 @@ class gecko(RadarData):
             # Set trace counter
             nTrc = 0
             while fid.tell() < eof:
-                nTrc += 1
                 if nTrc%100 == 0:
                     print('Loading... Trace #',nTrc)
                 # Preallocate the arrays
-                if nTrc == 1:
-                    self.trace_num = np.array([])
-                    self.decday = np.array([])
-                    self.trace_int = np.array([])
-                    self.trig_level = np.array([])
-                    self.Odometer = np.array([])
-                    self.pressure = np.array([])
-                    self.lat = np.array([])
-                    self.long = np.array([])
-                    self.elev = np.array([])
-                    self.GPSResolution = np.array([])
-                    self.data = np.empty((0,self.snum))
+                if nTrc == 0:
+                    maxTrc = 2500
+                    self.trace_num = np.empty((maxTrc))
+                    self.decday = np.empty((maxTrc))
+                    self.trace_int = np.empty((maxTrc))
+                    self.trig_level = np.empty((maxTrc))
+                    self.Odometer = np.empty((maxTrc))
+                    self.pressure = np.empty((maxTrc))
+                    self.lat = np.empty((maxTrc))
+                    self.long = np.empty((maxTrc))
+                    self.elev = np.empty((maxTrc))
+                    self.GPSResolution = np.empty((maxTrc))
+                    self.data = np.empty((maxTrc,self.snum))
                 for nn in range(self.nChannels):
                     # Read Trace header type (0 = Trace, 1 = Marker, 2 = Comment)
                     nHeaderType = np.fromfile(fid,np.uint8,1)
@@ -261,25 +261,38 @@ class gecko(RadarData):
                         break
                     # These variables are only recorded accurately on the first channel
                     if nn+1 == 1:
-                        self.trace_num = np.append(self.trace_num,trace_num)
-                        self.decday = np.append(self.decday,decday)
-                        self.trace_int = np.append(self.trace_int,trace_int)
-                        self.trig_level = np.append(self.trig_level,trig_level)
+                        self.trace_num[nTrc] = trace_num
+                        self.decday[nTrc] = decday
+                        self.trace_int[nTrc] = trace_int
+                        self.trig_level[nTrc] = trig_level
                         if self.Version < 3.21:
-                            self.Odometer = np.append(self.Odometer,Odometer)
-                            self.pressure = np.append(self.pressure,pressure)
-                        self.lat = np.append(self.lat,lat)
-                        self.long = np.append(self.long,long)
-                        self.elev = np.append(self.elev,elev)
-                        self.GPSResolution = np.append(self.GPSResolution,GPSResolution)
+                            self.Odometer[nTrc] = Odometer
+                            self.pressure[nTrc] = pressure
+                        self.lat[nTrc] = lat
+                        self.long[nTrc] = long
+                        self.elev[nTrc] = elev
+                        self.GPSResolution[nTrc] = GPSResolution
                     # If on the desired output channel then write to the class instance
                     if nn+1 == self.chan:
                         # Store data
-                        self.data = np.append(self.data,[newdata],axis=0)
+                        self.data[nTrc,:] = newdata
+                nTrc += 1
 
             # -----------------------------------------------------------------------------
             ### Finalize output ###
 
+            # scale everything back to the actual number of traces
+            self.trace_num = self.trace_num[:nTrc]
+            self.decday = self.decday[:nTrc]
+            self.trace_int = self.trace_int[:nTrc]
+            self.trig_level = self.trig_level[:nTrc]
+            self.Odometer = self.Odometer[:nTrc]
+            self.pressure = self.pressure[:nTrc]
+            self.lat = self.lat[:nTrc]
+            self.long = self.long[:nTrc]
+            self.elev = self.elev[:nTrc]
+            self.GPSResolution = self.GPSResolution[:nTrc]
+            self.data = self.data[:nTrc,:]
             # transpose
             self.data = np.transpose(self.data)
             # other variables are from the array shape
@@ -294,7 +307,6 @@ class gecko(RadarData):
             self.x_coord = np.zeros((self.tnum,))
             self.y_coord = np.zeros((self.tnum,))
             self.dist = np.arange(self.tnum)
-            self.trig = np.zeros((self.tnum,))
 
             for attr in ['chan','data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
                 if getattr(self, attr) is None:
