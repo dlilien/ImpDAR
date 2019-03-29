@@ -67,8 +67,8 @@ class gecko(RadarData):
             self.Version = np.fromfile(fid, np.int16, 1)[0]/100
             # File Name ends in NULL character
             self.Filename = fid.read(64)
-            # Decimal day from 1 Jan 1970 We add an offset to 1 Jan 1970
-            self.Serialtime = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal()
+            # Decimal day, We add an offset to 1 Jan 1970 and add 366 to get to MATLAB serial date
+            self.Serialtime = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal() + 366.
             self.Timezone = int(np.fromfile(fid,np.int16,1)[0])//1440
             # number of recorded channels
             self.chan = channel
@@ -180,16 +180,14 @@ class gecko(RadarData):
             ### Trace Headers and Data ###
 
             # Travel time
-            self.travel_time = np.arange(-self.PreTriggerDepth,
+            self.travel_time = 1e6*np.arange(-self.PreTriggerDepth,
                                          self.PostTriggerDepth)*1./self.SampFreq
             # Set trace counter
             nTrc = 0
             while fid.tell() < eof:
                 nTrc += 1
                 if nTrc%100 == 0:
-                    print(fn)
                     print('Loading... Trace #',nTrc)
-                    print(fid.tell(),eof,self.nChannels)
                 # Preallocate the arrays
                 if nTrc == 1:
                     self.trace_num = np.array([])
@@ -212,8 +210,8 @@ class gecko(RadarData):
                         raise TypeError('Corrupt Channel header, %s instead of %s'%(nChan,nn+1))
                     # Trace number in file set
                     trace_num = np.fromfile(fid,np.int32,1)[0]
-                    # We add an offset to 1 Jan 1970 to get MATLAB date numbers
-                    decday = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal()
+                    # We add an offset to 1 Jan 1970 and add 366 to get to MATLAB serial date
+                    decday = np.fromfile(fid,np.float64,1)[0] + date(1970,1,1).toordinal() + 366.
                     # Stacks/trace
                     # Unless record mode is stacks, then it is time/trace
                     trace_int = np.fromfile(fid,np.float32,1)[0]
@@ -250,7 +248,7 @@ class gecko(RadarData):
                         # Read trace number
                         buffer = np.fromfile(fid,np.int32,1)
                         # We add an offset to 1 Jan 1970 to get MATLAB date numbers
-                        buffer = np.fromfile(fid,np.float64,1) + date(1970,1,1);
+                        buffer = np.fromfile(fid,np.float64,1) + date(1970,1,1) + 366.
                         # GPS Latitude
                         buffer = np.fromfile(fid,np.float64,1)
                         # GPS longitude
