@@ -33,6 +33,8 @@ def load(filetype, fns, channel=1):
                         'mat' (StODeep matlab format)
    fns: list
         List of files to load
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
 
     Returns
     -------
@@ -78,6 +80,8 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
                         'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
@@ -90,7 +94,10 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
         dat[0].save(out_fn)
     else:
         for d, f in zip(dat, fn):
-            out_fn = os.path.splitext(f)[0] + '_raw.mat'
+            if f[-3:] == 'g00':
+                out_fn = os.path.splitext(f)[0] + '_g00_raw.mat'
+            else:
+                out_fn = os.path.splitext(f)[0] + '_raw.mat'
             d.save(out_fn)
 
 
