@@ -56,7 +56,7 @@ from datetime import date
 from .RadarData import RadarData, RadarFlags
 
 class gecko(RadarData):
-    def __init__(self, fn, channel=1):
+    def __init__(self, fn, channel):
         with open(fn, 'rb') as fid:
             # get the length of the file
             fid.seek(0,2)     # go to the file end.
@@ -180,8 +180,8 @@ class gecko(RadarData):
             ### Trace Headers and Data ###
 
             # Travel time
-            self.travel_time = 1e6*np.arange(-self.PreTriggerDepth,
-                                         self.PostTriggerDepth)*1./self.SampFreq
+            self.travel_time = 1e6*np.arange(-self.trig,
+                                         self.PostTrigger)*1./self.SampFreq
             # Set trace counter
             nTrc = 0
             while fid.tell() < eof:
@@ -297,7 +297,6 @@ class gecko(RadarData):
             self.data = np.transpose(self.data)
             # other variables are from the array shape
             self.tnum = self.data.shape[1]
-            self.trig_level = np.zeros((self.tnum,))
             if self.Version >= 3.6:
                 self.pressure = np.zeros((self.tnum,))
             try:
@@ -315,5 +314,5 @@ class gecko(RadarData):
 
 # -----------------------------------------------------------------------------
 
-def load_gecko(fn, *args, **kwargs):
-    return gecko(fn)
+def load_gecko(fn, channel, *args, **kwargs):
+    return gecko(fn,channel=channel)
