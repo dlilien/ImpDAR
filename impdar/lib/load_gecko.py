@@ -305,7 +305,7 @@ class gecko(RadarData):
                 self.flags = None
             self.x_coord = np.zeros((self.tnum,))
             self.y_coord = np.zeros((self.tnum,))
-            self.dist = np.arange(self.tnum)
+            self.dist = np.zeros((self.tnum))
 
             for attr in ['chan','data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
                 if getattr(self, attr) is None:
