@@ -23,6 +23,9 @@ try:
     qt = True
 except ImportError:
     qt = False
+
+if sys.version_info[0] >= 3:
+    from unittest.mock import MagicMock
 from impdar.lib.RadarData import RadarData
 
 
@@ -136,6 +139,62 @@ class TestInteractivePicker(unittest.TestCase):
     def test_mode_update(self):
         self.ip._mode_update()
         self.ip._mode_update()
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        ip = InteractivePicker(data)
+        ip._mode_update()
+        ip._mode_update()
+    
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_edit_lines_click_existingline(self):
+        # First, plain left click
+        # event has x and y data
+        event = DummyEvent()
+        event.xdata = 10.
+        event.ydata = 1.0e-1
+        event.button = 1
+
+        self.ip._freq_update(800)
+
+        # assume we have a pick
+        self.ip._add_pick(snum=10, tnum=1)
+        self.ip._add_point_pick = MagicMock()
+        self.ip.update_lines = MagicMock()
+        self.ip._edit_lines_click(event)
+        self.assertTrue(self.ip._add_point_pick.called)
+        self.assertTrue(self.ip.update_lines.called)
+
+        # now nanpick
+        self.ip._n_pressed = True
+        self.ip._add_nanpick = MagicMock()
+        self.ip.update_lines = MagicMock()
+        self.ip._edit_lines_click(event)
+        self.assertTrue(self.ip._add_nanpick.called)
+        self.assertTrue(self.ip.update_lines.called)
+        self.ip._n_pressed = False
+
+        # now delete pick
+        event.button = 3
+        self.ip._delete_picks = MagicMock()
+        self.ip.update_lines = MagicMock()
+        self.ip._edit_lines_click(event)
+        self.assertTrue(self.ip._delete_picks.called)
+        self.assertTrue(self.ip.update_lines.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_edit_lines_click_newline(self):
+        # First, plain left click
+        # event has x and y data
+        event = DummyEvent()
+        event.xdata = 10.
+        event.ydata = 1.0e-1
+        event.button = 1
+
+        # assume we have no picks
+        self.ip._add_pick = MagicMock()
+        self.ip.update_lines = MagicMock()
+        self.ip._edit_lines_click(event)
+        self.assertTrue(self.ip._add_pick.called)
+        self.assertTrue(self.ip.update_lines.called)
 
 
 @unittest.skipIf(not qt, 'No Qt')
