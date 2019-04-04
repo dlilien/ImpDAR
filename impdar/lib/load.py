@@ -10,27 +10,31 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_gecko
 from .RadarData import RadarData
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
-from .RadarData import RadarData
 
-
-def load(filetype, fns):
+def load(filetype, fns, channel=1):
     """Load a list of files of a certain type
 
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format)
-    fns: list
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
+   fns: list
         List of files to load
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
 
     Returns
     -------
@@ -47,6 +51,8 @@ def load(filetype, fns):
         dat = [load_mat(fn) for fn in fns]
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns]
+    elif filetype == 'gecko':
+        dat = [load_gecko.load_gecko(fn, channel) for fn in fns]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]
@@ -59,19 +65,27 @@ def load(filetype, fns):
     return dat
 
 
-def load_and_exit(filetype, fn, *args, **kwargs):
+def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller), gprMax (synthetics), or 'mat' (StODeep matlab format
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
-    dat = load(filetype, fn)
+    dat = load(filetype, fn, channel)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']
@@ -80,7 +94,10 @@ def load_and_exit(filetype, fn, *args, **kwargs):
         dat[0].save(out_fn)
     else:
         for d, f in zip(dat, fn):
-            out_fn = os.path.splitext(f)[0] + '_raw.mat'
+            if f[-3:] == 'g00':
+                out_fn = os.path.splitext(f)[0] + '_g00_raw.mat'
+            else:
+                out_fn = os.path.splitext(f)[0] + '_raw.mat'
             d.save(out_fn)
 
 
