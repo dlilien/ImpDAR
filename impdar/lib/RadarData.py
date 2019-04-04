@@ -219,12 +219,16 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             Crop off the top (lim is the first remaining return) or the bottom (lim is the last remaining return).
         dimension: str, optional
             Evaluate in terms of sample (snum), travel time (twtt), or depth (depth). If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
+            If pretrig, uses the recorded trigger sample to crop.
         uice: float, optional
             Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
+
+        Modified by Joshua Driscol, 03/04/2019
+        Include an option to use the pretrigger value to clip
         """
         if top_or_bottom not in ['top', 'bottom']:
             raise ValueError('top_or_bottom must be "top" or "bottom" not {:s}'.format(top_or_bottom))
-        if dimension not in ['snum', 'twtt', 'depth']:
+        if dimension not in ['snum', 'twtt', 'depth', 'pretrig']:
             raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
 
         if dimension == 'twtt':
@@ -235,12 +239,17 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             else:
                 depth = self.travel_time / 2. * uice * 1.0e-6
             ind = np.min(np.argwhere(depth >= lim))
+        elif dimension == 'pretrig':
+            ind = int(self.trig)
+            print(ind)
         else:
             ind = int(lim)
 
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
         else:
+            if dimension == 'pretrig':
+                raise ValueError('Only use pretrig to crop from the top')
             lims = [0, ind]
 
         self.data = self.data[lims[0]:lims[1], :]
@@ -255,6 +264,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
         print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
+
+
 
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
