@@ -65,7 +65,7 @@ def _get_args():
     # Crop in the vertical
     parser_crop = add_procparser(subparsers, 'crop', 'Crop the data in the vertical', crop, defname='cropped')
     parser_crop.add_argument('top_or_bottom', choices=['top', 'bottom'], help='Remove from the top or bottom')
-    parser_crop.add_argument('dimension', choices=['snum', 'twtt', 'depth'], help='Set the bound in terms of snum (sample number), twtt (two way travel time in microseconds), or depth (m, calculated using the nmo_depth or a light speed of 1.69e8m/s if it doesn\'t')
+    parser_crop.add_argument('dimension', choices=['snum', 'twtt', 'depth', 'pretrig'], help='Set the bound in terms of snum (sample number), twtt (two way travel time in microseconds), depth (m, calculated using the nmo_depth or a light speed of 1.69e8m/s if it doesn\'t, or pretrig (the recorded trigger sample)')
     parser_crop.add_argument('lim', type=float, help='The cutoff value')
     add_def_args(parser_crop)
 
