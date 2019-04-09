@@ -28,6 +28,7 @@ install:
 - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
 - pip install -r requirements.txt
 - pip install coveralls
+- pip install mock
 - pip install .
 
 cache:

@@ -52,9 +52,9 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         ydat = 'twtt'
 
     if tr is not None:
-        figs = [plot_traces(dat, tr) for dat in radar_data]
+        figs = [plot_traces(dat, tr, ydat=ydat) for dat in radar_data]
     else:
-        figs = [plot_radargram(dat, interactive=not s, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
+        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
@@ -140,7 +140,10 @@ def plot_traces(dat, tr, ydat='twtt'):
         yd = dat.travel_time
         ax.set_ylabel('Two way travel time (usec)')
     elif ydat == 'depth':
-        yd = dat.nmo_depth
+        if dat.nmo_depth is None:
+            yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+        else:
+            yd = dat.nmo_depth
         ax.set_ylabel('Depth (m)')
 
     for j in range(*tr):
