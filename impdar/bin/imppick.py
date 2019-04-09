@@ -26,7 +26,7 @@ def pick(radardata, guard_save=True, xd=False, yd=False):
     if xd:
         x = 'dist'
     else:
-        x = 'tracenum'
+        x = 'tnum'
     if yd:
         y = 'depth'
     else:

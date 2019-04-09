@@ -45,7 +45,7 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
     if xd:
         xdat = 'dist'
     else:
-        xdat = 'tracenum'
+        xdat = 'tnum'
     if yd:
         ydat = 'depth'
     else:
@@ -62,22 +62,34 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         plt.show()
 
 
-def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range=(0, -1), cmap=plt.cm.gray_r):
-    if xdat not in ['tracenum', 'dist']:
-        raise ValueError('x axis choices are tracenum or dist')
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray_r, fig=None, ax=None, return_plotinfo=False):
+    """This is the function to plot the normal radargrams that we are used to.
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    xdat: str, optional
+
+
+    """
+    if xdat not in ['tnum', 'dist']:
+        raise ValueError('x axis choices are tnum or dist')
     if ydat not in ['twtt', 'depth']:
         raise ValueError('y axis choices are twtt or depth')
 
     if x_range is None:
         x_range = (0, -1)
+    if x_range[-1] == -1:
+        x_range = (x_range[0], dat.tnum)
 
     lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]][~np.isnan(dat.data[:, x_range[0]:x_range[-1]])], (10, 90))
     clims = [lims[0] * 2 if lims[0] < 0 else lims[0] / 2, lims[1] * 2]
 
-    if not interactive:
-        fig, ax = plt.subplots(figsize=(12, 8))
+    if fig is not None:
+        pass
     else:
-        fig, (ax, ax_slider1, ax_slider2) = plt.subplots(nrows=3, figsize=(12, 8), gridspec_kw={'height_ratios': (1, 0.02, 0.02)})
+        fig, ax = plt.subplots(figsize=(12, 8))
 
     if hasattr(dat.flags, 'elev') and dat.flags.elev:
         yd = dat.elevation
@@ -94,7 +106,7 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
                 yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
             ax.set_ylabel('Depth (m)')
 
-    if xdat == 'tracenum':
+    if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
         ax.set_xlabel('Trace number')
     elif xdat == 'dist':
@@ -105,17 +117,10 @@ def plot_radargram(dat, xdat='tracenum', ydat='twtt', interactive=False, x_range
         im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
     else:
         im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
-
-    if interactive:
-        slidermin = Slider(ax_slider1, 'Min', clims[0], clims[1], valinit=lims[0])
-        slidermax = Slider(ax_slider2, 'Max', clims[0], clims[1], valinit=lims[1], slidermin=slidermin)
-
-        def update(val):
-            im.set_clim(vmin=slidermin.val, vmax=slidermax.val)
-
-        slidermin.on_changed(update)
-        slidermax.on_changed(update)
-    return fig, ax
+    if not return_plotinfo:
+        return fig, ax
+    else:
+        return im, xd, yd, x_range, lims
 
 
 def plot_traces(dat, tr, ydat='twtt'):
@@ -146,4 +151,4 @@ def plot_traces(dat, tr, ydat='twtt'):
     else:
         ax.set_xlim(*lims)
     ax.set_xlabel('Power')
-    return fig
+    return fig, ax

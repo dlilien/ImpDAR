@@ -55,7 +55,7 @@ class TestInteractivePicker(unittest.TestCase):
         self.assertEqual(ip.y, 'depth')
         data.nmo_depth = data.travel_time
         ip = InteractivePicker(data, ydat='depth')
-        self.assertEqual(ip.y, 'nmo_depth')
+        self.assertEqual(ip.y, 'depth')
         with self.assertRaises(ValueError):
             ip = InteractivePicker(data, ydat='dum')
 
@@ -63,9 +63,6 @@ class TestInteractivePicker(unittest.TestCase):
             ip = InteractivePicker(data, ydat='elev')
         data.elevation = np.arange(ip.dat.tnum)
         data.flags.elev = True
-        ip = InteractivePicker(data, ydat='elev')
-        self.assertEqual(ip.y, 'elev')
-
         ip = InteractivePicker(data, x_range=None)
         self.assertEqual(ip.x_range, (0, ip.dat.tnum))
 
