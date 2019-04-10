@@ -88,18 +88,18 @@ class TestGPS(unittest.TestCase):
         dats = [NoInitRadarData()]
         dats[0].constant_space = MagicMock()
         gpslib.interp(dats, 10., fn='dum.csv')
-        mock_kgc.assert_called()
-        dats[0].constant_space.assert_called()
+        self.assertTrue(len(mock_kgc.mock_calls) > 0)
+        self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
         dats[0].constant_space = MagicMock()
         gpslib.interp(dats, 10., fn='dum.mat')
-        mock_kgm.assert_called()
-        dats[0].constant_space.assert_called()
+        self.assertTrue(len(mock_kgm.mock_calls) > 0)
+        self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
         with self.assertRaises(ValueError):
             gpslib.interp(dats, 10., fn='dum.badext')
 
         dats[0].constant_space = MagicMock()
         gpslib.interp(dats, 10.)
-        dats[0].constant_space.assert_called()
+        self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
 
 
 if __name__ == '__main__':

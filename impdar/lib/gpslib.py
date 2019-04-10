@@ -214,10 +214,11 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
         gpsdat = nmea_info()
         gpsdat.lat = dat.lat
         gpsdat.lon = dat.long
-        gpsdat.get_utm()
-        gpsdat.get_dist()
-        dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
-        dat.dist = gpsdat.dist
+        if conversions_enabled:
+            gpsdat.get_utm()
+            gpsdat.get_dist()
+            dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
+            dat.dist = gpsdat.dist
 
 
 def kinematic_gps_mat(dats, mat_fn, offset=0.0):
