@@ -26,6 +26,8 @@ except ImportError:
 
 if sys.version_info[0] >= 3:
     from unittest.mock import MagicMock
+else:
+    from mock import MagicMock
 from impdar.lib.RadarData import RadarData
 
 
@@ -141,7 +143,6 @@ class TestInteractivePicker(unittest.TestCase):
         ip._mode_update()
         ip._mode_update()
     
-    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
     def test_edit_lines_click_existingline(self):
         # First, plain left click
         # event has x and y data

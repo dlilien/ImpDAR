@@ -143,8 +143,6 @@ class TestRadarDataMethods(unittest.TestCase):
             self.data.elev_correct()
         self.data.nmo(0, 2.0e6)
         self.data.elev_correct(v=2.0e6)
-        self.data.save('tst.mat')
-
         new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
         self.assertTrue(self.data.data.shape == (27, 40))
 

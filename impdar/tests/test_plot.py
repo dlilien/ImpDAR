@@ -16,9 +16,9 @@ import numpy as np
 from impdar.lib.RadarData import RadarData
 from impdar.lib import plot
 if sys.version_info[0] >= 3:
-    from unittest.mock import patch
+    from unittest.mock import patch, MagicMock
 else:
-    from mock import patch
+    from mock import patch, MagicMock
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -111,3 +111,7 @@ class TestPlot(unittest.TestCase):
 
     def test_plot(self):
         pass
+
+
+if __name__ == '__main__':
+    unittest.main()
