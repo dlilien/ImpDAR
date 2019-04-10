@@ -186,7 +186,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         for n in range(nice, self.snum):
             #correct the data by shifting the samples earlier in time by "nadj"
             nmodata[n - np.round(nadj[n]).astype(int), :] = nmodata[np.round(n).astype(int), :]
-            #Since we are stretching the data near the ice surface we need to interpolate samples in the gaps. B. Welch June 2003
+
+            #Since we're stretching the data near the ice surface we need to interpolate samples in the gaps. B. Welch June 2003 I cannot hit this with a test. D. Lilien 4/2019
             if (n - np.round(nadj[n])) - ((n - 1) - np.round(nadj[n - 1])) > 1 and n != nice:
                 interper = interp1d(np.array([((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))]), nmodata[[((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))], :].transpose())
                 nmodata[((n - 1) - int(round(nadj[n - 1]))): (n - int(round(nadj[n]))), :] = interper(np.arange(((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n]))))).transpose()
@@ -200,10 +201,10 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         
         self.data = nmodata
 
-        self.flags.nmo[0] = 1
         try:
+            self.flags.nmo[0] = 1
             self.flags.nmo[1] = ant_sep
-        except IndexError:
+        except (IndexError, TypeError):
             self.flags.nmo = np.ones((2, ))
             self.flags.nmo[1] = ant_sep
 
@@ -247,10 +248,10 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         self.data = self.data[lims[0]:lims[1], :]
         self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
         self.snum = self.data.shape[0]
-        self.flags.crop[0] = 1
         try:
+            self.flags.crop[0] = 1
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
-        except IndexError:
+        except (IndexError, TypeError):
             self.flags.crop = np.zeros((3,))
             self.flags.crop[0] = 1
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
@@ -297,8 +298,13 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         slope: float
             The slope of the linear range gain to be applied. Maybe try 1.0e-2?
         """
-        gain = self.travel_time[self.trig + 1:] * slope
-        self.data[self.trig + 1:, :] *= np.atleast_2d(gain).transpose()
+        if type(self.trig) in [float, int]:
+            gain = self.travel_time[int(self.trig) + 1:] * slope
+            self.data[int(self.trig + 1):, :] *= np.atleast_2d(gain).transpose()
+        else:
+            for i, trig in enumerate(self.trig):
+                gain = self.travel_time[int(trig) + 1:] * slope
+                self.data[int(trig) + 1:, i] *= gain
         self.flags.rgain = True
 
     def agc(self, window=50, scaling_factor=50):
@@ -314,8 +320,10 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             The scaling factor. This gets divided by the max amplitude when we rescale the input. Default 50.
         """
         maxamp = np.zeros((self.snum,))
-        for i in range(window // 2):
-            maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):min(i + window // 2, self.snum)]))
+        # In the for loop, old code indexed used range(window // 2). This did not make sense to me.
+        for i in range(self.snum):
+            print(i, max(0, i - window // 2), min(i + window // 2, self.snum))
+            maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):min(i + window // 2, self.snum), :]))
         maxamp[maxamp == 0] = 1.0e-6
         self.data *= (scaling_factor / np.atleast_2d(maxamp).transpose()).astype(self.data.dtype)
         self.flags.agc = True
@@ -348,7 +356,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         try:
             self.flags.interp[0] = 1
             self.flags.interp[1] = spacing
-        except IndexError:
+        except (IndexError, TypeError):
             self.flags.interp = np.ones((2,))
             self.flags.interp[1] = spacing
 
