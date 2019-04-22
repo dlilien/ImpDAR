@@ -59,8 +59,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     nmo_depth = None
     picks = None
     fn = None
-    attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']
-    attrs_optional = ['nmo_depth', 'elevation']
+    attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level']
+    attrs_optional = ['nmo_depth', 'elevation', 'x_coord', 'y_coord']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn):
