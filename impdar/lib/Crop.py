@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 dal22 <dal22@loki.ess.washington.edu>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 Crop information
