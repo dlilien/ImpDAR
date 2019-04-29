@@ -57,7 +57,7 @@ def load(filetype, fns, nchan=1):
     return dat
 
 
-def load_and_exit(filetype, fn, *args, nchan=1, **kwargs):
+def load_and_exit(filetype, fn, nchan=1, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
