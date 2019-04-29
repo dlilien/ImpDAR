@@ -23,9 +23,10 @@ def _get_args():
 
     parser_load = subparsers.add_parser('load', help='Load data')
     parser_load.set_defaults(func=load.load_and_exit)
-    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'mat', 'segy'])
+    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'mat', 'segy', 'olaf'])
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
+    parser_load.add_argument('-nchan', type=int, help='Which channel if multichannel', default=1)
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
