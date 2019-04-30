@@ -9,6 +9,7 @@
 """
 
 """
+import io
 import sys
 import struct
 import datetime
@@ -28,7 +29,7 @@ class Olaf(RadarData):
         s = []
         for i, fn in enumerate(fns):
             # We are going to follow the general format that was used by storead_script_v36
-            with open(fn, 'rb') as fid:
+            with io.open(fn, 'rb') as fid:
                 lines = fid.read()
 
             # Header information
