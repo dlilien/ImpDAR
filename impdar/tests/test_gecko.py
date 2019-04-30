@@ -13,9 +13,9 @@ Earth and Space Sciences
 Mar 28 2019
 
 """
-
-import unittest
+import sys
 import os
+import unittest
 from impdar.lib import load_olaf
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
