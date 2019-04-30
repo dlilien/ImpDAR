@@ -62,10 +62,10 @@ def _get_args():
     parser_vbp.add_argument('high_MHz', type=float, help='Highest frequency passed (in MHz)')
     add_def_args(parser_vbp)
 
-    # Crop in the vertical 
+    # Crop in the vertical
     parser_crop = add_procparser(subparsers, 'crop', 'Crop the data in the vertical', crop, defname='cropped')
     parser_crop.add_argument('top_or_bottom', choices=['top', 'bottom'], help='Remove from the top or bottom')
-    parser_crop.add_argument('dimension', choices=['snum', 'twtt', 'depth'], help='Set the bound in terms of snum (sample number), twtt (two way travel time in microseconds), or depth (m, calculated using the nmo_depth or a light speed of 1.69e8m/s if it doesn\'t')
+    parser_crop.add_argument('dimension', choices=['snum', 'twtt', 'depth', 'pretrig'], help='Set the bound in terms of snum (sample number), twtt (two way travel time in microseconds), depth (m, calculated using the nmo_depth or a light speed of 1.69e8m/s if it doesn\'t, or pretrig (the recorded trigger sample)')
     parser_crop.add_argument('lim', type=float, help='The cutoff value')
     add_def_args(parser_crop)
 
@@ -83,6 +83,14 @@ def _get_args():
     parser_interp.add_argument('--offset', type=float, default=0.0, help='Offset from GPS time to radar time')
     parser_interp.add_argument('--minmove', type=float, default=1.0e-2, help='Minimum movement to not be stationary')
     add_def_args(parser_interp)
+
+    # Migration
+    parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
+    parser_mig.add_argument('--mtype', type=str , default='stolt', help='Migration Routine')
+    parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
+    parser_mig.add_argument('--vel_fn', type=str, default=None, help='Filename for inupt velocity array. Column 1: velocities, Column 2: z locations, Column 3: x locations (optional)')
+    parser_mig.add_argument('--nearfield', type=bool, default=False, help='Boolean for nearfield operator in Kirchhoff migration.')
+    add_def_args(parser_mig)
 
     return parser
 
@@ -104,6 +112,9 @@ def add_def_args(parser):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
     parser.add_argument('-pe', action='store_true', help='Inputs are pulse ekko files')
     parser.add_argument('-gssi', action='store_true', help='Inputs are gssi files')
+    parser.add_argument('-gprMax', action='store_true', help='Inputs are gprMax files')
+    parser.add_argument('-gecko', action='store_true', help='Inputs are gecko files')
+    parser.add_argument('-segy', action='store_true', help='Inputs are segy files')
 
 
 def main():
@@ -119,6 +130,12 @@ def main():
         radar_data = load('gssi', args.fns)
     elif args.pe:
         radar_data = load('pe', args.fns)
+    elif args.gprMax:
+        radar_data = load('gprMax', args.fns)
+    elif args.gecko:
+        radar_data = load('gecko', args.fns)
+    elif args.segy:
+        radar_data = load('segy', args.fns)
     else:
         radar_data = load('mat', args.fns)
 
@@ -128,7 +145,7 @@ def main():
         args.fns = [bn + '.mat']
     elif args.name == 'interp':
         interp(radar_data, **vars(args))
-        
+
     else:
         for dat in radar_data:
             args.func(dat, **vars(args))
@@ -195,6 +212,10 @@ def agc(dat, window=50, scale_factor=50, **kwargs):
 
 def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove)
+
+
+def mig(dat, mtype='stolt',vel=1.69e8,vel_fn=None, nearfield=False, **kwargs):
+    dat.migrate(mtype,vel=vel,vel_fn=vel_fn,nearfield=nearfield)
 
 
 if __name__ == '__main__':
