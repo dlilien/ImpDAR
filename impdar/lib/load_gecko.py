@@ -143,7 +143,7 @@ class gecko(RadarData):
                 # Channel number
                 nChan = np.fromfile(fid,np.uint8,1)[0]
                 if nChan != (nn+1):
-                    raise TypeError('Corrupt Channel header, %s instead of %s'%(nChan,nn+1))
+                    raise ValueError('Corrupt Channel header, %s instead of %s'%(nChan,nn+1))
                 if nn == 0:
                     self.ChName = np.empty((self.nChannels)).astype(str)
                     self.VoltRange = np.empty((self.nChannels))

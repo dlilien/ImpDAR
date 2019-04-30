@@ -147,8 +147,12 @@ class SInfo:
             self.offset += 2
 
         # Nominal Frequency (MHz)
-        self.NominalFrequency = struct.unpack('<h', lines[self.offset:self.offset + 2])[0]
-        self.offset += 2
+        if self.Version < 3.8:
+            self.NominalFrequency = struct.unpack('<h', lines[self.offset:self.offset + 2])[0]
+            self.offset += 2
+        else:
+            self.NominalFrequency = struct.unpack('<f', lines[self.offset:self.offset + 4])[0]
+            self.offset += 4
         # Antenna separation (m)
         self.AntennaSeparation = struct.unpack('<f', lines[self.offset:self.offset + 4])[0]
         self.offset += 4
@@ -313,5 +317,5 @@ class ChannelData:
         sinfo.offset += offset
 
 
-def load_olaf(fn, Channel_Num=1):
-    return Olaf(fn, Channel_Num)
+def load_olaf(fn, channel=1):
+    return Olaf(fn, channel)
