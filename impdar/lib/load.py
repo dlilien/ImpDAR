@@ -54,7 +54,7 @@ def load(filetype, fns, channel=1):
         dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     elif filetype == 'gecko':
         # Slightly different because we assume that we want to concat
-        dat = [load_olaf.load_olaf(fns, Channel_Num=channel)]
+        dat = [load_olaf.load_olaf(fns, channel=channel)]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]

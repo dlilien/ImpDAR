@@ -86,8 +86,8 @@ class SInfo:
             pass
         self.serialtime = struct.unpack('<d', lines[66:74])[0] + datetime.date.toordinal(datetime.date(1970, 1, 1)) + 366.
         self.timezone = struct.unpack('<H', lines[74:76])[0] / 1440
-        self.nChannels = int(lines[76])
-        self.RecordMode = int(lines[77])
+        self.nChannels = struct.unpack('<B', lines[76:77])[0]
+        self.RecordMode = struct.unpack('<B', lines[77:78])[0]
         if self.RecordMode == 0:
             self.RecordModeString = 'Odometer'
         elif self.RecordMode == 1:
@@ -108,7 +108,7 @@ class SInfo:
         self.PostTriggerDepth = struct.unpack('<H', lines[86:88])[0]
 
         # Trigger source (1 = Chan A, 2 = Chan B, -1 = External)
-        self.TriggerSource = int(lines[88])
+        self.TriggerSource = struct.unpack('<B', lines[88:89])[0]
         if self.TriggerSource == 1:
             self.triggersourceString = 'Channel A'
         elif self.TriggerSource == 2:
@@ -119,7 +119,7 @@ class SInfo:
             print('Unknown in Trigger Source')
 
         # Trigger slope (0 = positive, 1 = negative)
-        self.TriggerSlope = int(lines[89])
+        self.TriggerSlope = struct.unpack('<B', lines[89:90])[0]
         if self.TriggerSlope == 0:
             self.TriggerSlopeString = 'Negative'
         elif self.TriggerSlope == 1:
@@ -130,7 +130,7 @@ class SInfo:
         # External Trigger range (Full range in in mV)
         self.ExtTriggerRange = struct.unpack('<H', lines[90:92])[0]
         # External trigger coupling (0 = DC, 1 = AC)
-        self.ExtTriggerCoupling = int(lines[92])
+        self.ExtTriggerCoupling = struct.unpack('<B', lines[92:93])[0]
         if self.ExtTriggerCoupling == 0:
             self.ExtTriggerCouplingString = 'DC'
         elif self.ExtTriggerCoupling == 1:
@@ -165,7 +165,7 @@ class SInfo:
         # ==================== Channel Headers ==================== %
         for nn in range(self.nChannels):
             # Channel number
-            nChan = int(lines[self.offset])
+            nChan = struct.unpack('<B', lines[self.offset:self.offset + 1])[0]
             self.offset += 1
                         
             if nChan != nn + 1:
@@ -195,7 +195,7 @@ class Channel:
         offset += 2
 
         # Channel Impedance (0 = 50 Ohm, 1 = 1 MOhm)
-        self.Impedance = int(lines[offset])
+        self.Impedance = struct.unpack('<B', lines[offset:offset + 1])[0]
         offset += 1
         if self.Impedance == 0:
             self.ImpedanceString = '1 MOhm'
@@ -205,7 +205,7 @@ class Channel:
             print('Unknown Impedance for Channel {:d}'.format(nChan))
 
         # Channel coupling (0 = DC, 1 = AC)
-        self.Coupling = int(lines[offset])
+        self.Coupling = struct.unpack('<B', lines[offset:offset + 1])[0]
         offset += 1
         if self.Coupling == 0:
             self.CouplingString = 'DC'
@@ -244,8 +244,8 @@ class ChannelData:
         self.Pressure = np.zeros((sinfo.tnum, ))
 
     def read_trace(self, lines, sinfo, nTrc):
-        nHeaderType = int(lines[sinfo.offset])
-        nChannel = int(lines[sinfo.offset + 1])
+        nHeaderType = struct.unpack('<B', lines[sinfo.offset: sinfo.offset + 1])[0]
+        nChannel = struct.unpack('<B', lines[sinfo.offset + 1: sinfo.offset + 2])[0]
         # print(nHeaderType, nChannel)
 
         # I'm rolling with a separate offset counter so i can work on guessing at tnum

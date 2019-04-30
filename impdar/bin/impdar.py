@@ -27,7 +27,6 @@ def _get_args():
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1, help='Receiver channel to load, this is primarily for the St. Olaf HF data.')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
-    parser_load.add_argument('-nchan', type=int, help='Which channel if multichannel', default=1)
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
