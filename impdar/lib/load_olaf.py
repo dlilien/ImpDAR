@@ -78,7 +78,11 @@ class SInfo:
 
     def __init__(self, lines):
         self.Version = struct.unpack('<H', lines[0:2])[0] / 100
-        self.fn = b''.join(struct.unpack('<64c', lines[2:66])).rstrip(b'\x00').decode("utf-8")
+        self.fn = b''.join(struct.unpack('<64c', lines[2:66])).rstrip(b'\x00')
+        try:
+            self.fn = self.fn.decode('utf-8')
+        except UnicodeDecodeError:
+            pass
         self.serialtime = struct.unpack('<d', lines[66:74])[0] + datetime.date.toordinal(datetime.date(1970, 1, 1)) + 366.
         self.timezone = struct.unpack('<H', lines[74:76])[0] / 1440
         self.nChannels = lines[76]
@@ -309,5 +313,5 @@ class ChannelData:
         sinfo.offset += offset
 
 
-def load_olaf(fn, Channel_Num):
+def load_olaf(fn, Channel_Num=1):
     return Olaf(fn, Channel_Num)
