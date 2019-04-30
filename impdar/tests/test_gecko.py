@@ -22,6 +22,8 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestLoadGecko(unittest.TestCase):
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Bytes are weird in 2')
     def test_load_gecko(self):
         load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=1)
         load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=2)

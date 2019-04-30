@@ -31,7 +31,6 @@ class Olaf(RadarData):
             # We are going to follow the general format that was used by storead_script_v36
             with io.open(fn, 'rb') as fid:
                 lines = fid.read()
-            print(lines[:100])
 
             # Header information
             sinfo.append(SInfo(lines))
