@@ -31,6 +31,7 @@ class Olaf(RadarData):
             # We are going to follow the general format that was used by storead_script_v36
             with io.open(fn, 'rb') as fid:
                 lines = fid.read()
+            print(lines[:100])
 
             # Header information
             sinfo.append(SInfo(lines))
@@ -169,7 +170,7 @@ class SInfo:
             self.offset += 1
                         
             if nChan != nn + 1:
-                raise ValueError('Corrupt Channel header')
+                raise ValueError('Corrupt Channel header, ({:d} != {:d})'.format(nChan, nn))
 
             # Construct channel name
             setattr(self, 'Channel{:d}'.format(nChan), Channel(lines, self.offset, self.Version))
