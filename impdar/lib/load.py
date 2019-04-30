@@ -10,26 +10,32 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_olaf
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf
+from .RadarData import RadarData
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
-from .RadarData import RadarData
 
 
-def load(filetype, fns, nchan=1):
+def load(filetype, fns, channel=1):
     """Load a list of files of a certain type
 
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format)
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
     fns: list
         List of files to load
-    nchan: int, optional
-        Channel number for multichannel data
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
 
     Returns
     -------
@@ -44,32 +50,44 @@ def load(filetype, fns, nchan=1):
         dat = [load_pulse_ekko.load_pe(fn) for fn in fns]
     elif filetype == 'mat':
         dat = [load_mat(fn) for fn in fns]
-    elif filetype == 'olaf':
+    elif filetype == 'gprMax':
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
+    elif filetype == 'gecko':
         # Slightly different because we assume that we want to concat
-        dat = [load_olaf.load_olaf(fns, Channel_Num=nchan)]
+        dat = [load_olaf.load_olaf(fns, Channel_Num=channel)]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]
         else:
             raise ImportError('Failed to import segyio, cannot read segy')
+    elif filetype == 'gprMax':
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
 
 
-def load_and_exit(filetype, fn, nchan=1, *args, **kwargs):
+def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are 'pe' (pulse ekko), 'gssi' (from sir controller) or 'mat' (StODeep matlab format
+        The type of file to load. Options are:
+                        'pe' (pulse ekko)
+                        'gssi' (from sir controller)
+                        'gprMax' (synthetics)
+                        'gecko' (St Olaf Radar)
+                        'segy' (SEG Y)
+                        'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
+    channel: Receiver channel that the data were recorded on
+        This is primarily for the St. Olaf HF data
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
-    dat = load(filetype, fn, nchan=nchan)
+    dat = load(filetype, fn, channel=channel)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']
@@ -84,14 +102,17 @@ def load_and_exit(filetype, fn, nchan=1, *args, **kwargs):
         dat[0].save(out_fn)
     else:
         for d, f in zip(dat, fn):
-            out_fn = os.path.splitext(f)[0] + '_raw.mat'
+            if f[-3:] == 'g00':
+                out_fn = os.path.splitext(f)[0] + '_g00_raw.mat'
+            else:
+                out_fn = os.path.splitext(f)[0] + '_raw.mat'
             d.save(out_fn)
 
 
 def load_mat(fn):
     """Load a .mat with radar info
-    
-    Just toss this in here so we have similar naming for 
+
+    Just toss this in here so we have similar naming for
 
     Parameters
     ----------

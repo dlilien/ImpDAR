@@ -67,7 +67,7 @@ class RadarDataSaving:
         spec.samples = range(self.snum)
         spec.tracecount = self.tnum
         spec.ilines = range(self.tnum)
-        
+
         # We assume that this is radar data on a line, so there is no cross-line
         spec.xlines = [0]
         with segyio.create(fn, spec) as f:
@@ -95,7 +95,7 @@ class RadarDataSaving:
         for trace in range(self.tnum):
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetField('TraceNum', trace)
-            x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])        
+            x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])
             wkt = 'POINT({:f} {:f})'.format(x, y)
             point = ogr.CreateGeometryFromWkt(wkt)
             feature.SetGeometry(point)

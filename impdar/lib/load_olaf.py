@@ -79,7 +79,7 @@ class SInfo:
     def __init__(self, lines):
         self.Version = struct.unpack('<H', lines[0:2])[0] / 100
         self.fn = b''.join(struct.unpack('<64c', lines[2:66])).rstrip(b'\x00').decode("utf-8")
-        self.serialtime = struct.unpack('<d', lines[66:74])[0] + datetime.date.toordinal(datetime.date(1970, 1, 1))
+        self.serialtime = struct.unpack('<d', lines[66:74])[0] + datetime.date.toordinal(datetime.date(1970, 1, 1)) + 366.
         self.timezone = struct.unpack('<H', lines[74:76])[0] / 1440
         self.nChannels = lines[76]
         self.RecordMode = lines[77] 
@@ -250,7 +250,7 @@ class ChannelData:
         nTime = struct.unpack('<d', lines[sinfo.offset + offset:sinfo.offset + offset + 8])[0]
         offset += 8
         # We add an offset to 1 Jan 1970 to get MATLAB date numbers
-        self.Time[nTrc] = nTime + datetime.date.toordinal(datetime.date(1970, 1, 1))
+        self.Time[nTrc] = nTime + datetime.date.toordinal(datetime.date(1970, 1, 1)) + 366.
 
         # Stacks/trace unless record mode is stacks, when it is
         # time/trace

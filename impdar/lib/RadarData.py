@@ -11,14 +11,14 @@ Define a class that just has the necessary attributes for a StODeep file--this s
 """
 
 import numpy as np
-from scipy.io import loadmat, savemat
-from scipy.signal import butter, filtfilt
+from scipy.io import loadmat
 from scipy.interpolate import interp1d
 from ._RadarDataSaving import RadarDataSaving
 from ._RadarDataFiltering import RadarDataFiltering
 from .RadarFlags import RadarFlags
 from .Picks import Picks
 
+from .migration_routines import *
 try:
     from osgeo import osr, ogr
     conversions_enabled = True
@@ -28,10 +28,9 @@ except ImportError:
 
 class RadarData(RadarDataSaving, RadarDataFiltering):
     """A class that holds the relevant information for a radar profile.
-    
+
     We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
 
-    
     Attributes
     ----------
     data: :class:`numpy.ndarray`
@@ -198,7 +197,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         #calculate the new variables for the y-axis after NMO is complete
         self.travel_time = np.arange((-self.trig) * self.dt, (nmodata.shape[0] - nair) * self.dt, self.dt) * 1.0e6
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
-        
+
         self.data = nmodata
 
         try:
@@ -221,12 +220,16 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             Crop off the top (lim is the first remaining return) or the bottom (lim is the last remaining return).
         dimension: str, optional
             Evaluate in terms of sample (snum), travel time (twtt), or depth (depth). If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
+            If pretrig, uses the recorded trigger sample to crop.
         uice: float, optional
             Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
+
+        Modified by Joshua Driscol, 03/04/2019
+        Include an option to use the pretrigger value to clip
         """
         if top_or_bottom not in ['top', 'bottom']:
             raise ValueError('top_or_bottom must be "top" or "bottom" not {:s}'.format(top_or_bottom))
-        if dimension not in ['snum', 'twtt', 'depth']:
+        if dimension not in ['snum', 'twtt', 'depth', 'pretrig']:
             raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
 
         if dimension == 'twtt':
@@ -237,12 +240,17 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             else:
                 depth = self.travel_time / 2. * uice * 1.0e-6
             ind = np.min(np.argwhere(depth >= lim))
+        elif dimension == 'pretrig':
+            ind = int(self.trig)
+            print(ind)
         else:
             ind = int(lim)
 
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
         else:
+            if dimension == 'pretrig':
+                raise ValueError('Only use pretrig to crop from the top')
             lims = [0, ind]
 
         self.data = self.data[lims[0]:lims[1], :]
@@ -257,6 +265,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
         print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
+
+
 
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
@@ -332,7 +342,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         """Restack the radar data to a constant spacing.
 
         This method uses the GPS information (i.e. the distance, x, y, lat, and lon), to do a 1-d interpolation to get new values in the radargram. It also updates related variables like lat, long, elevation, and coordinates. To avoid retaining sections of the radargram when the antenna was in fact stationary, some minimum movement between traces is enforced. This value is in meters, and should change to be commensurate with the collection strategy (e.g. skiing a radar is slower than towing it with a snowmobile).
-        
+
         This function comprises the second half of what was done by StoDeep's interpdeep. If you have GPS data from an external, high-precision GPS, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data.
 
         Parameters
@@ -379,3 +389,4 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
 
         self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1
+

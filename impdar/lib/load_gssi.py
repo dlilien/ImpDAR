@@ -204,8 +204,8 @@ def _get_dzg_data(fn, trace_nums):
         A dzg file with ggis and gga strings.
     trace_nums: np.ndarray
         The traces on which to interpolate the (sparse) GPS input
-        
-    
+
+
     Returns
     -------
     data: :class:`~impdar.lib.gpslib.nmea_info`

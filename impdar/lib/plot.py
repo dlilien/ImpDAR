@@ -17,7 +17,7 @@ from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), *args, **kwargs):
+def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -53,12 +53,15 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
 
     if tr is not None:
         figs = [plot_traces(dat, tr, ydat=ydat) for dat in radar_data]
+    elif power is not None:
+        figs = plot_power(radar_data, power)
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
     else:
+        plt.tight_layout()
         plt.show()
 
 
@@ -155,3 +158,26 @@ def plot_traces(dat, tr, ydat='twtt'):
         ax.set_xlim(*lims)
     ax.set_xlabel('Power')
     return fig, ax
+
+
+def plot_power(dat, idx):
+    #check to see if user entered an integer pick number
+    if type(idx) != int:
+        raise ValueError('Please enter an integer pick number')
+
+    #add one to idx for Matlab 1-based indexing
+    search = idx + 1
+    
+    #convert from list type to RadarData type
+    dat = dat[0]
+
+    #check to see if the pick number exists
+    if search not in dat.picks.picknums:
+        raise ValueError('Pick number {} not found in your file'.format(search))
+
+    fig, ax = plt.subplots(figsize=(8, 12))
+    img = ax.scatter(dat.long, dat.lat, c=10 * np.log10(dat.picks.power[idx]))
+    h = fig.colorbar(img)
+    ax.set_ylabel('dB')
+
+    return fig

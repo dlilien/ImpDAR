@@ -29,6 +29,6 @@ class SEGY(RadarData):
         self.flags = RadarFlags()
         self.travel_time = np.atleast_2d(np.arange(0, self.dt * self.snum, self.dt)).transpose() + self.dt
 
- 
+
 def load_segy(fn, *args, **kwargs):
     return SEGY(fn)

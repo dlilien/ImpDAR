@@ -1,12 +1,12 @@
 import numpy as np
 from scipy.signal import filtfilt, butter, tukey
-
+from .migration_routines import *
 
 class RadarDataFiltering:
 
     def adaptivehfilt(self, *args, **kwargs):
         """Adaptively filter to reduce noise in upper layers
-        
+
         This subtracts the average of traces around an individual trace in order to filter it. You can call this method directly, or it can be called by sending the 'adaptive' option to :func:`RadarData.hfilt() <impdar.lib.RadarData.RadarData.hfilt>`"""
         # v3.1
         #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
@@ -41,7 +41,7 @@ class RadarDataFiltering:
         #       data with an adaptive filter.  B. Youngblood 6/13/08
         #		6) Added flags structure to function input and output.  Also added
         #		code to set hfilt components of flags structure.  J. Olson 7/10/08
-        #		
+        #
 
         print('Adaptive filtering')
         #create average trace for first (rough) scan of data
@@ -73,10 +73,10 @@ class RadarDataFiltering:
             # average the packet horizontally and double filter it (allows the
             # program to maintain small horizontal artifacts that are likely real)
             avg_trace_scan_low = filtfilt([.25, .25, .25, .25], 1, np.mean(scpacket, axis=-1)).flatten() * avg_trace_scale.flatten()
-            
+
             # subtract the average trace off the data trace
             hfiltdata_scan_low[:, i] = hfiltdata_mass[:, i] - avg_trace_scan_low
-            
+
         self.data = hfiltdata_scan_low.astype(self.data.dtype)
         print('Adaptive filtering complete')
 
@@ -139,7 +139,7 @@ class RadarDataFiltering:
         #   work at all depths.  You will have to experiment to get the best
         #   results for your area of interest.
         #:func:`hfilt <impdar.lib.horizontal_filters.hfilt>`
-        #	WARNING: Do not use highpassdeep on elevation-corrected data!!! 
+        #	WARNING: Do not use highpassdeep on elevation-corrected data!!!
         #
         #
         # Created by L. Smith and modified by A. Hagen, 6/15/04.
@@ -150,7 +150,7 @@ class RadarDataFiltering:
         #    increased function inputs and outputs. - J. Werner, 6/30/08.
         #	 3) Added flags structure to function input and output.  Also added
         #		code to set hfilt components of flags structure.  J. Olson 7/10/08
-        #	 
+        #
 
         #Convert wavelength to meters.
         wavelength = int(wavelength * 1000)
@@ -210,7 +210,7 @@ class RadarDataFiltering:
         #    1) Coverted to function and added documentation. B. Welch 5/2/06
         #	 2) Added flags structure to function input and output.  Also added
         #		code to set hfilt components of flags structure.  J. Olson 7/10/08
-        #	 
+        #
 
         if avg_win > self.tnum:
             print('Cannot average over more than the whole data matrix. Reducing avg_win to tnum')
@@ -300,7 +300,7 @@ class RadarDataFiltering:
         # time-domain of the radar data to remove environmental noise.  The routine
         # currently uses a 5th order Butterworth filter.
         # We have a lot of power to mess with this because scipy. Keeping the butter for now.
-        #	
+        #
         #Created as stand alone script bandpass.m prior to 1997
         #  Modification history:
         #   1) Input changes made by A. Weitzel 7/10/97
@@ -315,7 +315,7 @@ class RadarDataFiltering:
         #       rather than selected within the script. - B. Welch, 5/1/06
         #	7) Upselfed input and outputs to include flags structure. Also added
         #		code to upselfe flags structure - J. Olson 7/10/08
-        #	
+        #
         # first determine the cut-off corner frequencies - expressed as a
         #	fraction of the Nyquist frequency (half the sample freq).
         # 	Note: all of this is in Hz
@@ -342,3 +342,27 @@ class RadarDataFiltering:
         self.flags.bpass[0] = 1
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
+
+
+    def migrate(self, mtype='stolt', **kwargs):
+        """Migrate the data.
+
+        This is a wrapper around all the migration routines in migration_routines.py.
+
+        Parameters
+        ----------
+        mtype: str, optional
+            The chosen migration routine. Options are: kirch, stolt, phsh.
+            Default: stolt
+        """
+        if mtype == 'kirch':
+            migrationKirchhoff(self,**kwargs)
+        elif mtype == 'stolt':
+            migrationStolt(self,**kwargs)
+        elif mtype == 'phsh':
+            migrationPhaseShift(self,**kwargs)
+        else:
+            raise ValueError('Unrecognized migration routine')
+
+        # change migration flag
+        self.flags.mig = mtype
