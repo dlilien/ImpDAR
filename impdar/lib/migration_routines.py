@@ -26,6 +26,73 @@ import numpy as np
 import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
+import subprocess
+
+# -----------------------------------------------------------------------------
+
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='migtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+    """
+
+    Migration through Seis Unix TODO: webpage
+    SUMIGTK - MIGration via T-K domain method for common-midpoint stacked data
+
+    SUGAZMIGQ - SU version of Jeno GAZDAG's phase-shift migration
+                for zero-offset data, with attenuation Q.
+
+    Parameters
+    ---------
+    dat: data as a dictionary in the ImpDAR format
+    vel: wave velocity, default is for ice
+    vfile=         name of file containing velocities
+    dx:  distance between successive
+    fmax=Nyquist            maximum frequency
+    tmig=0.0                times corresponding to interval velocities in vmig
+    nxpad=0                 number of cdps to pad with zeros before FFT
+    ltaper=0                length of linear taper for left and right edges
+    verbose=0               =1 for diagnostic print
+    dt=from header(dt) or  .004    time sampling interval
+    ft=0.0                 first time sample
+    ntau=nt(from data)     number of migrated time samples
+    dtau=dt(from header)   migrated time sampling interval
+    ftau=ft                first migrated time sample
+    Q=1e6                  quality factor
+    ceil=1e6               gain ceiling beyond which migration ceases
+
+    Output
+    ---------
+    dat.data: migrated data
+
+    """
+
+    try:
+        subprocess.run(['which',sutype])
+    except:
+        raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
+
+    if sutype == 'sumigtk':
+        print(sutype)
+        # convert to segy data type
+        #mname={[name '_migtk.su'];[name '_migtk_qclip.su'];[name '_migtk.bin'];[name '_migtk_qclip.bin']};
+        #~,~ = unix(['segyread tape=', name, '_interp.sgy | segyclean | sumigtk tmig=', str(tmig), ' vmig=', str(vmig),
+        #' verbose=', str(verbose), ' nxpad=' str(nxpad), ' ltaper=', num2str(ltaper), ' dxcdp=', num2str(dxcdp), ' > ' mname{1})
+    elif sutype == 'sugazmig':
+        print(sutype)
+        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
+        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
+        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
+        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
+    else:
+        raise ValueError('The SeisUnix migration routine', sutype,
+        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+
+    # qclip
+    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
+    # read segy and convert to impdar data format
+    #dat.data = migdata_s
+
+    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
+
+    return dat
 
 # -----------------------------------------------------------------------------
 
@@ -126,15 +193,12 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
         raise ValueError('The input array must be of size (tnum,snum)')
     # save the start time
     start = time.time()
-    # pad the array with zeros up to the next power of 2 for discrete fft
-    nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
-    nx = 2**(np.ceil(np.log(dat.tnum)/np.log(2))).astype(int)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
-    FK = np.fft.fft2(dat.data,(nt,nx))
+    FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
-    ws = 2.*np.pi*np.fft.fftfreq(nt, d=dat.dt)
+    ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
     # get the horizontal wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(nx, d=np.mean(dat.trace_int))
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(dat.trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
     interp_real = interp2d(kx,ws,FK.real)
     interp_imag = interp2d(kx,ws,FK.imag)
@@ -142,7 +206,7 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
     # for all temporal frequencies
-    for zj in range(nt):
+    for zj in range(dat.snum//2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
             print('Interpolating',int(ws[zj]/1e6/2/np.pi),'MHz')

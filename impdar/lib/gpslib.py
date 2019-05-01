@@ -23,7 +23,7 @@ except ImportError:
 from scipy.interpolate import interp1d
 
 if conversions_enabled:
-    def get_utm_conversion(lat, lon):   
+    def get_utm_conversion(lat, lon):
         def utm_getZone(longitude):
             return (int(1 + (longitude + 180.0) / 6.0))
 
@@ -35,14 +35,14 @@ if conversions_enabled:
 
         utm_zone = utm_getZone(lon)
         is_northern = utm_isNorthern(lat)
-       
+
         utm_cs = osr.SpatialReference()
         utm_cs.SetWellKnownGeogCS('WGS84')
         utm_cs.SetUTM(utm_zone, is_northern)
 
         wgs84_cs = utm_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
-       
+
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
         return transform_WGS84_To_UTM.TransformPoints
 else:
@@ -52,7 +52,7 @@ else:
 
 class nmea_info:
     """Container for general information about lat, lon, etc.
-    
+
     Attributes
     ----------
     lat: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
@@ -166,7 +166,7 @@ def nmea_all_info(list_of_sentences):
 
 
 class RadarGPS(nmea_info):
-    
+
     def __init__(self, gga, scans, trace_num):
         self.nmea_info = nmea_all_info(gga)
         self.nmea_info.scans = scans
@@ -286,7 +286,7 @@ def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2
     if fn is not None:
         if fn_type == 'mat' or (fn_type is None and fn[-4:] == '.mat'):
             kinematic_gps_mat(dats, fn, offset=offset)
-        if fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
+        elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
             kinematic_gps_csv(dats, fn, offset=offset, **genfromtxt_kwargs)
         else:
             raise ValueError('fn_type must be mat or csv')

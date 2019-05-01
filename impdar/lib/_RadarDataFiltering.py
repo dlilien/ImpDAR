@@ -361,6 +361,8 @@ class RadarDataFiltering:
             migrationStolt(self,**kwargs)
         elif mtype == 'phsh':
             migrationPhaseShift(self,**kwargs)
+        elif mtype == 'su':
+            migrationSeisUnix(self,**kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 
