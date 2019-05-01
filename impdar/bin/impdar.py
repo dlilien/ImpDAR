@@ -56,6 +56,7 @@ def _get_args():
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
     parser_plot.add_argument('-tr', nargs=2, type=int, help='Plot the traces in this range (line plot)')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
+    parser_plot.add_argument('-power', type=int, help='Plot reflected power of pick')
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)
@@ -64,7 +65,7 @@ def _get_args():
     parser_convert.add_argument('-in_fmt', type=str, default=None, choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko'], help='Input format type. If none, guess from extension')
     parser_convert.add_argument('-t_srs', type=int, default=4326, help='Target spatial reference system (only used if out_fmt==shp). Give as EPSG number.')
     return parser
-
+    
 
 def main():
     parser = _get_args()
