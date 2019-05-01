@@ -4,7 +4,7 @@
 #
 # Copyright © 2019 dlilien <dlilien@berens>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 
@@ -26,6 +26,8 @@ except ImportError:
 
 if sys.version_info[0] >= 3:
     from unittest.mock import MagicMock
+else:
+    from mock import MagicMock
 from impdar.lib.RadarData import RadarData
 
 
@@ -55,7 +57,7 @@ class TestInteractivePicker(unittest.TestCase):
         self.assertEqual(ip.y, 'depth')
         data.nmo_depth = data.travel_time
         ip = InteractivePicker(data, ydat='depth')
-        self.assertEqual(ip.y, 'nmo_depth')
+        self.assertEqual(ip.y, 'depth')
         with self.assertRaises(ValueError):
             ip = InteractivePicker(data, ydat='dum')
 
@@ -63,9 +65,6 @@ class TestInteractivePicker(unittest.TestCase):
             ip = InteractivePicker(data, ydat='elev')
         data.elevation = np.arange(ip.dat.tnum)
         data.flags.elev = True
-        ip = InteractivePicker(data, ydat='elev')
-        self.assertEqual(ip.y, 'elev')
-
         ip = InteractivePicker(data, x_range=None)
         self.assertEqual(ip.x_range, (0, ip.dat.tnum))
 
@@ -144,7 +143,6 @@ class TestInteractivePicker(unittest.TestCase):
         ip._mode_update()
         ip._mode_update()
     
-    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
     def test_edit_lines_click_existingline(self):
         # First, plain left click
         # event has x and y data

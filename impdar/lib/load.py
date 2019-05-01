@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -10,13 +10,14 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_gecko
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf
 from .RadarData import RadarData
 try:
     from . import load_segy
     segy = True
 except ImportError:
     segy = False
+
 
 def load(filetype, fns, channel=1):
     """Load a list of files of a certain type
@@ -31,7 +32,7 @@ def load(filetype, fns, channel=1):
                         'gecko' (St Olaf Radar)
                         'segy' (SEG Y)
                         'mat' (StODeep matlab format)
-   fns: list
+    fns: list
         List of files to load
     channel: Receiver channel that the data were recorded on
         This is primarily for the St. Olaf HF data
@@ -52,7 +53,8 @@ def load(filetype, fns, channel=1):
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns]
     elif filetype == 'gecko':
-        dat = [load_gecko.load_gecko(fn, channel) for fn in fns]
+        # Slightly different because we assume that we want to concat
+        dat = [load_olaf.load_olaf(fns, channel=channel)]
     elif filetype == 'segy':
         if segy:
             dat = [load_segy.load_segy(fn) for fn in fns]
@@ -85,12 +87,18 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
     """
     if type(fn) not in {list, tuple}:
         fn = [fn]
-    dat = load(filetype, fn, channel)
+    dat = load(filetype, fn, channel=channel)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         out_fn = kwargs['o']
         if len(dat) > 1:
             raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
+        dat[0].save(out_fn)
+    elif filetype == 'olaf' and len(fn) > 1:
+        f = fn[0]
+        for i in range(1, len(fn)):
+            f = common_start(f, fn[i]).rstrip('[')
+        out_fn = os.path.splitext(f)[0] + '_raw.mat'
         dat[0].save(out_fn)
     else:
         for d, f in zip(dat, fn):
@@ -112,3 +120,18 @@ def load_mat(fn):
         name of matlab file containing relevant variables
     """
     return RadarData(fn)
+
+
+def common_start(sa, sb):
+    """ returns the longest common substring from the beginning of sa and sb
+    
+    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
+    """
+    def _iter():
+        for a, b in zip(sa, sb):
+            if a == b:
+                yield a
+            else:
+                return
+
+    return ''.join(_iter())

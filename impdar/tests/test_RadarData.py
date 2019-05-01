@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 dlilien <dlilien90@gmail.com>
+# Copyright © 2019 dlilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL-3.0 license.
 
@@ -71,6 +71,18 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.crop(0.055, 'top', dimension='twtt')
         self.assertTrue(self.data.data.shape == (11, 40))
 
+        # do not fail on bad flags
+        self.data.flags.crop = False
+        self.data.crop(0.055, 'top', dimension='twtt')
+        self.assertTrue(self.data.flags.crop.shape == (3,))
+        self.assertTrue(self.data.flags.crop[0])
+
+    def test_CropErrors(self):
+        with self.assertRaises(ValueError):
+            self.data.crop(0.165, 'bottom', dimension='dummy')
+        with self.assertRaises(ValueError):
+            self.data.crop(0.165, 'dummy', dimension='twtt')
+
     def test_CropSNUM(self):
         self.data.crop(17, 'bottom', dimension='snum')
         self.assertTrue(self.data.data.shape == (17, 40))
@@ -78,16 +90,16 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_CropDepthOnTheFly(self):
-        self.data.crop(0.165, 'bottom', dimension='twtt', uice=2.0e6)
+        self.data.crop(0.165, 'bottom', dimension='depth', uice=2.0e6)
         self.assertTrue(self.data.data.shape == (17, 40))
-        self.data.crop(0.055, 'top', dimension='twtt', uice=2.0e6)
+        self.data.crop(0.055, 'top', dimension='depth', uice=2.0e6)
         self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_CropDepthWithNMO(self):
         self.data.nmo(0., uice=2.0e6, uair=2.0e6)
-        self.data.crop(0.165, 'bottom', dimension='twtt')
+        self.data.crop(0.165, 'bottom', dimension='depth')
         self.assertTrue(self.data.data.shape == (17, 40))
-        self.data.crop(0.055, 'top', dimension='twtt')
+        self.data.crop(0.055, 'top', dimension='depth')
         self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_process_Crop(self):
@@ -104,6 +116,19 @@ class TestRadarDataMethods(unittest.TestCase):
         process.process([self.data], crop=(6, 'top', 'snum'))
         self.assertTrue(self.data.data.shape == (11, 40))
 
+    def test_agc(self):
+        self.data.agc()
+        self.assertTrue(self.data.flags.agc)
+
+    def test_rangegain(self):
+        self.data.rangegain(1.0)
+        self.assertTrue(self.data.flags.rgain)
+        self.data.flags.rgain = False
+
+        self.data.trig = np.zeros((self.data.tnum, ))
+        self.data.rangegain(1.0)
+        self.assertTrue(self.data.flags.rgain)
+
     def test_NMO_noexcpetion(self):
         # If velocity is 2
         self.data.nmo(0., uice=2.0, uair=2.0)
@@ -111,6 +136,11 @@ class TestRadarDataMethods(unittest.TestCase):
         # shouldn't care about uair if offset=0
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
+
+        self.data.flags.nmo = False
+        self.data.nmo(0., uice=2.0, uair=200.0)
+        self.assertEqual(self.data.flags.nmo.shape, (2,))
+        self.assertTrue(self.data.flags.nmo[0])
 
     def test_process_NMO(self):
         # If velocity is 2
@@ -143,8 +173,6 @@ class TestRadarDataMethods(unittest.TestCase):
             self.data.elev_correct()
         self.data.nmo(0, 2.0e6)
         self.data.elev_correct(v=2.0e6)
-        self.data.save('tst.mat')
-
         new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
         self.assertTrue(self.data.data.shape == (27, 40))
 
@@ -159,6 +187,14 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(self.data.long.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
         self.assertTrue(self.data.elev.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
         self.assertTrue(self.data.decday.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+
+        # do not fail because flags structure is weird from matlab
+        space = 100.
+        self.data.flags.interp = False
+        self.data.constant_space(space)
+        self.assertTrue(self.data.flags.interp.shape == (2,))
+        self.assertTrue(self.data.flags.interp[0])
+        self.assertEqual(self.data.flags.interp[1], space)
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):

@@ -22,6 +22,6 @@ if __name__ == '__main__':
                      author_email='dal22@uw.edu',
                      license='GNU GPL-3.0',
                      entry_points={'console_scripts': console_scripts},
-                     install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0'],
+                     install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0', 'h5py'],
                      packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui'],
                      test_suite='nose.collector')

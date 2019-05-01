@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
@@ -26,7 +26,7 @@ def pick(radardata, guard_save=True, xd=False, yd=False):
     if xd:
         x = 'dist'
     else:
-        x = 'tracenum'
+        x = 'tnum'
     if yd:
         y = 'depth'
     else:
