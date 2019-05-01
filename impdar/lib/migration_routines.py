@@ -4,13 +4,13 @@
 
 Migration routines for ImpDAR
 
-These are mostly based on older scripts in SeisUnix:
+Much of this code is either directly referencing or written from older scripts in SeisUnix:
 https://github.com/JohnWStockwellJr/SeisUnix/wiki
 Options are:
     Kirchhoff (diffraction summation)
     Stolt (frequency wavenumber, constant velocity)
     Gazdag (phase shift, either constant or depth-varying velocity)
-
+    SeisUnix (reference su routines directly)
 
 Author:
 Benjamin Hills
@@ -30,94 +30,29 @@ import subprocess
 
 # -----------------------------------------------------------------------------
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='migtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
-    """
-
-    Migration through Seis Unix TODO: webpage
-    SUMIGTK - MIGration via T-K domain method for common-midpoint stacked data
-
-    SUGAZMIGQ - SU version of Jeno GAZDAG's phase-shift migration
-                for zero-offset data, with attenuation Q.
-
-    Parameters
-    ---------
-    dat: data as a dictionary in the ImpDAR format
-    vel: wave velocity, default is for ice
-    vfile=         name of file containing velocities
-    dx:  distance between successive
-    fmax=Nyquist            maximum frequency
-    tmig=0.0                times corresponding to interval velocities in vmig
-    nxpad=0                 number of cdps to pad with zeros before FFT
-    ltaper=0                length of linear taper for left and right edges
-    verbose=0               =1 for diagnostic print
-    dt=from header(dt) or  .004    time sampling interval
-    ft=0.0                 first time sample
-    ntau=nt(from data)     number of migrated time samples
-    dtau=dt(from header)   migrated time sampling interval
-    ftau=ft                first migrated time sample
-    Q=1e6                  quality factor
-    ceil=1e6               gain ceiling beyond which migration ceases
-
-    Output
-    ---------
-    dat.data: migrated data
-
-    """
-
-    try:
-        subprocess.run(['which',sutype])
-    except:
-        raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
-
-    if sutype == 'sumigtk':
-        print(sutype)
-        # convert to segy data type
-        #mname={[name '_migtk.su'];[name '_migtk_qclip.su'];[name '_migtk.bin'];[name '_migtk_qclip.bin']};
-        #~,~ = unix(['segyread tape=', name, '_interp.sgy | segyclean | sumigtk tmig=', str(tmig), ' vmig=', str(vmig),
-        #' verbose=', str(verbose), ' nxpad=' str(nxpad), ' ltaper=', num2str(ltaper), ' dxcdp=', num2str(dxcdp), ' > ' mname{1})
-    elif sutype == 'sugazmig':
-        print(sutype)
-        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
-        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
-        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
-        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
-    else:
-        raise ValueError('The SeisUnix migration routine', sutype,
-        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
-
-    # qclip
-    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
-    # read segy and convert to impdar data format
-    #dat.data = migdata_s
-
-    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
-
-    return dat
-
-# -----------------------------------------------------------------------------
-
 def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     """
 
     Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
-    The algorithm cycles through all every sample in each trace, creating a hypothetical diffraciton
+    The algorithm cycles through every sample in each trace, creating a hypothetical diffraciton
     hyperbola for that location,
         t(x)^2 = t(0)^2 + (2x/v)^2
     To migrate, we integrate the power along that hyperbola and assign the solution to the apex point.
     There are two terms in the integral solution, Yilmaz (2001) eqn 4.5, a far-field term and a
-    near-field term. Most algorithms ignor the near-field term because it is small.
+    near-field term. Most algorithms ignore the near-field term because it is small. Here there is an option,
+    but default is to ignore.
 
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: wave velocity, default is for ice
     nearfield: boolean to indicate whether or not to use the nearfield term in summation
 
     Output
     ---------
-    dat.data: migrated data
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -178,12 +113,12 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
 
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: wave velocity, default is for ice
 
     Output
     ---------
-    dat.data: migrated data
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -251,9 +186,15 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     (i.e. summing over all frequencies to get the solution at t=0)
     for the migrated section at each step.
 
+    **
+    The foundation of this script was taken from two places:
+    Matlab code written by Andreas Tzanis, Dept. of Geophysics, University of Athens (2005)
+    Seis Unix script sumigffd.c, Credits: CWP Baoniu Han, July 21th, 1997
+    **
+
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: v(x,z)
         Up to 2-D array with three columns for velocities (m/s), and z/x (m).
         Array structure is velocities in first column, z location in second, x location in third.
@@ -263,13 +204,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     Output
     ---------
-    dat.data: migrated data
-
-    **
-    The foundation of this script was taken from two places:
-    Matlab code written by Andreas Tzanis, Dept. of Geophysics, University of Athens (2005)
-    Seis Unix script sumigffd.c, Credits: CWP Baoniu Han, July 21th, 1997
-    **
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -304,6 +239,84 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     return dat
 
 # -----------------------------------------------------------------------------
+
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='migtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+    """
+
+    Migration through Seis Unix. For now only three options:
+    ---------
+    1) SUMIGTK - Migration via T-K domain method for common-midpoint stacked data
+    2) SUMIGFFD - Fourier finite difference migration for zero-offset data. This method is a hybrid
+                migration which combines the advantages of phase shift and finite difference migrations.
+    3) SUSTOLT - Stolt migration for stacked data or common-offset gathers
+
+
+    Parameters
+    ---------
+    dat: data as a class in the ImpDAR format
+    vel: wave velocity, default is for ice
+    vfile=         name of file containing velocities
+    dx:  distance between successive
+    fmax=Nyquist            maximum frequency
+    tmig=0.0                times corresponding to interval velocities in vmig
+    nxpad=0                 number of cdps to pad with zeros before FFT
+    ltaper=0                length of linear taper for left and right edges
+    verbose=0               =1 for diagnostic print
+    dt=from header(dt) or  .004    time sampling interval
+    ft=0.0                 first time sample
+    ntau=nt(from data)     number of migrated time samples
+    dtau=dt(from header)   migrated time sampling interval
+    ftau=ft                first migrated time sample
+    Q=1e6                  quality factor
+    ceil=1e6               gain ceiling beyond which migration ceases
+
+    Output
+    ---------
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
+
+    """
+
+    try:
+        subprocess.run(['which',sutype])
+    except:
+        raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
+
+    # convert to segy data type
+
+    if sutype == 'sumigtk':
+        print(sutype)
+        #mname={[name '_migtk.su'];[name '_migtk_qclip.su'];[name '_migtk.bin'];[name '_migtk_qclip.bin']};
+        #~,~ = unix(['segyread tape=', name, '_interp.sgy | segyclean | sumigtk tmig=', str(tmig), ' vmig=', str(vmig),
+        #' verbose=', str(verbose), ' nxpad=' str(nxpad), ' ltaper=', num2str(ltaper), ' dxcdp=', num2str(dxcdp), ' > ' mname{1})
+    elif sutype == 'sugazmig':
+        print(sutype)
+        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
+        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
+        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
+        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
+    elif sutype == 'sustolt':
+        print(sutype)
+        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
+        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
+        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
+        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
+    else:
+        raise ValueError('The SeisUnix migration routine', sutype,
+        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+
+    # qclip
+    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
+    # read segy and convert to impdar data format
+    #dat.data = migdata_s
+
+    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
+
+    return dat
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
@@ -314,6 +327,11 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
 
     Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
     This is for either constant or layered velocity v(z).
+
+    **
+    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
+    Dept. of Geophysics, University of Athens (2005)
+    **
 
     Parameters
     ---------
@@ -332,11 +350,6 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     Output
     ---------
     TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
-
-    **
-    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
-    Dept. of Geophysics, University of Athens (2005)
-    **
 
     """
 

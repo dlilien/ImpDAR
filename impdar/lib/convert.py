@@ -20,7 +20,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
     if t_srs == 'wgs84':
         t_srs = 4326
 
-    if out_fmt not in ['shp', 'mat']:
+    if out_fmt not in ['shp', 'mat', 'segy']:
         raise ValueError('Can only convert to shp or mat')
 
     # Treat this like batch input always
@@ -62,6 +62,10 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
         for loader, f, dat in zip(loaders, fn, data):
             out_fn = os.path.splitext(f)[0] + '.shp'
             dat.output_shp(out_fn, t_srs=t_srs)
+    elif out_fmt == 'segy':
+        for loader, f, dat in zip(loaders, fn, data):
+            out_fn = os.path.splitext(f)[0] + '.segy'
+            dat.save_as_segy(out_fn)
 
 
 if __name__ == '__main__':

@@ -61,11 +61,11 @@ def _get_args():
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)
     parser_convert.add_argument('fn', type=str, nargs='+', help='File(s) to convert')
-    parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat'])
-    parser_convert.add_argument('-in_fmt', type=str, default=None, choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko'], help='Input format type. If none, guess from extension')
+    parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
+    parser_convert.add_argument('-in_fmt', type=str, default=None, choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko','segy'], help='Input format type. If none, guess from extension')
     parser_convert.add_argument('-t_srs', type=int, default=4326, help='Target spatial reference system (only used if out_fmt==shp). Give as EPSG number.')
     return parser
-    
+
 
 def main():
     parser = _get_args()
