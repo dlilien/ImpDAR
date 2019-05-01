@@ -214,10 +214,11 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
         gpsdat = nmea_info()
         gpsdat.lat = dat.lat
         gpsdat.lon = dat.long
-        gpsdat.get_utm()
-        gpsdat.get_dist()
-        dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
-        dat.dist = gpsdat.dist
+        if conversions_enabled:
+            gpsdat.get_utm()
+            gpsdat.get_dist()
+            dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
+            dat.dist = gpsdat.dist
 
 
 def kinematic_gps_mat(dats, mat_fn, offset=0.0):
@@ -259,10 +260,7 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', **ge
     Any additional kwargs are passed to numpy.genfromtxt
     """
     data = np.genfromtxt(csv_fn, names=names, **genfromtxt_flags)
-    for val in ['lat', 'long', 'elev', 'decday']:
-        if val not in data.names:
-            raise ValueError('{:s} needs to be contained in csv'.format(val))
-    kinematic_gps_control(dats, data['lat'].flatten(), data['lon'].flatten(), data['decday'].flatten(), data['decday'].flatten(), offset=offset)
+    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset)
 
 
 def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, **kwargs):
@@ -284,9 +282,9 @@ def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2
         kwargs to pass to genfromtxt when reading a csv. Ignored otherwise.
     """
     if fn is not None:
-        if fn_type == 'mat' or (fn_type is None and fn[-4:] == '.mat'):
+        if fn_type == 'mat' or ((fn_type is None) and (fn[-4:] == '.mat')):
             kinematic_gps_mat(dats, fn, offset=offset)
-        if fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
+        elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
             kinematic_gps_csv(dats, fn, offset=offset, **genfromtxt_kwargs)
         else:
             raise ValueError('fn_type must be mat or csv')

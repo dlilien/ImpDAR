@@ -4,7 +4,7 @@
 #
 # Copyright © 2019 dal22 <dal22@loki.ess.washington.edu>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 

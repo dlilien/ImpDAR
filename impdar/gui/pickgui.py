@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
 from .ui import RawPickGUI
-from ..lib import plot, RadarData, picklib
+from ..lib import RadarData, picklib
+from ..lib.plot import plot_radargram
 import numpy as np
 import os.path
 import matplotlib.gridspec as gridspec
@@ -23,7 +24,7 @@ symbols_for_cps = ['o', 'd', 's']
 
 class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
-    def __init__(self, dat, xdat='tracenum', ydat='twtt', x_range=(0, -1), guard_save=False):
+    def __init__(self, dat, xdat='tnum', ydat='twtt', x_range=(0, -1), guard_save=False):
         # Next line is required for Qt, then give us the layout
         super(InteractivePicker, self).__init__()
         self.setupUi(self)
@@ -75,57 +76,21 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # For loading cross profiles, we want to use multiple symbols
         self.cp = 0
 
+        # Check if we need to plot some picks
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
 
         try:
-            if xdat not in ['tracenum', 'dist']:
-                raise ValueError('x axis choices are tracenum or dist')
-            if ydat not in ['twtt', 'depth', 'elev']:
-                raise ValueError('y axis choices are twtt or depth')
+            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray_r, fig=self.fig, ax=self.ax, return_plotinfo=True)
 
-            if x_range is None:
-                x_range = (0, -1)
-            if x_range[-1] == -1:
-                self.x_range = (x_range[0], self.dat.tnum)
-
-            self.lims = np.percentile(dat.data[:, self.x_range[0]:self.x_range[-1]], (10, 90))
+            # Store some info that we need for later
+            self.y = ydat
+            self.x = xdat
             self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
             self.minSpinner.setValue(self.lims[0])
             self.maxSpinner.setValue(self.lims[1])
             self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
-            if ydat == 'elev':
-                if hasattr(dat.flags, 'elev') and dat.flags.elev:
-                    self.yd = dat.elevation
-                    self.ax.set_ylabel('Elevation (m)')
-                    self.y = 'elev'
-                else:
-                    raise ValueError('No elevation variable to use')
-            else:
-                self.ax.invert_yaxis()
-                if ydat == 'twtt':
-                    self.yd = dat.travel_time
-                    self.ax.set_ylabel('Two way travel time (usec)')
-                    self.y = 'twtt'
-                elif ydat == 'depth':
-                    if dat.nmo_depth is not None:
-                        self.yd = dat.nmo_depth
-                        self.y = 'nmo_depth'
-                    else:
-                        self.yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
-                        self.y = 'depth'
-                    self.ax.set_ylabel('Depth (m)')
 
-            if xdat == 'tracenum':
-                self.xd = np.arange(int(self.dat.tnum))[self.x_range[0]:self.x_range[-1]]
-                self.ax.set_xlabel('Trace number')
-                self.x = 'tnum'
-            elif xdat == 'dist':
-                self.xd = self.dat.dist[self.x_range[0]:self.x_range[-1]]
-                self.ax.set_xlabel('Distance (km)')
-                self.x = 'dist'
-
-            self.im = self.ax.imshow(dat.data[:, self.x_range[0]:self.x_range[-1]], cmap=plt.cm.gray, vmin=self.lims[0], vmax=self.lims[1], extent=[np.min(self.xd), np.max(self.xd), np.max(self.yd), np.min(self.yd)], aspect='auto')
             if self.dat.picks.samp1 is not None:
                 self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
                 self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
@@ -395,7 +360,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             # Check if we are in depth or time space
             if self.y == 'twtt':
                 y_coords_plot = dat_cross.travel_time
-            elif self.y in ['depth', 'nmo_depth']:
+            elif self.y == 'depth':
                 if dat_cross.nmo_depth is not None:
                     y_coords_plot = dat_cross.nmo_depth
                 else:

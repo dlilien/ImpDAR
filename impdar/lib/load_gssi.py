@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2018 dlilien <dlilien@berens>
+# Copyright © 2019 dlilien <dlilien@berens>
 #
-# Distributed under terms of the GNU GPL3 license.
+# Distributed under terms of the GNU GPL3.0 license.
 
 """
 
@@ -117,7 +117,7 @@ class DZT(RadarData):
             self.dist = self.gps_data.dist.flatten()
             self.elev = self.gps_data.z
 
-            timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
+            timezero = datetime.datetime(1970, 1, 1, 0, 0, 0)
             day_offset = self.rh.Create - timezero
             tmin, tmax = day_offset.days + np.min(self.gps_data.dectime), day_offset.days + np.max(self.gps_data.dectime)
             self.decday = np.linspace(tmin, tmax, self.tnum)

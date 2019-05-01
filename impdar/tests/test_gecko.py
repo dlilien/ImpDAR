@@ -13,16 +13,21 @@ Earth and Space Sciences
 Mar 28 2019
 
 """
-
-import unittest
+import sys
 import os
-from impdar.lib import load_gecko
+import unittest
+from impdar.lib import load_olaf
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
 class TestLoadGecko(unittest.TestCase):
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Bytes are weird in 2')
     def test_load_gecko(self):
-        load_gecko.load_gecko(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
-        load_gecko.load_gecko(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'),channel=2)
+        load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=1)
+        load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=2)
+
+
 if __name__ == '__main__':
     unittest.main()
