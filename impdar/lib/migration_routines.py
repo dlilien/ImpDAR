@@ -27,12 +27,9 @@ import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 
-# -----------------------------------------------------------------------------
 
-def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
-    """
-
-    Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
+def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
+    """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
     The algorithm cycles through all every sample in each trace, creating a hypothetical diffraciton
@@ -54,57 +51,61 @@ def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     """
 
-    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.tnum, dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
+    if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
         raise ValueError('The input array must be of size (tnum,snum)')
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data,dat.travel_time/1e6,axis=0)
+    gradD = np.gradient(dat.data, dat.travel_time / 1.e6, axis=0)
     # Create an empty array to fill with migrated data
     migdata = np.zeros_like(dat.data)
+
+    # Try to cache some variables that we need lots
+    tt_sec = dat.travel_time / 1.0e6
+    max_travel_time = np.max(tt_sec)
+
     # Loop through all traces
     for xi in range(dat.tnum):
-        print('Migrating trace number:',xi)
+        print('Migrating trace number:', xi)
         # get the trace distance
         x = dat.dist[xi]
+        dists2 = (dat.dist - x)**2.
+        
+        # Cache the depths
+        zs = vel * tt_sec
+        zs2 = zs**2.
+
         # Loop through all samples
         for ti in range(dat.snum):
-            # get the sample time
-            t = dat.travel_time[ti]/1e6
-            # convert to depth
-            z = vel*t/2.
             # get the radial distances between input point and output point
-            rs = np.sqrt((dat.dist-x)**2.+z**2.)
+            rs = np.sqrt(dists2 + zs2[ti])
             # find the cosine of the angle of the tangent line, correct for obliquity factor
             with np.errstate(invalid='ignore'):
-                costheta = z/rs
+                costheta = zs[ti] / rs
             # get the exact indices from the array (closest to rs)
-            Didx = [np.argmin(abs(dat.travel_time/1e6-2.*r/vel)) for r in rs]
+            Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
             # integrate the farfield term
-            gradDhyp = np.array([gradD[Didx[i],i] for i in range(len(Didx))])
-            gradDhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
-            integral = np.nansum(gradDhyp*costheta/vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
+            gradDhyp = gradD[Didx, np.arange(len(Didx))]
+            gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+            integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
             # integrate the nearfield term
-            if nearfield == True:
-                Dhyp = np.array([dat.data[Didx[i],i] for i in range(len(Didx))])
-                Dhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
-                integral += np.nansum(Dhyp*costheta/rs**2.)
+            if nearfield:
+                Dhyp = dat.data[Didx, np.arange(len(Didx))]
+                Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+                integral += np.nansum(Dhyp * costheta / rs**2.)
             # sum the integrals and output
-            migdata[ti,xi] = 1./(2.*np.pi)*integral
+            migdata[ti, xi] = 1. / (2. * np.pi) * integral
     dat.data = migdata.copy()
     # print the total time
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(dat.tnum,dat.snum,time.time()-start))
+          % (dat.tnum, dat.snum, time.time() - start))
     return dat
 
-# -----------------------------------------------------------------------------
 
-def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
-    """
-
-    Stolt Migration (Stolt, 1978, Geophysics)
+def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
+    """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
     frequency-wavenumber (FKx) to wavenumber-wavenumber (KzKx) space.
