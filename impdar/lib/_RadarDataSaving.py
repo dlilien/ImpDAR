@@ -77,7 +77,17 @@ class RadarDataSaving:
                 f.bin.update(tsort=segyio.TraceSortingFormat.INLINE_SORTING)
 
     def output_shp(self, fn, t_srs=4326):
-        # TODO Need to output picks if we have picks
+        """Output a shapefile of the traces.
+
+        If there are any picks, we want to output these. If not, we will only output the tracenumber. This function requires osr/gdal for shapefile creation
+
+        Parameters
+        ----------
+        fn: str
+            The filename of the output
+        t_srs: int, optional
+            EPSG number of the target spatial reference system. Default 4326 (wgs84)
+        """
         if not conversions_enabled:
             raise ImportError('osgeo was not imported')
         out_srs = osr.SpatialReference()
@@ -90,6 +100,9 @@ class RadarDataSaving:
         data_source = driver.CreateDataSource(fn)
         layer = data_source.CreateLayer('traces', out_srs, ogr.wkbPoint)
         layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
+
+        if self.picks is not None:
+            layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
 
         # Process the text file and add the attributes and features to the shapefile
         for trace in range(self.tnum):

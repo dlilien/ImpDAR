@@ -16,7 +16,16 @@ from .PickParameters import PickParameters
 
 
 class Picks():
-    """Information about picks"""
+    """Information about picks
+
+    Attributes
+    ----------
+    samp1: nsamp x tnum array
+    samp2: nsamp x tnum array
+    samp3: nsamp x tnum array
+    time: nsamp x tnum array
+    power: nsamp x tnum array
+    """
     attrs = ['samp1', 'samp2', 'samp3', 'time', 'power', 'picknums']
     flatten = [False, False, False, False, False, True]
     spec_attrs = ['lasttrace', 'lt', 'pickparams']

@@ -14,6 +14,19 @@ from scipy.spatial import cKDTree as KDTree
 
 
 def pick(traces, snum_start, snum_end, pickparams):
+    """Pick a reflector in some traces. Uses a line between the starting and ending picks to guide it.
+
+    Parameters
+    ----------
+    traces: np.ndarray
+        The chunk of data we are picking. Should be a slice of the overall data with shape snum x (size to pick)
+    snum_start: int
+        The index of the pick in the leftmost trace. We would normally get this from the last pick.
+    snum_end: int
+        The index of the pick in the rightmost trace.
+    pickparams: `impdar.lib.PickParameters.PickParameters`
+        Use for polarity, frequency, plength.
+    """
     # This is similar to stp_pickloop
     picks_out = np.zeros((5, traces.shape[1]))
     dmid = midpoint(traces.shape[1], snum_start, snum_end)

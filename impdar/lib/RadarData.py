@@ -266,8 +266,6 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
         print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
 
-
-
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
 
@@ -389,4 +387,3 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
 
         self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1
-

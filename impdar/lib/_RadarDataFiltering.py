@@ -343,7 +343,6 @@ class RadarDataFiltering:
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
 
-
     def migrate(self, mtype='stolt', **kwargs):
         """Migrate the data.
 
