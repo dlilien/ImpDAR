@@ -65,6 +65,10 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
     max_travel_time = np.max(tt_sec)
+        
+    # Cache the depths
+    zs = vel * tt_sec
+    zs2 = zs**2.
 
     # Loop through all traces
     for xi in range(dat.tnum):
@@ -72,10 +76,6 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
         # get the trace distance
         x = dat.dist[xi]
         dists2 = (dat.dist - x)**2.
-        
-        # Cache the depths
-        zs = vel * tt_sec
-        zs2 = zs**2.
 
         # Loop through all samples
         for ti in range(dat.snum):

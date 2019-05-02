@@ -6,9 +6,6 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Leader trailer class
-"""
 
 from .Crop import Crop
 

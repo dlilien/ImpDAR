@@ -39,6 +39,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
         #pick menu
         self.actionLoad_crossprofile.triggered.connect(self._load_cp)
+        self.actioncsv.triggered.connect(self._export_csv)
+        self.actionshp.triggered.connect(self._export_shp)
 
         # Process menu
         self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
@@ -374,6 +376,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.cp += 1
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
+
+    def _export_csv(self, event=None):
+        fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn[:-4] + '.csv', "All Files (*);;csv Files (*.csv)")
+        if fn:
+            self.dat.output_csv(fn)
+
+    def _export_shp(self, event=None):
+        fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn[:-4] + '.shp', "All Files (*);;shp Files (*.shp)")
+        if fn:
+            self.dat.output_shp(fn)
 
     ######
     # Decorators for processing

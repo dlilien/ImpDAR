@@ -7,7 +7,11 @@
 # Distributed under terms of the GNU GPL-3.0 license.
 
 """
-Define a class that just has the necessary attributes for a StODeep file--this should be subclassed per filetype
+A class that just has the necessary attributes for a StODeep file.
+
+This is the basic object around which ImpDAR is written. It contains most of the methods used for processing and saving radar data. The source code is split across several files containing superclasses to keep file size down, but it all the methods should be documented here.
+
+This base object is then subclassed for each type of data that ImpDAR can load, so that each of those subclasses can have easy initialization.
 """
 
 import numpy as np
