@@ -53,8 +53,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
 
     print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.tnum, dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
@@ -123,8 +122,8 @@ def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
 
     print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
+
     # save the start time
     start = time.time()
     # pad the array with zeros up to the next power of 2 for discrete fft
@@ -212,8 +211,8 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     print('Phase-Shift Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
+
     # save the start time
     start = time.time()
     # pad the array with zeros up to the next power of 2 for discrete fft
@@ -451,16 +450,23 @@ def getVelocityProfile(dat,vels_in):
     start = time.time()
     print('Interpolating the velocity profile.')
 
-    nlay,dimension = np.shape(vels_in)
+    if len(np.shape(vels_in)) != 2 or np.shape(vels_in)[1] == 1:
+        raise ValueError('If non-constant vel, inputs needs to be 2d (v, z) or (v, z, x)')
+    nlay, dimension = np.shape(vels_in)
     vel_v = vels_in[:,0]
     vel_z = vels_in[:,1]
 
-    twtt = dat.travel_time.copy()/1e6
+    twtt = dat.travel_time.copy() / 1.0e6
     ### Layered Velocity
-    if nlay > 1 and dimension == 2:
+    if nlay == 1:
+        raise ValueError('It does not make sense to only give one layer of velocity--if you want constant velocity just input v')
+    elif dimension == 2:
         zs = np.max(vel_v)/2.*twtt      # depth array for maximum possible penetration
         zs[0] = twtt[0]*vel_v[0]/2.
         # If an input point is closest to a boundary push it to the boundary
+        # This will suppress some desired errors though, so use this if to try to guard
+        if (vel_z[0] > 1.1 * np.nanmin(zs) and vel_z[0] / np.nanmax(zs) > 1.0e-3) or vel_z[-1] * 1.1 < np.nanmax(zs):
+            raise ValueError('Your velocity data doesnt come close to covering the depths in the data')
         if vel_z[0] > np.nanmin(zs):
             vel_v = np.insert(vel_v,0,vel_v[np.argmin(vel_z)])
             vel_z = np.insert(vel_z,0,np.nanmin(zs))
@@ -475,20 +481,18 @@ def getVelocityProfile(dat,vels_in):
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
         zoft = zinterp(twtt)
-        if twtt[-1] > tofz[-1]:
-            raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
         vmig = 2.*np.gradient(zoft,twtt)
 
     ### Lateral Velocity Variations TODO: I need to check this more rigorously too.
-    elif nlay > 1 and dimension == 3:
+    elif dimension == 3:
         vel_x = vels_in[:,2]    # Input velocities
         # Depth array for largest penetration range
         zs = np.linspace(np.min(vel_v)*twtt[0],
                  np.max(vel_v)*twtt[-1],
                  dat.snum)/2.
         # Use nearest neighbor interpolation to grid the input points onto a mesh
-        if all(dat.dist == 0):
+        if dat.dist is None or all(dat.dist == 0):
             raise ValueError('The distance vector was never set.')
         XS,ZS = np.meshgrid(dat.dist,zs)
         VS = griddata(np.transpose([vel_x,vel_z]),vel_v,np.transpose([XS.flatten(),ZS.flatten()]),method='nearest')
@@ -506,12 +510,20 @@ def getVelocityProfile(dat,vels_in):
             tofz = tinterp(zs)
             # Compute z(t) from monotonically increasing t
             zinterp = interp1d(tofz,zs)
-            zoft = zinterp(twtt)
             if twtt[-1] > tofz[-1]:
                 raise ValueError('Two-way travel time array extends outside of interpolation range')
+            zoft = zinterp(twtt)
             # Compute vmig(t) from z(t)
             vmig[:,i] = 2.*np.gradient(zoft,twtt)
+    else:
+        # We get here if the number of columns is bad
+        raise ValueError('Input must be 2d with 2 or 3 columns')
 
     print('Velocity profile finished in %.2f seconds.'%(time.time()-start))
 
     return vmig
+
+
+def _check_data_shape(dat):
+    if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
+        raise ValueError('The input array must be of size (tnum,snum)')
