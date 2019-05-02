@@ -32,9 +32,9 @@ class TestPickLib(unittest.TestCase):
 
     def test_midpoint(self):
         # Fully test that we find midpoints as expected
-        self.assertTrue(np.allclose(picklib.midpoint(200, 100, 100), np.ones((200,)) * 100.))
-        self.assertTrue(np.allclose(picklib.midpoint(200, -9999, 100), np.ones((200,)) * 100.))
-        self.assertTrue(np.allclose(picklib.midpoint(200, 0, 200), np.arange(200)))
+        self.assertTrue(np.allclose(picklib._midpoint(200, 100, 100), np.ones((200,)) * 100.))
+        self.assertTrue(np.allclose(picklib._midpoint(200, -9999, 100), np.ones((200,)) * 100.))
+        self.assertTrue(np.allclose(picklib._midpoint(200, 0, 200), np.arange(200)))
 
     def test_packet_power(self):
         with self.assertRaises(ValueError):
