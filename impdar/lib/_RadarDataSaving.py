@@ -103,28 +103,28 @@ class RadarDataSaving:
         layer = data_source.CreateLayer('traces', out_srs, ogr.wkbPoint)
         layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
 
-        if self.picks is not None and self.picks.samp1 is not None:
+        if self.picks is not None and self.picks.samp2 is not None:
             out_name, target_out_array = self._get_pick_targ_info(target_out)
             for picknum in self.picks.picknums:
-                layer.CreateField(ogr.FieldDefn('{:d}_{:s}'.format(picknum, out_name), ogr.OFTReal))
+                layer.CreateField(ogr.FieldDefn('L{:d}_{:s}'.format(picknum, out_name), ogr.OFTReal))
 
         # Process the text file and add the attributes and features to the shapefile
         for trace in range(self.tnum):
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetField('TraceNum', trace + 1)
-            if self.picks is not None and self.picks.samp1 is not None:
+            if self.picks is not None and self.picks.samp2 is not None:
                 for i, picknum in enumerate(self.picks.picknums):
                     if out_name != 'elev':
                         if not np.isnan(self.picks.samp2[i, trace]):
-                            feature.SetField('{:d}_{:s}'.format(picknum, out_name), target_out_array[int(self.picks.samp2[i, trace])])
+                            feature.SetField('L{:d}_{:s}'.format(picknum, out_name), target_out_array[int(self.picks.samp2[i, trace])])
                         else:
-                            feature.SetField('{:d}_{:s}'.format(picknum, out_name), np.nan)
+                            feature.SetField('L{:d}_{:s}'.format(picknum, out_name), np.nan)
 
                     else:
                         if not np.isnan(self.picks.samp2[i, trace]):
-                            feature.SetField('L{:d}_{:s}'.format(picknum, out_name), self.elev[trace] - target_out_array[self.picks.samp2[i, trace]])
+                            feature.SetField('L{:d}_{:s}'.format(picknum, out_name), self.elev[trace] - target_out_array[int(self.picks.samp2[i, trace])])
                         else:
-                            feature.SetField('{:d}_{:s}'.format(picknum, out_name), np.nan)
+                            feature.SetField('L{:d}_{:s}'.format(picknum, out_name), np.nan)
 
             x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])
             wkt = 'POINT({:f} {:f})'.format(x, y)
@@ -151,7 +151,7 @@ class RadarDataSaving:
         header = delimiter.join(['lat', 'lon', 'tnum'])
         outs = np.vstack((self.lat, self.long, np.arange(self.tnum) + 1))
 
-        if self.picks is not None and self.picks.samp1 is not None:
+        if self.picks is not None and self.picks.samp2 is not None:
             out_name, target_out_array = self._get_pick_targ_info(target_out)
             for picknum in self.picks.picknums:
                 header += (delimiter + 'Layer_{:d}_{:s}'.format(picknum, out_name))
@@ -162,7 +162,7 @@ class RadarDataSaving:
             out_arr_picks = target_out_array[out_ind_picks_viableind]
             out_arr_picks[out_ind_picks < 0] = np.nan
             outs = np.vstack((outs, out_arr_picks))
-        np.savetxt(fn, outs, header=header, delimiter=delimiter)
+        np.savetxt(fn, outs.transpose(), header=header, delimiter=delimiter)
 
     def _get_pick_targ_info(self, target_out):
         """Get the rate type of pick information for returning
@@ -176,22 +176,19 @@ class RadarDataSaving:
                 out_name = 'twtt'
                 target_out_array = self.travel_time
         else:
+            out_name = target_out
             if target_out == 'depth':
                 if (not hasattr(self, 'nmo_depth')) or self.nmo_depth is None:
                     raise AttributeError('Cannot do depth output with no nmo_depth')
-                out_name = 'depth'
                 target_out_array = self.nmo_depth
             elif target_out == 'elev':
                 if (not hasattr(self, 'elev')) or self.elev is None:
                     raise AttributeError('Cannot do depth output with no nmo_depth')
-                out_name = 'elev'
                 target_out_array = self.nmo_depth
             elif target_out == 'twtt':
-                out_name = 'twtt'
                 target_out_array = self.travel_time
             elif target_out == 'snum':
-                out_name = 'snum'
-                target_out_array = np.arange(snum)
+                target_out_array = np.arange(self.snum)
             else:
                 raise ValueError('target_out must be snum, twtt, depth, or elev')
         return out_name, target_out_array
