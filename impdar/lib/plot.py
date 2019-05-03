@@ -26,6 +26,8 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         A list of filenames to plot individually.
     tr: tuple or int, optional
         Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram. Default is None (plot radargram)
+    power: int, optional
+        If not None, then plot power returned from this layer
     gssi: bool, optional
         If True, fns are .DZT files
     pe: bool, optional
@@ -51,10 +53,13 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
     else:
         ydat = 'twtt'
 
+    if (tr is not None) and (power is not None):
+        raise ValueError('Cannot do both tr and power. Pick one')
+
     if tr is not None:
         figs = [plot_traces(dat, tr, ydat=ydat) for dat in radar_data]
     elif power is not None:
-        figs = plot_power(radar_data, power)
+        figs = [plot_power(dat, power) for dat in radar_data]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -65,15 +70,49 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
         plt.show()
 
 
-def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray_r, fig=None, ax=None, return_plotinfo=False):
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False):
     """This is the function to plot the normal radargrams that we are used to.
+
+    This function is a little weird since I want to be able to plot on top of existing figures/axes or on new figures an axes. There is therefore an argument `return_plotinfo` that funnels between these options and changes the return types
 
     Parameters
     ----------
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
     xdat: str, optional
+        The horizontal axis units. Either tnum or distance.
+    ydat: str, optional
+        The vertical axis units. Either twtt or or depth. Default twtt.
+    x_range: 2-tuple, optional
+        The range of values to plot. Default is plot everything (0, -1)
+    cmap: matplotlib.pyplot.cm, optional
+        The colormap to use
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
 
+
+    Returns
+    -------
+    If not return_plotinfo
+
+        fig: matplotlib.pyplot.Figure
+            Figure canvas that was plotted upon
+        ax: matplotlib.pyplot.Axes
+            Axes that were plotted upon
+
+    else
+        im: pyplot.imshow
+            The image object plotted
+        xd: np.ndarray
+            The x values of the plot
+        yd: np.ndarray
+            The y values of the plot
+        x_range: 2-tuple
+            The limits of the x range, after modification to remove negative indices
+        clims: 2-tuple
+            The limits of the colorbar
 
     """
     if xdat not in ['tnum', 'dist']:
@@ -90,7 +129,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     clims = [lims[0] * 2 if lims[0] < 0 else lims[0] / 2, lims[1] * 2]
 
     if fig is not None:
-        pass
+        if ax is None:
+            ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(12, 8))
 
@@ -123,14 +163,35 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     if not return_plotinfo:
         return fig, ax
     else:
-        return im, xd, yd, x_range, lims
+        return im, xd, yd, x_range, clims
 
 
 def plot_traces(dat, tr, ydat='twtt'):
+    """Plot power vs depth or twtt in a trace
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    tr: int or 2-tuple
+        Either a single trace or a range of traces to plot
+    ydat: str, optional
+        The vertical axis units. Either twtt or or depth. Default twtt.
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
     #Two options of trace input, a single trace or multiple
+    if hasattr(tr, '__iter__'):
+        if not len(tr) == 2:
+            raise ValueError('tr must either be a 2-tuple of bounds for the traces or a single trace index')
     if type(tr) == int:
         tr = (tr, tr + 1)
-    if tr[0] == tr[1]:
+    elif tr[0] == tr[1]:
         tr = (tr[0], tr[0] + 1)
 
     if ydat not in ['twtt', 'depth']:
@@ -161,23 +222,46 @@ def plot_traces(dat, tr, ydat='twtt'):
 
 
 def plot_power(dat, idx):
-    #check to see if user entered an integer pick number
-    if type(idx) != int:
-        raise ValueError('Please enter an integer pick number')
-
-    #add one to idx for Matlab 1-based indexing
-    search = idx + 1
+    """Make a plot of the reflected power along a given pick
     
-    #convert from list type to RadarData type
-    dat = dat[0]
 
-    #check to see if the pick number exists
-    if search not in dat.picks.picknums:
-        raise ValueError('Pick number {} not found in your file'.format(search))
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    idx: int
+        A picknum in the dat.picks.picknum array
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
+    #check to see if user entered an integer pick number
+    try:
+        idx = int(idx)
+    except TypeError:
+        raise TypeError('Please enter an integer pick number')
+
+    if (dat.picks is None) or (dat.picks.picknums is None):
+        raise ValueError('There are no picks on this radardata, cannot plot return power')
+
+    if idx not in dat.picks.picknums:
+        raise ValueError('Pick number {:d} not found in your file'.format(idx))
 
     fig, ax = plt.subplots(figsize=(8, 12))
-    img = ax.scatter(dat.long, dat.lat, c=10 * np.log10(dat.picks.power[idx]))
+    c = 10 * np.log10(dat.picks.power[dat.picks.picknums.index(idx)])
+    clims = np.percentile(c, (1, 99))
+
+    # I think we throw an error if vmin=vmax, but we still want a plot of constant power
+    if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
+        clims[0] = 0.99 * clims[0]
+        clims[1] = 1.01 * clims[1]
+
+    img = ax.scatter(dat.long, dat.lat, c=c.flatten(), vmin=clims[0], vmax=clims[1])
     h = fig.colorbar(img)
     ax.set_ylabel('dB')
 
-    return fig
+    return fig, ax

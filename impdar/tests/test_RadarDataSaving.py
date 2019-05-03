@@ -142,16 +142,16 @@ class TestRadarDataExports(unittest.TestCase):
 
         # First, export with NaNs, both with normal field (depth) and elev
         rd.picks.samp2[:] = np.nan
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'))
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'), target_out='elev')
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test0.shp'))
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test1.shp'), target_out='elev')
 
         # Fill in NaNs
         rd.picks.samp2[:] = 1
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'))
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'), target_out='elev')
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test2.shp'))
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test3.shp'), target_out='elev')
 
         # Check geometry
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'), t_srs=3413)
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs=3413)
 
     @unittest.skipIf(conversions_enabled, 'Version has GDAL, just checking we fail without')
     def test_output_shp_nolayers_nogdal(self):
@@ -224,9 +224,10 @@ class TestRadarDataExports(unittest.TestCase):
             self.assertEqual(len(lines), rd.tnum + 1)
 
     def tearDown(self):
-        for fn in ['test_out.mat', 'test.shp', 'test.shx', 'test.prj', 'test.dbf', 'test.csv']:
-            if os.path.exists(os.path.join(THIS_DIR, 'input_data', fn)):
-                os.remove(os.path.join(THIS_DIR, 'input_data', fn))
+        for i in range(6):
+            for fn in ['test_out.mat', 'test{:d}.shp'.format(i), 'test{:d}.shx'.format(i), 'test{:d}.prj'.format(i), 'test{:d}.dbf'.format(i), 'test.csv']:
+                if os.path.exists(os.path.join(THIS_DIR, 'input_data', fn)):
+                    os.remove(os.path.join(THIS_DIR, 'input_data', fn))
 
 
 if __name__ == '__main__':
