@@ -166,7 +166,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         return im, xd, yd, x_range, clims
 
 
-def plot_traces(dat, tr, ydat='twtt'):
+def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
     """Plot power vs depth or twtt in a trace
 
     Parameters
@@ -177,6 +177,10 @@ def plot_traces(dat, tr, ydat='twtt'):
         Either a single trace or a range of traces to plot
     ydat: str, optional
         The vertical axis units. Either twtt or or depth. Default twtt.
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
 
     Returns
     -------
@@ -196,7 +200,12 @@ def plot_traces(dat, tr, ydat='twtt'):
 
     if ydat not in ['twtt', 'depth']:
         raise ValueError('y axis choices are twtt or depth')
-    fig, ax = plt.subplots(figsize=(8, 12))
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(8, 12))
+    ax.set_xscale('symlog')
     lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
     ax.invert_yaxis()
 
@@ -221,7 +230,7 @@ def plot_traces(dat, tr, ydat='twtt'):
     return fig, ax
 
 
-def plot_power(dat, idx):
+def plot_power(dat, idx, fig=None, ax=None):
     """Make a plot of the reflected power along a given pick
     
 
@@ -231,6 +240,10 @@ def plot_power(dat, idx):
         The RadarData object to plot.
     idx: int
         A picknum in the dat.picks.picknum array
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
 
     Returns
     -------
@@ -251,7 +264,11 @@ def plot_power(dat, idx):
     if idx not in dat.picks.picknums:
         raise ValueError('Pick number {:d} not found in your file'.format(idx))
 
-    fig, ax = plt.subplots(figsize=(8, 12))
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(8, 12))
     c = 10 * np.log10(dat.picks.power[dat.picks.picknums.index(idx)])
     clims = np.percentile(c, (1, 99))
 
