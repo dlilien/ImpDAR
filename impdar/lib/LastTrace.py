@@ -11,7 +11,15 @@ import numpy as np
 
 
 class LastTrace():
-    """The sample and trace of the last trace for picking"""
+    """The sample and trace of the last trace when picking
+    
+    Attributes
+    ----------
+    snum: int
+        The last sample picked
+    tnum: int
+        The last trace picked
+    """
     attrs = ['snum', 'tnum']
 
     def __init__(self, lasttrace_struct=None):

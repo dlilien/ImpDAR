@@ -14,7 +14,7 @@ In addition to processing, ImpDAR can also be used for interpreting the radargra
 *Python 2 or 3* The package is tested on Python 2.7, and 3.5+. Other versions may work, but they are not tested. [numpy](http://www.scipy.org), [scipy](http://numpy.org), [matplotlib](http://matplotlib.org). I recommend just using Anaconda for your install, since it will also get you PyQt and therefore enable the GUI.
 
 #### Recommended
-[GDAL](http://gdal.org) is needed to reproject out of WGS84, and thus for proper distance measurement. [PyQt5](https://pypi.org/project/PyQt5/) is needed to run the GUI, which is needed for picking. You can do everything from the command line, and plot the results with matplotlib, without PyQt5. PyQt4 may work, but I haven't tested it. [SegYIO]() is needed for SEGY support.
+[GDAL](http://gdal.org) is needed to reproject out of WGS84, and thus for proper distance measurement. [PyQt5](https://pypi.org/project/PyQt5/) is needed to run the GUI, which is needed for picking. You can do everything from the command line, and plot the results with matplotlib, without PyQt5. PyQt4 may work, but I haven't tested it. [SegYIO](https://github.com/equinor/segyio/) is needed for SEGY support.
 
 ## Documentation
 

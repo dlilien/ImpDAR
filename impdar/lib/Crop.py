@@ -6,15 +6,29 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Crop information
-"""
 
 import numpy as np
 
 
 class Crop():
-    """Crop information. I have no idea what this is for but it is retained for backwards compatibility"""
+    """Crop information that tells us how the data have been modified.
+
+    Parameters
+    ----------
+    radardata: impdar.lib.RadarData.RadarData
+        Radardata object for this to be affiliated with
+    
+    Attributes
+    ----------
+    tnum: int
+        The number of traces
+    maxsnum: int
+        The maximum snum
+    mintt: float
+        The minimum twtt
+    maxstt: float
+        The maximum twtt
+    """
     attrs = ['tnum', 'maxsnum', 'mintt', 'maxtt']
 
     def __init__(self, radardata):
@@ -24,10 +38,15 @@ class Crop():
         self.maxtt = np.max(radardata.travel_time)
 
     def to_struct(self):
+        """Export to format for matlab
+
+        Returns
+        -------
+        mat: dict
+            Attributes in form digestible for scipy.io.savemat
+        """
         mat = {}
         for attr in self.attrs:
-            if getattr(self, attr) is not None:
-                mat[attr] = getattr(self, attr)
-            else:
-                mat[attr] = 0
+            # I don't guard against None here since None should not be allowed
+            mat[attr] = getattr(self, attr)
         return mat

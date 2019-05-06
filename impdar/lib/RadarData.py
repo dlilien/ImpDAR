@@ -235,6 +235,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             raise ValueError('top_or_bottom must be "top" or "bottom" not {:s}'.format(top_or_bottom))
         if dimension not in ['snum', 'twtt', 'depth', 'pretrig']:
             raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
+        if top_or_bottom == 'bottom' and dimension == 'pretrig':
+            raise ValueError('Only use pretrig to crop from the top')
 
         if dimension == 'twtt':
             ind = np.min(np.argwhere(self.travel_time >= lim))
@@ -245,21 +247,34 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
                 depth = self.travel_time / 2. * uice * 1.0e-6
             ind = np.min(np.argwhere(depth >= lim))
         elif dimension == 'pretrig':
-            ind = int(self.trig)
-            print(ind)
+            if not (type(self.trig) == np.ndarray):
+                ind = int(self.trig)
+            else:
+                ind = self.trig.astype(int)
         else:
             ind = int(lim)
 
-        if top_or_bottom == 'top':
-            lims = [ind, self.data.shape[0]]
+        if not (type(ind) == np.ndarray) or (dimension != 'pretrig'):
+            if top_or_bottom == 'top':
+                lims = [ind, self.data.shape[0]]
+            else:
+                lims = [0, ind]
+            self.data = self.data[lims[0]:lims[1], :]
+            self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
+            self.snum = self.data.shape[0]
         else:
-            if dimension == 'pretrig':
-                raise ValueError('Only use pretrig to crop from the top')
-            lims = [0, ind]
+            # pretrig, vector input
+            # Need to figure out if we need to do any shifting
+            # The extra shift compared to the smallest
+            mintrig = np.min(ind)
+            trig_ends = self.data.shape[0] - (ind - mintrig) - 1
+            data_old = self.data.copy()
+            self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
+            self.data[:, :] = np.nan
+            for i in range(self.data.shape[1]):
+                self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
+            lims = [0, mintrig]
 
-        self.data = self.data[lims[0]:lims[1], :]
-        self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
-        self.snum = self.data.shape[0]
         try:
             self.flags.crop[0] = 1
             self.flags.crop[2] = self.flags.crop[1] + lims[1]

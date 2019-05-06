@@ -89,6 +89,19 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.crop(6, 'top', dimension='snum')
         self.assertTrue(self.data.data.shape == (11, 40))
 
+    def test_CropTrigInt(self):
+        self.data.trig = 2
+        with self.assertRaises(ValueError):
+            self.data.crop(17, 'bottom', dimension='pretrig')
+        self.data.crop(6, 'top', dimension='pretrig')
+        self.assertTrue(self.data.data.shape == (18, 40))
+
+    def test_CropTrigMat(self):
+        self.data.trig = np.ones((40,), dtype=int)
+        self.data.trig[20:] = 2
+        self.data.crop(6, 'top', dimension='pretrig')
+        self.assertTrue(self.data.data.shape == (19, 40))
+
     def test_CropDepthOnTheFly(self):
         self.data.crop(0.165, 'bottom', dimension='depth', uice=2.0e6)
         self.assertTrue(self.data.data.shape == (17, 40))
