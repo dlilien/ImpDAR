@@ -17,12 +17,12 @@ from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
     ----------
-    fn: list of strs
+    fns: list of strs
         A list of filenames to plot individually.
     tr: tuple or int, optional
         Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram. Default is None (plot radargram)
@@ -38,11 +38,17 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
     if gssi and pe:
         raise ValueError('Input cannot be both pulse-ekko and gssi')
     if gssi:
-        radar_data = load('gssi', fn)
+        radar_data = load('gssi', fns)
     elif pe:
-        radar_data = load('pe', fn)
+        radar_data = load('pe', fns)
+    elif gecko:
+        radar_data = load('pe', fns)
+    elif gprMax:
+        radar_data = load('pe', fns)
+    elif segy:
+        radar_data = load('pe', fns)
     else:
-        radar_data = load('mat', fn)
+        radar_data = load('mat', fns)
 
     if xd:
         xdat = 'dist'
@@ -59,9 +65,13 @@ def plot(fn, tr=None, gssi=False, pe=False, s=False, ftype='png', dpi=300, xd=Fa
     if tr is not None:
         figs = [plot_traces(dat, tr, ydat=ydat) for dat in radar_data]
     elif power is not None:
-        figs = [plot_power(dat, power) for dat in radar_data]
+        # Do it all on one axis if power
+        figs = plot_power(radar_data, power)
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
+
+    for fig, dat in zip(figs, radar_data):
+        fig[0].canvas.set_window_title(dat.fn)
 
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
@@ -230,7 +240,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
     return fig, ax
 
 
-def plot_power(dat, idx, fig=None, ax=None):
+def plot_power(dats, idx, fig=None, ax=None):
     """Make a plot of the reflected power along a given pick
     
 
@@ -257,19 +267,34 @@ def plot_power(dat, idx, fig=None, ax=None):
         idx = int(idx)
     except TypeError:
         raise TypeError('Please enter an integer pick number')
+    
+    if type(dats) not in [list, tuple]:
+        dats = [dats]
 
-    if (dat.picks is None) or (dat.picks.picknums is None):
-        raise ValueError('There are no picks on this radardata, cannot plot return power')
+    for dat in dats:
+        if (dat.picks is None) or (dat.picks.picknums is None):
+            raise ValueError('There are no picks on this radardata, cannot plot return power')
 
-    if idx not in dat.picks.picknums:
-        raise ValueError('Pick number {:d} not found in your file'.format(idx))
+        if idx not in dat.picks.picknums:
+            raise ValueError('Pick number {:d} not found in your file'.format(idx))
 
     if fig is not None:
         if ax is None:
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(8, 12))
-    c = 10 * np.log10(dat.picks.power[dat.picks.picknums.index(idx)])
+
+    # Attempt to plot in projected coordinates
+    try:
+        lons = np.hstack([dat.x_coord for dat in dats])
+        lats = np.hstack([dat.y_coord for dat in dats])
+    except AttributeError:
+        lons = np.hstack([dat.long for dat in dats])
+        lats = np.hstack([dat.lat for dat in dats])
+
+    pick_power = np.hstack([dat.picks.power[dat.picks.picknums.index(idx)].flatten() for dat in dats])
+
+    c = 10 * np.log10(pick_power)
     clims = np.percentile(c[~np.isnan(c)], (1, 99))
 
     # I think we throw an error if vmin=vmax, but we still want a plot of constant power
@@ -277,7 +302,7 @@ def plot_power(dat, idx, fig=None, ax=None):
         clims[0] = 0.99 * clims[0]
         clims[1] = 1.01 * clims[1]
 
-    img = ax.scatter(dat.long, dat.lat, c=c.flatten(), vmin=clims[0], vmax=clims[1])
+    img = ax.scatter(lons, lats, c=c, vmin=clims[0], vmax=clims[1])
     h = fig.colorbar(img)
     ax.set_ylabel('Northing')
     ax.set_xlabel('Easting')
