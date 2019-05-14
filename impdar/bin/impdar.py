@@ -44,7 +44,7 @@ def _get_args():
     parser_proc.add_argument('-crop', nargs=3, type=str, help='Crop the radar data in the travel-time direction. Arguments are the limit, whether to crop off ["top", "bottom"], with limit defined in terms of ["snum", "twtt", "depth"]')
     parser_proc.add_argument('-restack', nargs=1, type=int, help='Restack to this (odd) number of traces')
     parser_proc.add_argument('-interp', nargs=2, type=str, help='Reinterpolate GPS. First argument is the new spacing, in meters. Second argument is the filename (csv or mat) with the new GPS data')
-    parser_proc.add_argument('-migrate', help='Migrate the data with the indicated routine.')
+    parser_proc.add_argument('-migrate', nargs=1, type=str, help='Migrate the data with the indicated routine.')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
     parser_proc.add_argument('-o', type=str, help='Write to this filename')
 
