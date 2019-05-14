@@ -24,7 +24,7 @@ class NoInitRadarData(RadarData):
     # This only exists so we can do tests on writing without reading
 
     def __init__(self):
-        self.data = data_dummy
+        self.data = data_dummy.copy()
         self.dt = 0.1
         self.tnum = self.data.shape[1]
         self.snum = self.data.shape[0]
@@ -100,11 +100,34 @@ class TestWinAvgHfilt(unittest.TestCase):
 
 class TestVBP(unittest.TestCase):
 
-    def test_vbp(self):
+    def test_vbp_butter(self):
         radardata = NoInitRadarData()
-        radardata.vertical_band_pass(0.1, 100.)
+        radardata.vertical_band_pass(0.1, 100., filttype='butter')
         # The filter is not too good, so we have lots of residual
         self.assertTrue(np.all(np.abs(radardata.data) < 1.0e-4))
+
+    def test_vbp_cheb(self):
+        radardata = NoInitRadarData()
+        radardata.vertical_band_pass(0.1, 100., filttype='cheb')
+        # The filter is not too good, so we have lots of residual
+        self.assertTrue(np.all(np.abs(radardata.data) < 1.0e-4))
+
+    def test_vbp_bessel(self):
+        radardata = NoInitRadarData()
+        radardata.vertical_band_pass(0.1, 100., filttype='bessel')
+        # The filter is not too good, so we have lots of residual
+        self.assertTrue(np.all(np.abs(radardata.data) < 1.0e-4))
+
+    def test_vbp_fir(self):
+        radardata = NoInitRadarData()
+        radardata.vertical_band_pass(1., 10., filttype='fir', order=100)
+
+        radardata.vertical_band_pass(1., 10., filttype='fir', order=2, fir_window='hanning')
+
+    def test_vbp_badftype(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ValueError):
+            radardata.vertical_band_pass(0.1, 100., filttype='dummy')
 
 
 class TestRadarDataHfiltWrapper(unittest.TestCase):

@@ -83,7 +83,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
 
         try:
-            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray_r, fig=self.fig, ax=self.ax, return_plotinfo=True)
+            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray, fig=self.fig, ax=self.ax, return_plotinfo=True)
 
             # Store some info that we need for later
             self.y = ydat
@@ -123,6 +123,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.modeButton.clicked.connect(self._mode_update)
             self.newpickButton.clicked.connect(self._add_pick)
             self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
+            self.bwb_radio.toggled.connect(self._update_polarity)
+            self.wbw_radio.toggled.connect(self._update_polarity)
 
             plt.show(self.fig)
         except KeyboardInterrupt:
@@ -131,6 +133,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     #######
     # Handling of the bar of option things on the left
     #######
+    def _update_polarity(self, pol):
+        if self.bwb_radio.isChecked():
+            self.dat.picks.pickparams.pol = 1
+        else:
+            self.dat.picks.pickparams.pol = -1
+
     def _color_select(self, val):
         self.im.set_cmap(plt.cm.get_cmap(val))
         self.fig.canvas.draw()
@@ -401,7 +409,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.progressLabel.setText('Horizontally filtering...')
         self.progressBar.setProperty("value", 25)
         QtWidgets.QApplication.processEvents()
-        self.dat.adaptivefilt()
+        self.dat.adaptivehfilt()
         self.progressBar.setProperty("value", 75)
         QtWidgets.QApplication.processEvents()
         self.update_radardata()
@@ -608,3 +616,4 @@ percents = np.array([0, 63, 95, 114, 123, 127, 130, 134, 143, 162, 194, 256])
 percents = percents / 256.
 
 plt.cm.register_cmap(name='CEGSIC', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC', list(zip(percents, colorb))))
+# plt.cm.register_cmap(name='CEGSIC_r', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r', list(zip(list(reversed(percents)), colorb))))

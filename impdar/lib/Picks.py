@@ -58,6 +58,7 @@ class Picks():
             self.lasttrace = LastTrace(pick_struct['lasttrace'])
             self.lt = LeaderTrailer(radardata, pick_struct['lt'])
             self.pickparams = PickParameters(radardata, pick_struct['pickparams'])
+            self.picknums = self.picknums.tolist()
         else:
             # Blank initialization
             self.samp1 = None
