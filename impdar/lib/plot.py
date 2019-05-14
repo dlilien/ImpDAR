@@ -270,7 +270,7 @@ def plot_power(dat, idx, fig=None, ax=None):
     else:
         fig, ax = plt.subplots(figsize=(8, 12))
     c = 10 * np.log10(dat.picks.power[dat.picks.picknums.index(idx)])
-    clims = np.percentile(c, (1, 99))
+    clims = np.percentile(c[~np.isnan(c)], (1, 99))
 
     # I think we throw an error if vmin=vmax, but we still want a plot of constant power
     if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
@@ -279,6 +279,7 @@ def plot_power(dat, idx, fig=None, ax=None):
 
     img = ax.scatter(dat.long, dat.lat, c=c.flatten(), vmin=clims[0], vmax=clims[1])
     h = fig.colorbar(img)
-    ax.set_ylabel('dB')
+    ax.set_ylabel('Northing')
+    ax.set_xlabel('Easting')
 
     return fig, ax
