@@ -66,15 +66,16 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         figs = [plot_traces(dat, tr, ydat=ydat) for dat in radar_data]
     elif power is not None:
         # Do it all on one axis if power
-        figs = plot_power(radar_data, power)
+        figs = [plot_power(radar_data, power)]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
-        fig[0].canvas.set_window_title(dat.fn)
+        if dat.fn is not None:
+            fig[0].canvas.set_window_title(dat.fn)
 
     if s:
-        [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fn)]
+        [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fns)]
     else:
         plt.tight_layout()
         plt.show()
@@ -285,12 +286,20 @@ def plot_power(dats, idx, fig=None, ax=None):
         fig, ax = plt.subplots(figsize=(8, 12))
 
     # Attempt to plot in projected coordinates
-    try:
-        lons = np.hstack([dat.x_coord for dat in dats])
-        lats = np.hstack([dat.y_coord for dat in dats])
-    except AttributeError:
-        lons = np.hstack([dat.long for dat in dats])
-        lats = np.hstack([dat.lat for dat in dats])
+    if dats[0].x_coord is not None:
+        if len(dats) > 1:
+            lons = np.hstack([dat.x_coord for dat in dats])
+            lats = np.hstack([dat.y_coord for dat in dats])
+        else:
+            lons = dats[0].x_coord
+            lats = dats[0].y_coord
+    else:
+        if len(dats) > 1:
+            lons = np.hstack([dat.long for dat in dats])
+            lats = np.hstack([dat.lat for dat in dats])
+        else:
+            lons = dats[0].long
+            lats = dats[0].lat
 
     pick_power = np.hstack([dat.picks.power[dat.picks.picknums.index(idx)].flatten() for dat in dats])
 
@@ -302,8 +311,9 @@ def plot_power(dats, idx, fig=None, ax=None):
         clims[0] = 0.99 * clims[0]
         clims[1] = 1.01 * clims[1]
 
-    img = ax.scatter(lons, lats, c=c, vmin=clims[0], vmax=clims[1])
+    img = ax.scatter(lons.flatten(), lats.flatten(), c=c.flatten(), vmin=clims[0], vmax=clims[1])
     h = fig.colorbar(img)
+    h.set_label('dB')
     ax.set_ylabel('Northing')
     ax.set_xlabel('Easting')
 
