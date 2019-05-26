@@ -48,14 +48,36 @@ class TestRadarDataSaving(unittest.TestCase):
         rd = NoInitRadarData()
         rd.flags = RadarFlags()
         rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+
+    def testWriteWithPicksBlank(self):
+        rd = NoInitRadarData()
+        rd.picks = Picks(rd)
+        rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+        self.assertTrue(data.picks is not None)
+        self.assertTrue(data.picks.lasttrace is not None)
+        self.assertTrue(data.picks.lasttrace.tnum is None)
+        self.assertTrue(data.picks.samp1 is None)
+        self.assertTrue(data.picks.samp2 is None)
+        self.assertTrue(data.picks.samp3 is None)
+
+    def testWriteWithPicksFull(self):
+        rd = NoInitRadarData()
+        rd.picks = Picks(rd)
+        rd.picks.add_pick()
+        rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+        self.assertTrue(data.picks is not None)
+        self.assertTrue(data.picks.lasttrace is not None)
+        self.assertTrue(data.picks.samp1 is not None)
+        self.assertTrue(data.picks.samp2 is not None)
+        self.assertTrue(data.picks.samp3 is not None)
 
     def test_WriteRead(self):
         # We are going to create a really bad file (most info missing) and see if we recover it or get an error
         rd = NoInitRadarData()
         rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
 
     def tearDown(self):
         for fn in ['test_out.mat', 'test.shp', 'test.shx', 'test.prj', 'test.dbf']:
