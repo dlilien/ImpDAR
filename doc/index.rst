@@ -16,6 +16,7 @@ ImpDAR vs StODeep
 -----------------
 
 Compared to StoDeep, the jumping-off point for developing this software, ImpDAR provides all the same essential functionality but with a modern interface and version control. On the other hand, ImpDAR works on modern Python, requires no proprietary software, and has a user interface that should be easy to use for anybody who has familiarity with the command line and/or Python.
+
 Requirements
 ------------
 

@@ -82,50 +82,50 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
 
+        self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray, fig=self.fig, ax=self.ax, return_plotinfo=True)
+
+        # Store some info that we need for later
+        self.y = ydat
+        self.x = xdat
+        self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
+        self.minSpinner.setValue(self.lims[0])
+        self.maxSpinner.setValue(self.lims[1])
+        self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
+
+        if self.dat.picks.samp1 is not None:
+            self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            for i in range(self.dat.picks.samp1.shape[0]):
+                if i == self.dat.picks.samp1.shape[0] - 1:
+                    colors = 'gmm'
+                else:
+                    colors = 'byy'
+                self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
+                self._pick_ind = i
+                self.pickNumberBox.setValue(self.dat.picks.picknums[i])
+                self.update_lines(colors=colors, picker=5)
+
+        self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
+        self.krid = self.fig.canvas.mpl_connect('key_release_event', self._release)
+        self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
+        # We need this so we no if we are nanpicking
+        self._n_pressed = False
+
+        #####
+        # Connect some stuff after things are set up
+        # Do this here so we don't unintentionally trigger things that are not initialized
+        #####
+        self.minSpinner.valueChanged.connect(self._lim_update)
+        self.maxSpinner.valueChanged.connect(self._lim_update)
+        self.FrequencySpin.valueChanged.connect(self._freq_update)
+        self.modeButton.clicked.connect(self._mode_update)
+        self.newpickButton.clicked.connect(self._add_pick)
+        self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
+        self.bwb_radio.toggled.connect(self._update_polarity)
+        self.wbw_radio.toggled.connect(self._update_polarity)
+
         try:
-            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray, fig=self.fig, ax=self.ax, return_plotinfo=True)
-
-            # Store some info that we need for later
-            self.y = ydat
-            self.x = xdat
-            self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
-            self.minSpinner.setValue(self.lims[0])
-            self.maxSpinner.setValue(self.lims[1])
-            self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
-
-            if self.dat.picks.samp1 is not None:
-                self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                for i in range(self.dat.picks.samp1.shape[0]):
-                    if i == self.dat.picks.samp1.shape[0] - 1:
-                        colors = 'gmm'
-                    else:
-                        colors = 'byy'
-                    self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
-                    self._pick_ind = i
-                    self.pickNumberBox.setValue(self.dat.picks.picknums[i])
-                    self.update_lines(colors=colors, picker=5)
-
-            self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
-            self.krid = self.fig.canvas.mpl_connect('key_release_event', self._release)
-            self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
-            # We need this so we no if we are nanpicking
-            self._n_pressed = False
-
-            #####
-            # Connect some stuff after things are set up
-            # Do this here so we don't unintentionally trigger things that are not initialized
-            #####
-            self.minSpinner.valueChanged.connect(self._lim_update)
-            self.maxSpinner.valueChanged.connect(self._lim_update)
-            self.FrequencySpin.valueChanged.connect(self._freq_update)
-            self.modeButton.clicked.connect(self._mode_update)
-            self.newpickButton.clicked.connect(self._add_pick)
-            self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
-            self.bwb_radio.toggled.connect(self._update_polarity)
-            self.wbw_radio.toggled.connect(self._update_polarity)
-
             plt.show(self.fig)
         except KeyboardInterrupt:
             plt.close('all')

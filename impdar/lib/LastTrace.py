@@ -25,7 +25,10 @@ class LastTrace():
     def __init__(self, lasttrace_struct=None):
         if lasttrace_struct is not None:
             for attr in self.attrs:
-                setattr(self, attr, lasttrace_struct[0][0][attr][0][0].flatten())
+                val = lasttrace_struct[0][0][attr][0][0].flatten()
+                if len(val) == 1 and val[0] == -9999:
+                    val = None
+                setattr(self, attr, val)
         else:
             self.snum = None
             self.tnum = None
@@ -42,10 +45,14 @@ class LastTrace():
                 self.tnum = self.tnum.flatten().tolist()
             
             # If we have started anew, we only need these lines
-            self.snum.append(snum)
-            self.tnum.append(tnum)
+            self.snum.append(int(snum))
+            self.tnum.append(int(tnum))
 
     def mod_line(self, ind, snum, tnum):
+        if (self.snum is None) or (self.tnum is None):
+            raise AttributeError('need snum and tnum defined')
+        if len(self.snum) <= ind or len(self.snum) <= ind:
+            raise ValueError('Index is too large for snum/tnum')
         self.snum[ind] = snum
         self.tnum[ind] = tnum
 
@@ -55,5 +62,5 @@ class LastTrace():
             if getattr(self, attr) is not None:
                 mat[attr] = getattr(self, attr)
             else:
-                mat[attr] = 0
+                mat[attr] = -9999
         return mat
