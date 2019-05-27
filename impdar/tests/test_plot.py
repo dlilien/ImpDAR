@@ -175,5 +175,28 @@ class TestPlotRadargram(unittest.TestCase):
         fig, ax = plot.plot_radargram(dat, fig=fig)
 
 
+class TestPlotPicks(unittest.TestCase):
+    
+    def test_plot_picks(self):
+        # Only checking that these do not throw errors
+        dat = NoInitRadarData()
+
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time)
+
+        dat.picks = Picks(dat)
+        dat.picks.samp1 = np.ones((2, len(dat.lat)))
+        dat.picks.samp2 = np.ones((2, len(dat.lat)))
+        dat.picks.samp3 = np.ones((2, len(dat.lat)))
+
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time)
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='g')
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='gmm')
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'g'])
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cmy', 'brb'])
+        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'])
+        with self.assertRaises(ValueError):
+            fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -333,9 +333,16 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     picker:
         argument to pass to plot of cline (if new) for selection tolerance (use if plotting in select mode)
     """
+
+    if ax is None:
+        if fig is not None:
+            ax = plt.gca()
+        else:
+            fig, ax = plt.subplots()
+
     # just do nothing if we have no picks
-    if rd.picks.samp1 is None:
-        return
+    if rd.picks is None or rd.picks.samp1 is None:
+        return fig, ax
 
     variable_colors = False
     if colors is None:
@@ -350,12 +357,6 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
             raise ValueError('If not a string, must have same length as the picks')
         else:
             variable_colors = True
-
-    if ax is None:
-        if fig is not None:
-            ax = plt.gca()
-        else:
-            fig, ax = plt.subplots()
 
     for i in range(rd.picks.samp1.shape[0]):
         if variable_colors:
@@ -375,3 +376,4 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         ax.plot(xd, c, color=cl[1])
         ax.plot(xd, t, color=cl[0])
         ax.plot(xd, b, color=cl[2])
+    return fig, ax
