@@ -35,6 +35,7 @@ class DZT(RadarData):
             rh.us_dattype = 'I'
         elif rh.bits == 16:
             rh.us_dattype = 'H'
+
         if rh.bits == 32:
             rh.s_dattype = 'i'
         elif rh.bits == 16:

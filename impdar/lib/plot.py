@@ -81,7 +81,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         plt.show()
 
 
-def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False):
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None):
     """This is the function to plot the normal radargrams that we are used to.
 
     This function is a little weird since I want to be able to plot on top of existing figures/axes or on new figures an axes. There is therefore an argument `return_plotinfo` that funnels between these options and changes the return types
@@ -171,6 +171,9 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
     else:
         im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+
+    if pick_colors is not None:
+        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
     if not return_plotinfo:
         return fig, ax
     else:
@@ -318,3 +321,57 @@ def plot_power(dats, idx, fig=None, ax=None):
     ax.set_xlabel('Easting')
 
     return fig, ax
+
+
+def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
+    """Update the plotting of the current pick.
+    
+    Parameters
+    ----------
+    colors: str
+        You have choices here. This can be a npicksx3 list, an npicks list of 3-letter strings, a 3 letter string, a single string, or a npicks list. Any of the x3 options are interpretted as top, middle, bottom colors. The others are 
+    picker:
+        argument to pass to plot of cline (if new) for selection tolerance (use if plotting in select mode)
+    """
+    # just do nothing if we have no picks
+    if rd.picks.samp1 is None:
+        return
+
+    variable_colors = False
+    if colors is None:
+        cl = 'mgm'
+    else:
+        if type(colors) == str:
+            if len(colors) == 3:
+                cl = colors
+            else:
+                cl = ('none', colors, 'none')
+        elif not len(colors) == rd.picks.samp1.shape[0]:
+            raise ValueError('If not a string, must have same length as the picks')
+        else:
+            variable_colors = True
+
+    if ax is None:
+        if fig is not None:
+            ax = plt.gca()
+        else:
+            fig, ax = plt.subplots()
+
+    for i in range(rd.picks.samp1.shape[0]):
+        if variable_colors:
+            if len(colors[i]) == 3:
+                cl = colors[i]
+            else:
+                cl = ('none', colors[i], 'none')
+        c = np.zeros(xd.shape)
+        c[:] = np.nan
+        c[~np.isnan(rd.picks.samp2[i, :])] = yd[rd.picks.samp2[i, :][~np.isnan(rd.picks.samp2[i, :])].astype(int)]
+        t = np.zeros(xd.shape)
+        t[:] = np.nan
+        t[~np.isnan(rd.picks.samp1[i, :])] = yd[rd.picks.samp1[i, :][~np.isnan(rd.picks.samp1[i, :])].astype(int)]
+        b = np.zeros(xd.shape)
+        b[:] = np.nan
+        b[~np.isnan(rd.picks.samp3[i, :])] = yd[rd.picks.samp3[i, :][~np.isnan(rd.picks.samp3[i, :])].astype(int)]
+        ax.plot(xd, c, color=cl[1])
+        ax.plot(xd, t, color=cl[0])
+        ax.plot(xd, b, color=cl[2])
