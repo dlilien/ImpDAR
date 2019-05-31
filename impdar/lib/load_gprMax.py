@@ -14,7 +14,7 @@ Mar 17 2019
 
 """
 
-import h5py # TODO: make h5py a dependency?
+import h5py  # TODO: make h5py a dependency?
 
 import numpy as np
 from .RadarData import RadarData, RadarFlags
@@ -28,9 +28,9 @@ class h5(RadarData):
             self.data = np.array(f['/rxs/rx1/Ez'])
 
         # Remove pretrigger
-        trig_threshold = 0.5 # trigger when mean trace gets up to 50% of maximum
-        mean_trace = np.nanmean(np.abs(self.data),axis=1)
-        idx_threshold = np.argwhere(mean_trace>trig_threshold*np.nanmax(mean_trace))
+        trig_threshold = 0.5  # trigger when mean trace gets up to 50% of maximum
+        mean_trace = np.nanmean(np.abs(self.data), axis=1)
+        idx_threshold = np.argwhere(mean_trace > trig_threshold * np.nanmax(mean_trace))
         idx_trig = np.nanmin(idx_threshold)
         self.data = self.data[idx_trig:]
 
@@ -41,7 +41,7 @@ class h5(RadarData):
         self.trig_level = np.zeros((self.tnum,))
         self.pressure = np.zeros((self.tnum,))
         self.flags = RadarFlags()
-        self.travel_time = self.dt*1e6*np.arange(self.snum)
+        self.travel_time = self.dt * 1.0e6 * np.arange(self.snum)
         self.trig = np.zeros((self.tnum,))
         self.lat = np.zeros((self.tnum,))
         self.long = np.zeros((self.tnum,))
@@ -54,10 +54,6 @@ class h5(RadarData):
         self.dist = np.arange(self.tnum)
         self.chan = -99.
 
-        for attr in ['chan','data', 'decday', 'dist', 'dt', 'elev', 'flags', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level', 'x_coord', 'y_coord']:
-            if getattr(self, attr) is None:
-                print(attr + ' is not defined')
-                setattr(self, attr, 0)
 
 def load_gprMax(fn, *args, **kwargs):
     return h5(fn)
