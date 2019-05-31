@@ -20,11 +20,17 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class Dummy(unittest.TestCase):
 
-    def test_load_withDZG(self):
+    def test_load4000_withDZG(self):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT'))
 
-    def test_load_withoutDZG(self):
+    def test_load3000(self):
+        load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'GSSI_3000.DZT'))
+
+    def test_load4000_withoutDZG(self):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi_justdzt.DZT'))
+
+    def test_load4000_partialDZG(self):
+        load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi_partialGPS.DZT'))
 
     def test_save_withDZG(self):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')).save(os.path.join(THIS_DIR, 'input_data', 'test_gssi_raw.mat'))

@@ -162,12 +162,6 @@ class RH:
     checksum = None
     antname = None
 
-    def __str__(self):
-        return 'rgain: {:d}, nrgain {:d}'.format(self.rgain, self.nrgain)
-
-    def __repr__(self):
-        return self.__str__()
-
 
 def _to_date(bin, le=True):
     def _bit_to_int(bits):
