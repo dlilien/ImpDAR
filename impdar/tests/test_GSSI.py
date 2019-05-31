@@ -30,7 +30,7 @@ class Dummy(unittest.TestCase):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi_justdzt.DZT'))
 
     def test_load4000_partialDZG(self):
-        load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi_partialGPS.DZT'))
+        load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi_partialgps.DZT'))
 
     def test_save_withDZG(self):
         load_gssi.DZT(os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')).save(os.path.join(THIS_DIR, 'input_data', 'test_gssi_raw.mat'))
