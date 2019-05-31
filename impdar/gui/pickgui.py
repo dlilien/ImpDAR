@@ -321,6 +321,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel)
         result = dialog.exec_()
         if result == QMessageBox.Cancel:
+            print(result, QMessageBox.Cancel)
             event.ignore()
         elif result == QMessageBox.Close:
             event.accept()
@@ -441,7 +442,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.progressLabel.setText('Cropping...')
             self.progressBar.setProperty("value", 25)
             QtWidgets.QApplication.processEvents()
-            self.dat.crop(dialog.val, dimension=dialpickNumberBox.og.inputtype, top_or_bottom=dialog.top_or_bottom)
+            self.dat.crop(dialog.val, dimension=dialog.inputtype, top_or_bottom=dialog.top_or_bottom)
             self.progressBar.setProperty("value", 75)
             QtWidgets.QApplication.processEvents()
             self.update_radardata()

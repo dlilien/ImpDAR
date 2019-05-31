@@ -25,9 +25,9 @@ except ImportError:
     qt = False
 
 if sys.version_info[0] >= 3:
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
 else:
-    from mock import MagicMock
+    from mock import MagicMock, patch
 from impdar.lib.RadarData import RadarData
 
 
@@ -35,7 +35,12 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class DummyEvent:
-    pass
+
+    def accept(self):
+        pass
+
+    def ignore(self):
+        pass
 
 
 @unittest.skipIf(not qt, 'No Qt')
@@ -193,6 +198,134 @@ class TestInteractivePicker(unittest.TestCase):
         self.ip._edit_lines_click(event)
         self.assertTrue(self.ip._add_pick.called)
         self.assertTrue(self.ip.update_lines.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_add_point_pick(self):
+        # need to mock a lot to not deal with actually doing any picking
+        with patch('impdar.lib.picklib.packet_pick', return_value=np.zeros((5, ))) as mock1:
+            with patch('impdar.lib.picklib.pick', return_value=np.zeros((5, self.ip.dat.tnum - 1))) as mock2:
+                self.ip._add_pick(0, 0)
+                self.ip._add_point_pick(0, self.ip.dat.tnum - 1)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_add_nan_pick(self):
+        with patch('impdar.lib.picklib.packet_pick', return_value=np.zeros((5, ))) as mock1:
+            self.ip._add_pick(0, 0)
+            self.ip._add_nanpick(1, 10)
+        self.assertEqual(self.ip.dat.picks.lasttrace.snum[0], 1)
+        self.assertEqual(self.ip.dat.picks.lasttrace.tnum[0], 10)
+
+
+@unittest.skipIf(not qt, 'No Qt')
+class TestInteractivePickerLoadingSaving(unittest.TestCase):
+
+    def setUp(self):
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        self.ip = InteractivePicker(data)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QMessageBox')
+    def test_save_cancel_closeSAVE(self, patchsave):
+        patchsave.return_value.exec_.return_value = patchsave.Save
+        patchsave.return_value.Save = patchsave.Save
+        self.ip.fn = None
+        self.ip._save_as = MagicMock(return_value=True)
+        event = DummyEvent()
+        event.accept = MagicMock()
+        self.ip._save_cancel_close(event)
+        self.assertTrue(self.ip._save_as.called)
+        self.assertTrue(event.accept.called)
+
+        event = DummyEvent()
+        event.ignore = MagicMock()
+        self.ip._save_as = MagicMock(return_value=False)
+        self.ip._save_cancel_close(event)
+        self.assertTrue(self.ip._save_as.called)
+        self.assertTrue(event.ignore.called)
+
+        self.ip.fn = 'dummy'
+        self.ip._save = MagicMock()
+        event.accept = MagicMock()
+        self.ip._save_cancel_close(event)
+        self.assertTrue(self.ip._save.called)
+        self.assertTrue(event.accept.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QMessageBox')
+    def test_save_cancel_closeCANCEL(self, patchcancel):
+        # patchcancel.exec_.return_value = patchcancel.Cancel
+        patchcancel.return_value.exec_.return_value = patchcancel.Cancel
+        patchcancel.return_value.Cancel = patchcancel.Cancel
+        event = DummyEvent()
+        event.ignore = MagicMock()
+        self.ip._save_cancel_close(event)
+        self.assertTrue(event.ignore.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QMessageBox')
+    def test_save_cancel_closeClose(self, patchclose):
+        # patchcancel.exec_.return_value = patchclose.Close
+        patchclose.return_value.exec_.return_value = patchclose.Close
+        patchclose.return_value.Close = patchclose.Close
+        event = DummyEvent()
+        event.accept = MagicMock()
+        self.ip._save_cancel_close(event)
+        self.assertTrue(event.accept.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QFileDialog')
+    def test_load_cp(self, patchqfd):
+        patchqfd.getOpenFileName.return_value = ('not_a_file', True)
+        with self.assertRaises(IOError):
+            self.ip._load_cp(DummyEvent())
+
+        patchqfd.getOpenFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), True)
+        with patch('impdar.gui.pickgui.warn') as patchwarn:
+            self.ip._load_cp(DummyEvent())
+            self.assertTrue(patchwarn.called)
+
+        patchqfd.getOpenFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'cross_picked.mat'), True)
+        self.ip._load_cp(DummyEvent())
+
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        self.ip = InteractivePicker(data, ydat='depth')
+        self.ip._load_cp(DummyEvent())
+
+
+@unittest.skipIf(not qt, 'No Qt')
+class TestInteractivePickerProcessing(unittest.TestCase):
+
+    def setUp(self):
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        self.ip = InteractivePicker(data)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_ahfilt(self):
+        self.ip.dat.adaptivehfilt = MagicMock()
+
+        # takes a dummy event arg
+        self.ip._ahfilt(DummyEvent())
+        self.assertTrue(self.ip.dat.adaptivehfilt.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.VBPInputDialog', exec_=lambda x: None, lims=(100, 200))
+    def test_vbp(self, vbpmock):
+        self.ip.dat.vertical_band_pass = MagicMock()
+        self.ip._vbp(DummyEvent())
+        self.assertTrue(self.ip.dat.vertical_band_pass.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.CropInputDialog', exec_=lambda x: None, top_or_bottom='top', inputtype='twtt')
+    def test_crop(self, cropinputmock):
+        self.ip.dat.crop = MagicMock()
+        self.ip._crop(DummyEvent())
+        self.assertTrue(self.ip.dat.crop.called)
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    def test_reverse(self):
+        self.ip.dat.reverse = MagicMock()
+        self.ip._reverse(DummyEvent())
+        self.assertTrue(self.ip.dat.reverse.called)
 
 
 @unittest.skipIf(not qt, 'No Qt')
