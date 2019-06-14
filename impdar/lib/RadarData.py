@@ -123,7 +123,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             Antenna separation in meters.
         uice: float, optional
             Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8
-        uar: float, optional
+        uair: float, optional
             Speed of light in air. Default 3.0e8
         """
         # Conversion of StO nmodeep v2.4

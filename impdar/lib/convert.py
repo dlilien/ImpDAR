@@ -12,8 +12,7 @@ Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
 
 import os
 from .load import load_mat
-from . import load_gssi, load_pulse_ekko
-
+from . import load_gssi, load_pulse_ekko, load_segy
 
 def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
     # Basic check on the conversion being implemented. This is really simple because I'm not yet allowing conversion from one proprietary form to another
@@ -46,6 +45,8 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             loaders = [load_gssi.load_gssi for i in fn]
         if in_fmt == 'pe':
             loaders = [load_pulse_ekko.load_pe for i in fn]
+        if in_fmt == 'segy':
+            loaders = [load_segy.load_segy for i in fn]
 
     # Now actually load the data
     data = [loader(f) for loader, f in zip(loaders, fn)]

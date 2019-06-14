@@ -61,6 +61,9 @@ class RadarDataSaving:
         if not segy:
             raise ImportError('segyio failed to import, cannot save as segy')
 
+        segyio.tools.from_array2D(fn,self.data,iline=self.snum,xline=self.tnum,dt=self.dt*1e6)
+
+        """
         spec = segyio.spec()
         spec.sorting = 2
         spec.format = 1
@@ -71,10 +74,13 @@ class RadarDataSaving:
         # We assume that this is radar data on a line, so there is no cross-line
         spec.xlines = [0]
         with segyio.create(fn, spec) as f:
+            f.bin[segyio.BinField.Interval]=int(1/self.dt)
             for il in spec.ilines:
                 f.header[il] = {segyio.su.offset: 1, segyio.su.iline: il, segyio.su.xline: 0}
                 f.trace[il] = self.data[:, il]
                 f.bin.update(tsort=segyio.TraceSortingFormat.INLINE_SORTING)
+        """
+
 
     def output_shp(self, fn, t_srs=4326):
         # TODO Need to output picks if we have picks

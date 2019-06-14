@@ -27,6 +27,7 @@ import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 import subprocess
+import os
 
 # -----------------------------------------------------------------------------
 
@@ -67,8 +68,9 @@ def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     # Create an empty array to fill with migrated data
     migdata = np.zeros_like(dat.data)
     # Loop through all traces
+    print('Migrating trace number:', end='')
     for xi in range(dat.tnum):
-        print('Migrating trace number:',xi)
+        print(xi + ', ', end='')
         # get the trace distance
         x = dat.dist[xi]
         # Loop through all samples
@@ -97,13 +99,14 @@ def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
             migdata[ti,xi] = 1./(2.*np.pi)*integral
     dat.data = migdata.copy()
     # print the total time
+    print('')
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
 # -----------------------------------------------------------------------------
 
-def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     """
 
     Stolt Migration (Stolt, 1978, Geophysics)
@@ -115,6 +118,8 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
     ---------
     dat: data as a class in the ImpDAR format
     vel: wave velocity, default is for ice
+    htaper: number of traces for the linear horizontal taper from the edges of the domain
+    vtaper: number of samples for the vertical taper from the top and bottom.
 
     Output
     ---------
@@ -128,6 +133,19 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
         raise ValueError('The input array must be of size (tnum,snum)')
     # save the start time
     start = time.time()
+    # taper
+    for i in range(dat.snum):
+        for j in range(dat.tnum):
+            if i > vtaper and i < dat.snum-vtaper:
+                vamp = 1.
+            else:
+                vamp = np.min([i,dat.snum-i])/vtaper
+            if j > htaper and j < dat.tnum-htaper:
+                hamp = 1.
+            else:
+                hamp = np.min([j,dat.tnum-j])/htaper
+            dat.data[i,j] *= vamp*hamp
+
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
@@ -140,11 +158,12 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
+    print('Interpolating:',end='')
     # for all temporal frequencies
     for zj in range(dat.snum//2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
-            print('Interpolating',int(ws[zj]/1e6/2/np.pi),'MHz')
+            print(int(ws[zj]/1e6/2/np.pi),'MHz, ',end='')
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -167,13 +186,14 @@ def migrationStolt(dat,vel=1.68e8,vel_fn=None,nearfield=False):
     # Cut array to input matrix dimensions
     dat.data = dat.data[:dat.snum,:dat.tnum]
     # print the total time
+    print('')
     print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
 # -----------------------------------------------------------------------------
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     """
 
     Phase-Shift Migration
@@ -214,6 +234,20 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
         raise ValueError('The input array must be of size (tnum,snum)')
     # save the start time
     start = time.time()
+    # taper
+    for i in range(dat.snum):
+        for j in range(dat.tnum):
+            if i > vtaper and i < dat.snum-vtaper:
+                vamp = 1.
+            else:
+                vamp = np.min([i,dat.snum-i])/vtaper
+            if j > htaper and j < dat.tnum-htaper:
+                hamp = 1.
+            else:
+                hamp = np.min([j,dat.tnum-j])/htaper
+            dat.data[i,j] *= vamp*hamp
+
+
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
@@ -240,7 +274,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
 # -----------------------------------------------------------------------------
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='migtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -277,33 +311,25 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='migtk',
     """
 
     try:
+        print('Using SeisUnix migration routine at:')
         subprocess.run(['which',sutype])
     except:
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 
-    # convert to segy data type
+    segy_name = os.path.splitext(dat.fn)[0]
+    dx = np.mean(dat.trace_int)
+    nxpad = 10
+    ltaper = 10
 
     if sutype == 'sumigtk':
-        print(sutype)
-        #mname={[name '_migtk.su'];[name '_migtk_qclip.su'];[name '_migtk.bin'];[name '_migtk_qclip.bin']};
-        #~,~ = unix(['segyread tape=', name, '_interp.sgy | segyclean | sumigtk tmig=', str(tmig), ' vmig=', str(vmig),
-        #' verbose=', str(verbose), ' nxpad=' str(nxpad), ' ltaper=', num2str(ltaper), ' dxcdp=', num2str(dxcdp), ' > ' mname{1})
-    elif sutype == 'sugazmig':
-        print(sutype)
-        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
-        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
-        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
-        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
-    elif sutype == 'sustolt':
-        print(sutype)
-        #mname={[name '_gazmig_qclip.su'];[name '_gazmig_qclip.bin']};
-        #[~,~]=unix(['segyread tape=' name '_interp.sgy | segyclean | sugain panel=1 qclip=' num2str(clip) ' | sugazmig tmig=' ...
-        #    num2str(tmig) ' vmig=' num2str(vmig) ' verbose=' ...
-        #    num2str(verbose) ' dx=' num2str(dxcdp) ' > ' mname{1}]);
+        subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(ltaper)+' dxcdp='+str(dx)+\
+                        ' > '+segy_name+'_migtk.su'],shell=True)
     else:
         raise ValueError('The SeisUnix migration routine', sutype,
         'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
+    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
     # qclip
     #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
     # read segy and convert to impdar data format
@@ -360,12 +386,13 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     if not hasattr(vmig,"__len__"):
         print('Constant velocity %s m/usec'%(vmig/1e6))
         # iterate through all frequencies
+        print('Frequency: ',end='')
         for iw in range(len(ws)):
             w = ws[iw]
             if w == 0.0:
                 w = 1e-10/dat.dt
             if iw%100 == 0:
-                print('Frequency',int(w/1e6/(2.*np.pi)),'MHz')
+                print(int(w/1e6/(2.*np.pi)),'MHz',', ',end='')
             # remove frequencies outside of the domain
             vkx2 = (vmig*kx/2.)**2.
             ik = np.argwhere(vkx2 < w**2.)
