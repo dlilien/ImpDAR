@@ -9,6 +9,7 @@
 """
 
 """
+import sys
 import os
 import unittest
 import numpy as np
@@ -33,6 +34,7 @@ class TestLoad(unittest.TestCase):
     def test_loadpe(self):
         data = load.load('pe', os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
 
+    @unittest.skipIf(sys.version_info[0] < 3, 'Bytes are weird in 2')
     def test_loadgecko(self):
         data = load.load('gecko', os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
         data = load.load('gecko', [os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd')])
@@ -48,6 +50,7 @@ class TestLoad(unittest.TestCase):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), o=os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')))
 
+    @unittest.skipIf(sys.version_info[0] < 3, 'Bytes are weird in 2')
     def test_load_and_exitgecko(self):
         load.load_and_exit('gecko', os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_gecko_raw.mat')))
