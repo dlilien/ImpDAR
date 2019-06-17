@@ -13,6 +13,8 @@ import sys
 import os
 import unittest
 import numpy as np
+from impdar.lib._RadarDataSaving import conversions_enabled
+
 try:
     import matplotlib
     matplotlib.use('QT5Agg')
@@ -290,6 +292,42 @@ class TestInteractivePickerLoadingSaving(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.ip = InteractivePicker(data, ydat='depth')
         self.ip._load_cp(DummyEvent())
+
+    def test_save(self):
+        self.ip.fn = None
+        with self.assertRaises(AttributeError):
+            self.ip._save(DummyEvent())
+
+        self.ip.fn = os.path.join(THIS_DIR, 'input_data', 'test_out.mat')
+        self.ip._save(DummyEvent())
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')))
+        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QFileDialog')
+    def test_save_as(self, patchqfd):
+        patchqfd.getSaveFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'test_out.mat'), True)
+        self.ip._save_as(DummyEvent())
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')))
+        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @patch('impdar.gui.pickgui.QFileDialog')
+    def test_export_csv(self, patchqfd):
+        patchqfd.getSaveFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'test.csv'), True)
+        self.ip._export_csv(DummyEvent())
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test.csv')))
+        os.remove(os.path.join(THIS_DIR, 'input_data', 'test.csv'))
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
+    @unittest.skipIf(not conversions_enabled, 'No GDAL on this version')
+    @patch('impdar.gui.pickgui.QFileDialog')
+    def test_export_shp(self, patchqfd):
+        patchqfd.getSaveFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'test.shp'), True)
+        self.ip._export_shp(DummyEvent())
+        for ext in ['shp', 'shx', 'prj', 'dbf']:
+            self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test.' + ext)))
+            os.remove(os.path.join(THIS_DIR, 'input_data', 'test.' + ext))
 
 
 @unittest.skipIf(not qt, 'No Qt')

@@ -279,15 +279,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.tline[self._pick_ind].set_data(self.xd, t)
             self.bline[self._pick_ind].set_data(self.xd, b)
 
-    def _dat_to_snumtnum(self, x, y):
-        if self.xscale == 'tnum':
-            xo = int(x)
-        else:
-            xo = np.argmin(np.abs(self.dat.dist - x))
-
-        yo = np.argmin(np.abs(getattr(self.dat, self.yscale) - y))
-        return xo, yo
-
     def _select_lines_click(self, event):
         thisline = event.artist
         if thisline in self.cline:
@@ -332,12 +323,14 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 else:
                     event.accept()
             else:
-                self._save()
+                self._save(event)
                 event.accept()
 
-    def _save_inplace(self, evt):
+    def _save(self, evt):
         """Save the file without changing name"""
-        self_save_fn(self.dat.fn)
+        if not hasattr(self, 'fn') or self.fn is None:
+            raise AttributeError('Filename for gui is undefined, needs to be set with "save as"...')
+        self._save_fn(self.fn)
 
     def _save_pick(self, evt):
         """Save with _pick appended"""
@@ -355,7 +348,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.dat.save(fn)
         self._saved = True
         self.actionSave_pick.triggered.disconnect()
-        self.actionSave_pick.triggered.connect(self._save_as)
+        self.actionSave_pick.triggered.connect(self._save)
 
     def _load_cp(self, event=None):
         """Load a cross profile"""
