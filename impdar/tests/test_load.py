@@ -33,6 +33,13 @@ class TestLoad(unittest.TestCase):
     def test_loadpe(self):
         data = load.load('pe', os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
 
+    def test_loadgecko(self):
+        data = load.load('gecko', os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
+        data = load.load('gecko', [os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd')])
+
+    def test_loadgprmax(self):
+        data = load.load('gprMax', os.path.join(THIS_DIR, 'input_data', 'bedslope_gprMax_Bscan.h5'))
+
     def test_loadbad(self):
         with self.assertRaises(ValueError):
             data = load.load('bad', os.path.join(THIS_DIR, 'input_data', 'small_data.bad'))
@@ -40,6 +47,14 @@ class TestLoad(unittest.TestCase):
     def test_load_and_exitmat(self):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), o=os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')))
+
+    def test_load_and_exitgecko(self):
+        load.load_and_exit('gecko', os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_gecko_raw.mat')))
+        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_gecko_raw.mat'))
+        load.load_and_exit('gecko', [os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd')])
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_gecko_raw.mat')))
+        os.remove(os.path.join(THIS_DIR, 'input_data', 'test_gecko_raw.mat'))
 
     def test_load_and_exitcustomfn(self):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
@@ -49,6 +64,16 @@ class TestLoad(unittest.TestCase):
         # We are blocking multiple outputs with o kwarg
         with self.assertRaises(ValueError):
             load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
+
+    def test_common_start(self):
+        start = load._common_start('abra', 'abracadabra')
+        self.assertEqual('abra', start)
+
+        start = load._common_start('abra', 'abra')
+        self.assertEqual('abra', start)
+
+        start = load._common_start('', 'abra')
+        self.assertEqual('', start)
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')):

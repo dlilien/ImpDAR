@@ -94,7 +94,7 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
         if len(dat) > 1:
             raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
         dat[0].save(out_fn)
-    elif filetype == 'olaf' and len(fn) > 1:
+    elif filetype == 'gecko' and len(fn) > 1:
         f = fn[0]
         for i in range(1, len(fn)):
             f = _common_start(f, fn[i]).rstrip('[')
