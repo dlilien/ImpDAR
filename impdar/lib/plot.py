@@ -17,7 +17,7 @@ from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, specdense=False, ylimit=None, window=None, scale='spectrum', gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -67,6 +67,9 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
     elif power is not None:
         # Do it all on one axis if power
         figs = [plot_power(radar_data, power)]
+    elif specdense != False:
+        #call specdense() method here
+        figs = [specdense(radar_data, ylimit, window, scale)]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -376,4 +379,105 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         ax.plot(xd, c, color=cl[1])
         ax.plot(xd, t, color=cl[0])
         ax.plot(xd, b, color=cl[2])
+    return fig, ax
+
+
+
+
+#input a radar profile, and get back a 2d histogram of power vs frequency
+#give a maximum frequency to plot to in MHz: ylimit
+#optional keywords for window and scale parameters
+"""Make a plot of spectral density across all traces of a radar profile.
+
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    ylimit: int
+        The maximum frequency (in MHz) to limit the y-axis to
+
+    For further information on the 'window' and 'scale' parameters, please see:
+    https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.periodogram.html#scipy.signal.periodogram
+    window: string
+        Type of window to be used for the signal.periodogram() method.
+    scale:
+        Whether to plot power spectral density or power spectrum
+        'density' or 'spectrum', the default being 'spectrum'
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
+
+def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
+    #get the timestep variable, remove singleton dimension
+    timestep = dat.dt
+
+    #calculate frequency information from timestep variable
+    fs = 1/timestep
+
+    #extract radar data from matlab file
+    data = dat.data
+
+    #shape of data profile should be (samples, traces)
+    shape = np.shape(data)
+    #extract the number of traces
+    traces = shape[1]
+
+    #iterate through traces, record frequencies and powers
+    freqs, powers = [], []
+    for trace in range(traces):
+        #get frequency and power information from trace
+        #hanning window will filter out certain frequencies, so it is optional to use it or not
+        if window==None:
+            f, p = signal.periodogram(data[:, trace], fs=fs, scaling=scale)
+        else:
+            f, p = signal.periodogram(data[:, trace], fs=fs, window=window, scaling=scale)
+        freqs.append(f)
+        powers.append(p)
+
+    #extract trace number from matlab file
+    x = dat.trace_num
+
+    #frequency range will be the same, so we can select the first element
+    #set frequency range to be in MHz
+    y = freqs[0]/1e6
+    xx, yy = np.meshgrid(x, y)
+
+    #plot in MHz
+    fig, ax = plt.subplots(figsize=(10, 7))
+    p = ax.contourf(xx, yy, np.transpose(powers))
+
+    #set colorbar and colorbar label
+    cbarlabel = 'Power (Amplitude **2)'
+    cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
+    cbar.set_label(cbarlabel)
+
+    #check to make sure ylimit is not <= 0 or more than the largest frequency 
+    if ylimit is not None:
+        if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)
+            raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
+
+        #limit y-axis to ylimit, maximum power output wanted
+        #else, no need to limit the y-axis
+        ax.set_ylim(0, ylimit)
+
+    #add x and y labels
+    ax.set_xlabel('Trace Number')
+    ax.set_ylabel('Frequency (MHz)')
+
+    #set title
+    title = 'Spectral Density as a Function of Trace Number and Frequency'
+
+    #add space between the title and the plot
+    ax.set_title(title, pad=20)
+
     return fig, ax
