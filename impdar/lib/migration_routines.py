@@ -22,6 +22,7 @@ Mar 12 2019
 
 """
 
+from __future__ import print_function
 import numpy as np
 import time
 from scipy import sparse

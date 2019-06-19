@@ -12,7 +12,13 @@ Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
 
 import os
 from .load import load_mat
-from . import load_gssi, load_pulse_ekko, load_segy
+from . import load_gssi, load_pulse_ekko
+try:
+    from . import load_segy
+    segy = True
+except ImportError:
+    segy = False
+
 
 def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
     # Basic check on the conversion being implemented. This is really simple because I'm not yet allowing conversion from one proprietary form to another
@@ -36,16 +42,22 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
                 loaders[i] = load_gssi.load_gssi
             elif f[-4:] == '.DT1':
                 loaders[i] = load_pulse_ekko.load_pe
+            elif f[-4:] == '.sgy':
+                if not segy:
+                    raise ImportError('You cannot use segy without segyio installed!')
+                loaders[i] = load_segy.load_load_segy
             else:
                 raise ValueError('Unrecognized file extension {:s}'.format(f[-4:]))
     else:
         if in_fmt == 'mat':
             loaders = [load_mat for i in fn]
-        if in_fmt == 'gssi':
+        elif in_fmt == 'gssi':
             loaders = [load_gssi.load_gssi for i in fn]
-        if in_fmt == 'pe':
+        elif in_fmt == 'pe':
             loaders = [load_pulse_ekko.load_pe for i in fn]
-        if in_fmt == 'segy':
+        elif in_fmt == 'segy':
+            if not segy:
+                raise ImportError('You cannot use segy without segyio installed!')
             loaders = [load_segy.load_segy for i in fn]
 
     # Now actually load the data
@@ -64,6 +76,8 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             out_fn = os.path.splitext(f)[0] + '.shp'
             dat.output_shp(out_fn, t_srs=t_srs)
     elif out_fmt == 'segy':
+        if not segy:
+            raise ImportError('You cannot use segy without segyio installed!')
         for loader, f, dat in zip(loaders, fn, data):
             out_fn = os.path.splitext(f)[0] + '.segy'
             dat.save_as_segy(out_fn)
