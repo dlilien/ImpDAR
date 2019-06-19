@@ -70,7 +70,7 @@ def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     # Loop through all traces
     print('Migrating trace number:', end='')
     for xi in range(dat.tnum):
-        print(xi + ', ', end='')
+        print(xi, ', ', end='')
         # get the trace distance
         x = dat.dist[xi]
         # Loop through all samples
@@ -134,24 +134,23 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     # save the start time
     start = time.time()
     # taper
-    for i in range(dat.snum):
-        for j in range(dat.tnum):
-            if i > vtaper and i < dat.snum-vtaper:
-                vamp = 1.
-            else:
-                vamp = np.min([i,dat.snum-i])/vtaper
-            if j > htaper and j < dat.tnum-htaper:
-                hamp = 1.
-            else:
-                hamp = np.min([j,dat.tnum-j])/htaper
-            dat.data[i,j] *= vamp*hamp
-
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
     ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
     # get the horizontal wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(dat.trace_int))
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
     interp_real = interp2d(kx,ws,FK.real)
     interp_imag = interp2d(kx,ws,FK.imag)
@@ -220,7 +219,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
         Array structure is velocities in first column, z location in second, x location in third.
         If uniform velocity (i.e. vel=constant) input constant
         If layered velocity (i.e. vel=v(z)) input array with shape (#vel-points, 2) (i.e. no x-values)
-    vel_fn: filename for layered velocity input
+    vel_fn: filename for layered velocity input, .txt file with columns for v, x, z
 
     Output
     ---------
@@ -235,19 +234,12 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     # save the start time
     start = time.time()
     # taper
-    for i in range(dat.snum):
-        for j in range(dat.tnum):
-            if i > vtaper and i < dat.snum-vtaper:
-                vamp = 1.
-            else:
-                vamp = np.min([i,dat.snum-i])/vtaper
-            if j > htaper and j < dat.tnum-htaper:
-                hamp = 1.
-            else:
-                hamp = np.min([j,dat.tnum-j])/htaper
-            dat.data[i,j] *= vamp*hamp
-
-
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
@@ -261,13 +253,14 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
             vel = np.genfromtxt(vel_fn)
             print('Velocities loaded from %s.'%vel_fn)
         except:
-            raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat.'%vel_fn)
+            raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat to txt file.'%vel_fn)
     vmig = getVelocityProfile(dat,vel)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     TK = phaseShift(dat, vmig, vel, kx, ws, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
     dat.data = np.fft.ifft(TK).real
     # print the total time
+    print('')
     print('Phase-Shift Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
@@ -418,11 +411,12 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             print('1-D velocity structure, Gazdag Migration')
             print('Velocities (m/s): %.2e',vels_in[:,0])
             print('Depths (m):',vels_in[:,1])
+            print('Travel Times ($\mu$ sec):',dat.travel_time)
         # iterate through all output travel times
         for itau in range(dat.snum):
             tau = dat.travel_time[itau]/1e6
-            if itau%10 == 0:
-                print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
+            if itau%100 == 0:
+                print('Time %.2e, ' %(tau),end='')
             # iterate through all frequencies
             for iw in range(len(ws)):
                 w = ws[iw]

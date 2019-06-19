@@ -32,7 +32,6 @@ class h5(RadarData):
         mean_trace = np.nanmean(np.abs(self.data),axis=1)
         idx_threshold = np.argwhere(mean_trace>trig_threshold*np.nanmax(mean_trace))
         idx_trig = np.nanmin(idx_threshold)
-        self.data = self.data[idx_trig:]
 
         # other variables are from the array shape
         self.snum = self.data.shape[0]
@@ -42,7 +41,7 @@ class h5(RadarData):
         self.pressure = np.zeros((self.tnum,))
         self.flags = RadarFlags()
         self.travel_time = self.dt*1e6*np.arange(self.snum)
-        self.trig = np.zeros((self.tnum,))
+        self.trig = self.travel_time[idx_trig]
         self.lat = np.zeros((self.tnum,))
         self.long = np.zeros((self.tnum,))
         self.x_coord = np.zeros((self.tnum,))
