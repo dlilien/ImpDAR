@@ -1,5 +1,5 @@
-plot
-====
+Plotting
+========
 
 .. automodule:: impdar.lib.plot
     :members:

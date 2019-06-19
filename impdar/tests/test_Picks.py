@@ -18,13 +18,6 @@ from impdar.lib import load
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestLoad(unittest.TestCase):
-
-    def test_load_mat(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
-        self.assertEqual(data.data.shape, (20, 40))
-
-
 class TestPickMods(unittest.TestCase):
 
     def test_add_pick_loaded(self):

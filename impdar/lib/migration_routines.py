@@ -22,6 +22,7 @@ Mar 12 2019
 
 """
 
+from __future__ import print_function
 import numpy as np
 import time
 from scipy import sparse
@@ -29,12 +30,9 @@ from scipy.interpolate import griddata, interp2d, interp1d
 import subprocess
 import os
 
-# -----------------------------------------------------------------------------
 
-def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
-    """
-
-    Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
+def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
+    """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
     The algorithm cycles through every sample in each trace, creating a hypothetical diffraciton
@@ -57,59 +55,62 @@ def migrationKirchhoff(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     """
 
-    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.tnum, dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data,dat.travel_time/1e6,axis=0)
+    gradD = np.gradient(dat.data, dat.travel_time / 1.e6, axis=0)
     # Create an empty array to fill with migrated data
     migdata = np.zeros_like(dat.data)
+
+    # Try to cache some variables that we need lots
+    tt_sec = dat.travel_time / 1.0e6
+    max_travel_time = np.max(tt_sec)
+
+    # Cache the depths
+    zs = vel * tt_sec
+    zs2 = zs**2.
+
     # Loop through all traces
     print('Migrating trace number:', end='')
     for xi in range(dat.tnum):
-        print(xi, ', ', end='')
+        print('{:d}, '.format(xi), end='')
         # get the trace distance
         x = dat.dist[xi]
+        dists2 = (dat.dist - x)**2.
+
         # Loop through all samples
         for ti in range(dat.snum):
-            # get the sample time
-            t = dat.travel_time[ti]/1e6
-            # convert to depth
-            z = vel*t/2.
             # get the radial distances between input point and output point
-            rs = np.sqrt((dat.dist-x)**2.+z**2.)
+            rs = np.sqrt(dists2 + zs2[ti])
             # find the cosine of the angle of the tangent line, correct for obliquity factor
             with np.errstate(invalid='ignore'):
-                costheta = z/rs
+                costheta = zs[ti] / rs
             # get the exact indices from the array (closest to rs)
-            Didx = [np.argmin(abs(dat.travel_time/1e6-2.*r/vel)) for r in rs]
+            Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
             # integrate the farfield term
-            gradDhyp = np.array([gradD[Didx[i],i] for i in range(len(Didx))])
-            gradDhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
-            integral = np.nansum(gradDhyp*costheta/vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
+            gradDhyp = gradD[Didx, np.arange(len(Didx))]
+            gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+            integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
             # integrate the nearfield term
-            if nearfield == True:
-                Dhyp = np.array([dat.data[Didx[i],i] for i in range(len(Didx))])
-                Dhyp[2.*rs/vel>max(dat.travel_time/1e6)] = 0.    # zero points that are outside of the domain
-                integral += np.nansum(Dhyp*costheta/rs**2.)
+            if nearfield:
+                Dhyp = dat.data[Didx, np.arange(len(Didx))]
+                Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+                integral += np.nansum(Dhyp * costheta / rs**2.)
             # sum the integrals and output
-            migdata[ti,xi] = 1./(2.*np.pi)*integral
+            migdata[ti, xi] = 1. / (2. * np.pi) * integral
     dat.data = migdata.copy()
     # print the total time
     print('')
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(dat.tnum,dat.snum,time.time()-start))
+          % (dat.tnum, dat.snum, time.time() - start))
     return dat
 
-# -----------------------------------------------------------------------------
 
 def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
-    """
-
-    Stolt Migration (Stolt, 1978, Geophysics)
+    """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
     frequency-wavenumber (FKx) to wavenumber-wavenumber (KzKx) space.
@@ -129,8 +130,8 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
 
     print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
+
     # save the start time
     start = time.time()
     # taper
@@ -190,7 +191,6 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
-# -----------------------------------------------------------------------------
 
 def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     """
@@ -229,8 +229,8 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
 
     print('Phase-Shift Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
     # check that the arrays are compatible
-    if np.size(dat.data,1) != dat.tnum or np.size(dat.data,0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+    _check_data_shape(dat)
+
     # save the start time
     start = time.time()
     # taper
@@ -265,7 +265,6 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
-# -----------------------------------------------------------------------------
 
 def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
     """
@@ -338,8 +337,7 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
-
-### Supporting functions
+# Supporting functions
 
 def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     """
@@ -467,7 +465,6 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     TK /= dat.snum
     return TK
 
-# -----------------------------------------------------------------------------
 
 def fourierFiniteDiff(dat, vs, w, FFX, FFX_last, stencil, alpha=0.5,beta=0.25):
     """
@@ -500,9 +497,7 @@ def fourierFiniteDiff(dat, vs, w, FFX, FFX_last, stencil, alpha=0.5,beta=0.25):
     FFX = FFX_last + coeff1*(stencil*FFX) + coeff2*(stencil*FFX - stencil*FFX_last)
     return FFX
 
-# -----------------------------------------------------------------------------
 
-# Define a function to write a sparse matrix
 def Sp_Matr(N,diag,k1,k2,k3=0,k4=0,nx=0):
     A = sparse.lil_matrix((N, N))           #Function to create a sparse Matrix
     A.setdiag((diag)*np.ones(N))            #Set the diagonal
@@ -517,7 +512,6 @@ def Sp_Matr(N,diag,k1,k2,k3=0,k4=0,nx=0):
     A[-1,:-1] = 1
     return A
 
-# -----------------------------------------------------------------------------
 
 def getVelocityProfile(dat,vels_in):
     """
@@ -548,16 +542,23 @@ def getVelocityProfile(dat,vels_in):
     start = time.time()
     print('Interpolating the velocity profile.')
 
-    nlay,dimension = np.shape(vels_in)
+    if len(np.shape(vels_in)) != 2 or np.shape(vels_in)[1] == 1:
+        raise ValueError('If non-constant vel, inputs needs to be 2d (v, z) or (v, z, x)')
+    nlay, dimension = np.shape(vels_in)
     vel_v = vels_in[:,0]
     vel_z = vels_in[:,1]
 
-    twtt = dat.travel_time.copy()/1e6
+    twtt = dat.travel_time.copy() / 1.0e6
     ### Layered Velocity
-    if nlay > 1 and dimension == 2:
+    if nlay == 1:
+        raise ValueError('It does not make sense to only give one layer of velocity--if you want constant velocity just input v')
+    elif dimension == 2:
         zs = np.max(vel_v)/2.*twtt      # depth array for maximum possible penetration
         zs[0] = twtt[0]*vel_v[0]/2.
         # If an input point is closest to a boundary push it to the boundary
+        # This will suppress some desired errors though, so use this if to try to guard
+        if (vel_z[0] > 1.1 * np.nanmin(zs) and vel_z[0] / np.nanmax(zs) > 1.0e-3) or vel_z[-1] * 1.1 < np.nanmax(zs):
+            raise ValueError('Your velocity data doesnt come close to covering the depths in the data')
         if vel_z[0] > np.nanmin(zs):
             vel_v = np.insert(vel_v,0,vel_v[np.argmin(vel_z)])
             vel_z = np.insert(vel_z,0,np.nanmin(zs))
@@ -572,20 +573,18 @@ def getVelocityProfile(dat,vels_in):
         # Compute z(t) from monotonically increasing t
         zinterp = interp1d(tofz,zs)
         zoft = zinterp(twtt)
-        if twtt[-1] > tofz[-1]:
-            raise ValueError('Two-way travel time array extends outside of interpolation range')
         # Compute vmig(t) from z(t)
         vmig = 2.*np.gradient(zoft,twtt)
 
     ### Lateral Velocity Variations TODO: I need to check this more rigorously too.
-    elif nlay > 1 and dimension == 3:
+    elif dimension == 3:
         vel_x = vels_in[:,2]    # Input velocities
         # Depth array for largest penetration range
         zs = np.linspace(np.min(vel_v)*twtt[0],
                  np.max(vel_v)*twtt[-1],
                  dat.snum)/2.
         # Use nearest neighbor interpolation to grid the input points onto a mesh
-        if all(dat.dist == 0):
+        if dat.dist is None or all(dat.dist == 0):
             raise ValueError('The distance vector was never set.')
         XS,ZS = np.meshgrid(dat.dist,zs)
         VS = griddata(np.transpose([vel_x,vel_z]),vel_v,np.transpose([XS.flatten(),ZS.flatten()]),method='nearest')
@@ -603,12 +602,20 @@ def getVelocityProfile(dat,vels_in):
             tofz = tinterp(zs)
             # Compute z(t) from monotonically increasing t
             zinterp = interp1d(tofz,zs)
-            zoft = zinterp(twtt)
             if twtt[-1] > tofz[-1]:
                 raise ValueError('Two-way travel time array extends outside of interpolation range')
+            zoft = zinterp(twtt)
             # Compute vmig(t) from z(t)
             vmig[:,i] = 2.*np.gradient(zoft,twtt)
+    else:
+        # We get here if the number of columns is bad
+        raise ValueError('Input must be 2d with 2 or 3 columns')
 
     print('Velocity profile finished in %.2f seconds.'%(time.time()-start))
 
     return vmig
+
+
+def _check_data_shape(dat):
+    if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
+        raise ValueError('The input array must be of size (tnum,snum)')

@@ -1,6 +1,7 @@
 import numpy as np
-from scipy.signal import filtfilt, butter, tukey
+from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter
 from .migration_routines import *
+
 
 class RadarDataFiltering:
 
@@ -282,7 +283,7 @@ class RadarDataFiltering:
         else:
             raise ValueError('Unrecognized filter type')
 
-    def vertical_band_pass(self, low, high, order=5, *args, **kwargs):
+    def vertical_band_pass(self, low, high, order=5, filttype='butter', cheb_rp=5, fir_window='hamming', *args, **kwargs):
         """Vertically bandpass the data
 
         This function uses a forward-backward Butterworth filter to filter the data. Returns power that is not near the wavelength of the transmitter is assumed to be noise, so the limits for the filtering should generally surround the radar frequency. Some experimentation to see what provides the clearest results is probably needed for any given dataset.
@@ -295,30 +296,20 @@ class RadarDataFiltering:
             Highest frequency passed, in MHz
         order: int
             Filter order (default 5)
+        filttype: str, optional
+            The filter type to use. Options are butter(worth), cheb(yshev type I), bessel, or FIR (finite impulse response). Default is butter.
+        cheb_rp: float, optional
+            Maximum ripple, in decibels, of Chebyshev filter. Only used if filttype=='cheb'. Default is 5.
+        fir_window: str, optional
+            The window type passed to scipy.signal.firwin. Only used if filttype=='fir'. Default is hamming'
         """
         # adapted from bandpass.m  v3.1 - this function performs a banspass filter in the
-        # time-domain of the radar data to remove environmental noise.  The routine
-        # currently uses a 5th order Butterworth filter.
-        # We have a lot of power to mess with this because scipy. Keeping the butter for now.
-        #
-        #Created as stand alone script bandpass.m prior to 1997
-        #  Modification history:
-        #   1) Input changes made by A. Weitzel 7/10/97
-        #   2) Switched to 5th-order Butterworth filter - P. Pearson, 7/2001
-        #   3) Coverted for use in StoDeep and added pre-allocation of filtdata
-        #       variable - B. Welch 10/2001
-        #   4) Filters "stackdata" by default (if it exists),
-        #		otherwise filters "data" - Peter Pearson, 2/13/02
-        #   5) Now user can filter any standard StoDeep data variable that exists in
-        #       memory using a menu displayed for the user - L. Smith, 5/27/03
-        #   6) Converted to function and data variable is now passed to the function
-        #       rather than selected within the script. - B. Welch, 5/1/06
-        #	7) Upselfed input and outputs to include flags structure. Also added
-        #		code to upselfe flags structure - J. Olson 7/10/08
-        #
+        # time-domain of the radar data to remove environmental noise
+
         # first determine the cut-off corner frequencies - expressed as a
         #	fraction of the Nyquist frequency (half the sample freq).
         # 	Note: all of this is in Hz
+
         Sample_Freq = 1.0 / self.dt  	# dt=time/sample (seconds)
 
         #calculate the Nyquist frequency
@@ -331,18 +322,32 @@ class RadarDataFiltering:
         corner_freq[0] = Low_Corner_Freq / Nyquist_Freq
         corner_freq[1] = High_Corner_Freq / Nyquist_Freq
 
-        b, a = butter(order, corner_freq, 'bandpass')
-
         # provide feedback to the user
         print('Bandpassing from {:4.1f} to {:4.1f} MHz...'.format(low, high))
-        self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
+
+        # FIR operates a little differently, and cheb has rp arg, so we need to do each case separately
+        if filttype.lower() in ['butter', 'butterworth']:
+            b, a = butter(order, corner_freq, 'bandpass')
+            self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
+        elif filttype.lower() in ['cheb', 'chebyshev']:
+            b, a = cheby1(order, cheb_rp, corner_freq, 'bandpass')
+            self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
+        elif filttype.lower() == 'bessel':
+            b, a = bessel(order, corner_freq, 'bandpass')
+            self.data = filtfilt(b, a, self.data, axis=0).astype(self.data.dtype)
+        elif filttype.lower() == 'fir':
+            taps = firwin(order + 1, corner_freq, pass_zero=False)
+            # I'm leaving the data past the filter--this is not filtfilt so we have a delay
+            self.data[:-order, :] = lfilter(taps, 1.0, self.data, axis=0).astype(self.data.dtype)[order:, :]
+        else:
+            raise ValueError('Filter type {:s} is not recognized'.format(filttype))
+        
         print('Bandpass filter complete.')
 
         # set flags structure components
         self.flags.bpass[0] = 1
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
-
 
     def migrate(self, mtype='stolt', **kwargs):
         """Migrate the data.
@@ -356,13 +361,13 @@ class RadarDataFiltering:
             Default: stolt
         """
         if mtype == 'kirch':
-            migrationKirchhoff(self,**kwargs)
+            migrationKirchhoff(self, **kwargs)
         elif mtype == 'stolt':
-            migrationStolt(self,**kwargs)
+            migrationStolt(self, **kwargs)
         elif mtype == 'phsh':
-            migrationPhaseShift(self,**kwargs)
+            migrationPhaseShift(self, **kwargs)
         elif mtype == 'su':
-            migrationSeisUnix(self,**kwargs)
+            migrationSeisUnix(self, **kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 

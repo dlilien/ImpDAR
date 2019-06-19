@@ -94,10 +94,10 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
         if len(dat) > 1:
             raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
         dat[0].save(out_fn)
-    elif filetype == 'olaf' and len(fn) > 1:
+    elif filetype == 'gecko' and len(fn) > 1:
         f = fn[0]
         for i in range(1, len(fn)):
-            f = common_start(f, fn[i]).rstrip('[')
+            f = _common_start(f, fn[i]).rstrip('[')
         out_fn = os.path.splitext(f)[0] + '_raw.mat'
         dat[0].save(out_fn)
     else:
@@ -122,7 +122,7 @@ def load_mat(fn):
     return RadarData(fn)
 
 
-def common_start(sa, sb):
+def _common_start(sa, sb):
     """ returns the longest common substring from the beginning of sa and sb
 
     from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings

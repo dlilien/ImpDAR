@@ -7,7 +7,11 @@
 # Distributed under terms of the GNU GPL-3.0 license.
 
 """
-Define a class that just has the necessary attributes for a StODeep file--this should be subclassed per filetype
+A class that just has the necessary attributes for a StODeep file.
+
+This is the basic object around which ImpDAR is written. It contains most of the methods used for processing and saving radar data. The source code is split across several files containing superclasses to keep file size down, but it all the methods should be documented here.
+
+This base object is then subclassed for each type of data that ImpDAR can load, so that each of those subclasses can have easy initialization.
 """
 
 import numpy as np
@@ -231,6 +235,8 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             raise ValueError('top_or_bottom must be "top" or "bottom" not {:s}'.format(top_or_bottom))
         if dimension not in ['snum', 'twtt', 'depth', 'pretrig']:
             raise ValueError('Dimension must be in [\'snum\', \'twtt\', \'depth\']')
+        if top_or_bottom == 'bottom' and dimension == 'pretrig':
+            raise ValueError('Only use pretrig to crop from the top')
 
         if dimension == 'twtt':
             ind = np.min(np.argwhere(self.travel_time >= lim))
@@ -241,21 +247,34 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
                 depth = self.travel_time / 2. * uice * 1.0e-6
             ind = np.min(np.argwhere(depth >= lim))
         elif dimension == 'pretrig':
-            ind = int(self.trig)
-            print(ind)
+            if not (type(self.trig) == np.ndarray):
+                ind = int(self.trig)
+            else:
+                ind = self.trig.astype(int)
         else:
             ind = int(lim)
 
-        if top_or_bottom == 'top':
-            lims = [ind, self.data.shape[0]]
+        if not (type(ind) == np.ndarray) or (dimension != 'pretrig'):
+            if top_or_bottom == 'top':
+                lims = [ind, self.data.shape[0]]
+            else:
+                lims = [0, ind]
+            self.data = self.data[lims[0]:lims[1], :]
+            self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
+            self.snum = self.data.shape[0]
         else:
-            if dimension == 'pretrig':
-                raise ValueError('Only use pretrig to crop from the top')
-            lims = [0, ind]
+            # pretrig, vector input
+            # Need to figure out if we need to do any shifting
+            # The extra shift compared to the smallest
+            mintrig = np.min(ind)
+            trig_ends = self.data.shape[0] - (ind - mintrig) - 1
+            data_old = self.data.copy()
+            self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
+            self.data[:, :] = np.nan
+            for i in range(self.data.shape[1]):
+                self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
+            lims = [0, mintrig]
 
-        self.data = self.data[lims[0]:lims[1], :]
-        self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
-        self.snum = self.data.shape[0]
         try:
             self.flags.crop[0] = 1
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
@@ -265,8 +284,6 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
         print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
-
-
 
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
@@ -389,4 +406,3 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
 
         self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1
-

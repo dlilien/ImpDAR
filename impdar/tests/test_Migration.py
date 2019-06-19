@@ -42,51 +42,91 @@ class NoInitRadarData(RadarData):
 
 
 class TestMigration(unittest.TestCase):
-    """
+
+    def test_check_data_shape(self):
+        data = NoInitRadarData()
+
+        # should pass, i.e. nothing happens
+        migration_routines._check_data_shape(data)
+
+        # make it fail
+        data.data = np.ones((1, 1))
+        with self.assertRaises(ValueError):
+            migration_routines._check_data_shape(data)
+
+    def test_getVelocityProfile(self):
+        data = NoInitRadarData()
+        self.assertEqual(1.68e8, migration_routines.getVelocityProfile(data, 1.68e8))
+
+        # need reasonable input here for 2d. Needs a different travel time.
+        data.travel_time = data.travel_time / 10.
+        migration_routines.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt')))
+
+        # this should still work since we are close
+        data.travel_time = data.travel_time / 10.
+        twod = np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
+        twod = twod * 0.0045 + 1.0e-7 * twod[1]
+        migration_routines.getVelocityProfile(data, twod)
+
+        # need reasonable input here for 3d
+        data = NoInitRadarData()
+        migration_routines.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
+
+        # Bad distance with good 3d grid
+        data.dist = None
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
+        data = NoInitRadarData()
+
+        # this should fail on bad z
+        twod_vel = 1.68e8 * np.ones((10, 2))
+        twod_vel[:, 1] = 0.
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, twod_vel)
+        
+        # Use some bad x values
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, 1.68e8 * np.ones((10, 3)))
+        # bad z values
+        threed_vel = 1.68e8 * np.ones((10, 3))
+        threed_vel[:, -1] = np.arange(10) * 1000.
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, threed_vel)
+
+        # Make sure we reject bad input shapes
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, 1.68e8 * np.ones((8,)))
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, 1.68e8 * np.ones((8, 1)))
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, 1.68e8 * np.ones((1, 2)))
+        with self.assertRaises(ValueError):
+            migration_routines.getVelocityProfile(data, 1.68e8 * np.ones((8, 4)))
+        
     def test_Stolt(self):
         data = NoInitRadarData()
         data = migration_routines.migrationStolt(data)
-        if not os.path.isdir(OUT_DIR):
-            os.mkdir(OUT_DIR)
-        out_fn = os.path.join(OUT_DIR, out_prefix + '_Stolt.mat')
-        data.save(out_fn)
-        os.remove(out_fn)
 
     def test_Kirchhoff(self):
         data = NoInitRadarData()
         data = migration_routines.migrationKirchhoff(data)
-        if not os.path.isdir(OUT_DIR):
-            os.mkdir(OUT_DIR)
-        out_fn = os.path.join(OUT_DIR, out_prefix + '_Kirchhoff.mat')
-        data.save(out_fn)
-        os.remove(out_fn)
-    """
 
     def test_PhaseShiftConstant(self):
         data = NoInitRadarData()
         data = migration_routines.migrationPhaseShift(data)
-        if not os.path.isdir(OUT_DIR):
-            os.mkdir(OUT_DIR)
-        out_fn = os.path.join(OUT_DIR, out_prefix + '_PhaseShiftConstant.mat')
-        data.save(out_fn)
-        os.remove(out_fn)
 
-    """
     def test_PhaseShiftVariable(self):
-        data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', in_file))
-        data = migration_routines.migrationPhaseShift(data,vel_fn='./input_data/velocity_layers.txt')
-        if not os.path.isdir(OUT_DIR):
-            os.mkdir(OUT_DIR)
-        out_fn = os.path.join(OUT_DIR,out_prefix+'_PhaseShiftVariable.mat')
-        data.save(out_fn)
+        data = NoInitRadarData()
+        data.travel_time = data.travel_time / 10.
+        data = migration_routines.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
+
+        data = NoInitRadarData()
+        with self.assertRaises(TypeError):
+            data = migration_routines.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'notafile.txt'))
+
     def test_PhaseShiftLateral(self):
-        data = load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', in_file))
-        data = migration_routines.migrationPhaseShift(data,vel_fn='./input_data/velocity_lateral.txt')
-        if not os.path.isdir(OUT_DIR):
-            os.mkdir(OUT_DIR)
-        out_fn = os.path.join(OUT_DIR,out_prefix+'_PhaseShiftLateral.mat')
-        data.save(out_fn)
-    """
+        data = NoInitRadarData()
+        data = migration_routines.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
 
 if __name__ == '__main__':

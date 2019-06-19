@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2098 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 #
@@ -44,7 +44,7 @@ def _get_args():
     parser_proc.add_argument('-crop', nargs=3, type=str, help='Crop the radar data in the travel-time direction. Arguments are the limit, whether to crop off ["top", "bottom"], with limit defined in terms of ["snum", "twtt", "depth"]')
     parser_proc.add_argument('-restack', nargs=1, type=int, help='Restack to this (odd) number of traces')
     parser_proc.add_argument('-interp', nargs=2, type=str, help='Reinterpolate GPS. First argument is the new spacing, in meters. Second argument is the filename (csv or mat) with the new GPS data')
-    parser_proc.add_argument('-migrate', help='Migrate the data with the indicated routine.')
+    parser_proc.add_argument('-migrate', type=str, help='Migrate the data with the indicated routine.')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
     parser_proc.add_argument('-o', type=str, help='Write to this filename')
 
@@ -54,7 +54,8 @@ def _get_args():
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
-    parser_plot.add_argument('-tr', nargs=2, type=int, help='Plot the traces in this range (line plot)')
+    parser_plot.add_argument('-tr', nargs=2, type=int, default=None, help='Plot the traces in this range (line plot)')
+    parser_plot.add_argument('-power', type=int, default=None, help='Plot the power on this layer number')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
     parser_plot.add_argument('-power', type=int, help='Plot reflected power of pick')
 

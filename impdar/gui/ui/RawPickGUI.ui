@@ -331,10 +331,17 @@
     <property name="title">
      <string>Pick</string>
     </property>
+    <widget class="QMenu" name="menuExport">
+     <property name="title">
+      <string>Export...</string>
+     </property>
+     <addaction name="actionshp"/>
+     <addaction name="actioncsv"/>
+    </widget>
     <addaction name="actionNext"/>
     <addaction name="actionPrevious"/>
     <addaction name="separator"/>
-    <addaction name="actionExport"/>
+    <addaction name="menuExport"/>
     <addaction name="separator"/>
     <addaction name="actionLoad_crossprofile"/>
    </widget>
@@ -416,11 +423,6 @@
     <string>Previous</string>
    </property>
   </action>
-  <action name="actionExport">
-   <property name="text">
-    <string>Export...</string>
-   </property>
-  </action>
   <action name="actionVertical_band_pass">
    <property name="text">
     <string>Vertical band pass...</string>
@@ -444,6 +446,16 @@
   <action name="actionLoad_crossprofile">
    <property name="text">
     <string>Load crossprofile</string>
+   </property>
+  </action>
+  <action name="actionshp">
+   <property name="text">
+    <string>shp...</string>
+   </property>
+  </action>
+  <action name="actioncsv">
+   <property name="text">
+    <string>csv...</string>
    </property>
   </action>
  </widget>

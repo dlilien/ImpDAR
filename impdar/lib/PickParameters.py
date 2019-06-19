@@ -6,13 +6,11 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-PickParams
-"""
-
 
 class PickParameters():
-    """Some information for picking
+    """Some information used for determining for picks
+
+    This object contains several things that you need to know in order to pick a radar layer, like the frequency of layers you are looking for or the size window in which to search
     
     Attributes
     ----------
@@ -55,8 +53,17 @@ class PickParameters():
             self.addpicktype = 'zero'
         self.radardata = radardata
 
-    def freq_update(self, val):
-        self.freq = val
+    def freq_update(self, freq):
+        """Update the frequency at which we are looking
+
+        This is more complicated than just setting freq because other variables are a function of frequency and if not updated will break.
+
+        Parameters
+        ----------
+        freq: float
+            Target pick frequency.
+        """
+        self.freq = freq
         self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
         self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
         self.scst = int(round((self.plength - self.FWW) / 2))

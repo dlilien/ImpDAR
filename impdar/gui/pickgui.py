@@ -39,6 +39,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
         #pick menu
         self.actionLoad_crossprofile.triggered.connect(self._load_cp)
+        self.actioncsv.triggered.connect(self._export_csv)
+        self.actionshp.triggered.connect(self._export_shp)
 
         # Process menu
         self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
@@ -80,48 +82,50 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
 
+        self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray, fig=self.fig, ax=self.ax, return_plotinfo=True)
+
+        # Store some info that we need for later
+        self.y = ydat
+        self.x = xdat
+        self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
+        self.minSpinner.setValue(self.lims[0])
+        self.maxSpinner.setValue(self.lims[1])
+        self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
+
+        if self.dat.picks.samp1 is not None:
+            self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
+            for i in range(self.dat.picks.samp1.shape[0]):
+                if i == self.dat.picks.samp1.shape[0] - 1:
+                    colors = 'gmm'
+                else:
+                    colors = 'byy'
+                self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
+                self._pick_ind = i
+                self.pickNumberBox.setValue(self.dat.picks.picknums[i])
+                self.update_lines(colors=colors, picker=5)
+
+        self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
+        self.krid = self.fig.canvas.mpl_connect('key_release_event', self._release)
+        self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
+        # We need this so we no if we are nanpicking
+        self._n_pressed = False
+
+        #####
+        # Connect some stuff after things are set up
+        # Do this here so we don't unintentionally trigger things that are not initialized
+        #####
+        self.minSpinner.valueChanged.connect(self._lim_update)
+        self.maxSpinner.valueChanged.connect(self._lim_update)
+        self.FrequencySpin.valueChanged.connect(self._freq_update)
+        self.modeButton.clicked.connect(self._mode_update)
+        self.newpickButton.clicked.connect(self._add_pick)
+        self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
+        self.bwb_radio.toggled.connect(self._update_polarity)
+        self.wbw_radio.toggled.connect(self._update_polarity)
+
         try:
-            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat, xdat=xdat, ydat=ydat, x_range=x_range, cmap=plt.cm.gray_r, fig=self.fig, ax=self.ax, return_plotinfo=True)
-
-            # Store some info that we need for later
-            self.y = ydat
-            self.x = xdat
-            self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
-            self.minSpinner.setValue(self.lims[0])
-            self.maxSpinner.setValue(self.lims[1])
-            self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
-
-            if self.dat.picks.samp1 is not None:
-                self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
-                for i in range(self.dat.picks.samp1.shape[0]):
-                    if i == self.dat.picks.samp1.shape[0] - 1:
-                        colors = 'gmm'
-                    else:
-                        colors = 'byy'
-                    self.current_pick = np.vstack((self.dat.picks.samp1[i, :], self.dat.picks.samp2[i, :], self.dat.picks.samp3[i, :], self.dat.picks.time[i, :], self.dat.picks.power[i, :]))
-                    self._pick_ind = i
-                    self.pickNumberBox.setValue(self.dat.picks.picknums[i])
-                    self.update_lines(colors=colors, picker=5)
-
-            self.kpid = self.fig.canvas.mpl_connect('key_press_event', self._press)
-            self.krid = self.fig.canvas.mpl_connect('key_release_event', self._release)
-            self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
-            # We need this so we no if we are nanpicking
-            self._n_pressed = False
-
-            #####
-            # Connect some stuff after things are set up
-            # Do this here so we don't unintentionally trigger things that are not initialized
-            #####
-            self.minSpinner.valueChanged.connect(self._lim_update)
-            self.maxSpinner.valueChanged.connect(self._lim_update)
-            self.FrequencySpin.valueChanged.connect(self._freq_update)
-            self.modeButton.clicked.connect(self._mode_update)
-            self.newpickButton.clicked.connect(self._add_pick)
-            self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
-
             plt.show(self.fig)
         except KeyboardInterrupt:
             plt.close('all')
@@ -129,6 +133,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     #######
     # Handling of the bar of option things on the left
     #######
+    def _update_polarity(self, pol):
+        if self.bwb_radio.isChecked():
+            self.dat.picks.pickparams.pol = 1
+        else:
+            self.dat.picks.pickparams.pol = -1
+
     def _color_select(self, val):
         self.im.set_cmap(plt.cm.get_cmap(val))
         self.fig.canvas.draw()
@@ -269,15 +279,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.tline[self._pick_ind].set_data(self.xd, t)
             self.bline[self._pick_ind].set_data(self.xd, b)
 
-    def _dat_to_snumtnum(self, x, y):
-        if self.xscale == 'tnum':
-            xo = int(x)
-        else:
-            xo = np.argmin(np.abs(self.dat.dist - x))
-
-        yo = np.argmin(np.abs(getattr(self.dat, self.yscale) - y))
-        return xo, yo
-
     def _select_lines_click(self, event):
         thisline = event.artist
         if thisline in self.cline:
@@ -311,6 +312,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel)
         result = dialog.exec_()
         if result == QMessageBox.Cancel:
+            print(result, QMessageBox.Cancel)
             event.ignore()
         elif result == QMessageBox.Close:
             event.accept()
@@ -321,12 +323,14 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 else:
                     event.accept()
             else:
-                self._save()
+                self._save(event)
                 event.accept()
 
-    def _save_inplace(self, evt):
+    def _save(self, evt):
         """Save the file without changing name"""
-        self_save_fn(self.dat.fn)
+        if not hasattr(self, 'fn') or self.fn is None:
+            raise AttributeError('Filename for gui is undefined, needs to be set with "save as"...')
+        self._save_fn(self.fn)
 
     def _save_pick(self, evt):
         """Save with _pick appended"""
@@ -344,7 +348,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.dat.save(fn)
         self._saved = True
         self.actionSave_pick.triggered.disconnect()
-        self.actionSave_pick.triggered.connect(self._save_as)
+        self.actionSave_pick.triggered.connect(self._save)
 
     def _load_cp(self, event=None):
         """Load a cross profile"""
@@ -375,6 +379,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
+    def _export_csv(self, event=None):
+        fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn[:-4] + '.csv', "All Files (*);;csv Files (*.csv)")
+        if fn:
+            self.dat.output_csv(fn)
+
+    def _export_shp(self, event=None):
+        fn, test = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.dat.fn[:-4] + '.shp', "All Files (*);;shp Files (*.shp)")
+        if fn:
+            self.dat.output_shp(fn)
+
     ######
     # Decorators for processing
     ######
@@ -389,7 +403,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.progressLabel.setText('Horizontally filtering...')
         self.progressBar.setProperty("value", 25)
         QtWidgets.QApplication.processEvents()
-        self.dat.adaptivefilt()
+        self.dat.adaptivehfilt()
         self.progressBar.setProperty("value", 75)
         QtWidgets.QApplication.processEvents()
         self.update_radardata()
@@ -421,7 +435,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.progressLabel.setText('Cropping...')
             self.progressBar.setProperty("value", 25)
             QtWidgets.QApplication.processEvents()
-            self.dat.crop(dialog.val, dimension=dialpickNumberBox.og.inputtype, top_or_bottom=dialog.top_or_bottom)
+            self.dat.crop(dialog.val, dimension=dialog.inputtype, top_or_bottom=dialog.top_or_bottom)
             self.progressBar.setProperty("value", 75)
             QtWidgets.QApplication.processEvents()
             self.update_radardata()
@@ -596,3 +610,4 @@ percents = np.array([0, 63, 95, 114, 123, 127, 130, 134, 143, 162, 194, 256])
 percents = percents / 256.
 
 plt.cm.register_cmap(name='CEGSIC', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC', list(zip(percents, colorb))))
+# plt.cm.register_cmap(name='CEGSIC_r', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r', list(zip(list(reversed(percents)), colorb))))

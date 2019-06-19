@@ -35,6 +35,7 @@ class DZT(RadarData):
             rh.us_dattype = 'I'
         elif rh.bits == 16:
             rh.us_dattype = 'H'
+
         if rh.bits == 32:
             rh.s_dattype = 'i'
         elif rh.bits == 16:
@@ -160,12 +161,6 @@ class RH:
     nrgain = None
     checksum = None
     antname = None
-
-    def __str__(self):
-        return 'rgain: {:d}, nrgain {:d}'.format(self.rgain, self.nrgain)
-
-    def __repr__(self):
-        return self.__str__()
 
 
 def _to_date(bin, le=True):

@@ -16,4 +16,4 @@ Contents:
         load
         process
         plot
-        horizontal_filters
+        Picking
