@@ -55,6 +55,7 @@ class TestSEGY(unittest.TestCase):
         data.save_as_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))
         data2 = load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))
         self.assertEqual(data.data.shape, data2.data.shape)
+        self.assertTrue(np.all(data.data == data2.data))
 
     @unittest.skipIf(segy, 'SEGY on this version, only a graceful failure test')
     def test_SaveFails(self):

@@ -139,7 +139,7 @@ def _get_gps_data(fn, trace_nums):
         A dzg file with ggis and gga strings.
     rev: bool, optional
         Reverse the points in this file (used for concatenating radar files). Default False.
-    
+
     Returns
     -------
     data: :class:`~impdar.lib.gpslib.nmea_info`

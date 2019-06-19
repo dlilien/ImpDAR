@@ -111,9 +111,6 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData()
         data = migration_routines.migrationKirchhoff(data)
 
-        data = NoInitRadarData()
-        data = migration_routines.migrationKirchhoff(data, nearfield=True)
-
     def test_PhaseShiftConstant(self):
         data = NoInitRadarData()
         data = migration_routines.migrationPhaseShift(data)

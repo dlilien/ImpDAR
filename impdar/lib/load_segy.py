@@ -22,12 +22,12 @@ class SEGY(RadarData):
         self.data = segyio.tools.collect(self.f.trace[w[0]:w[-1] + 1]).transpose()
         self.snum = self.f.bin[segyio.BinField.Samples]
         self.tnum = self.data.shape[1]
-        self.dt = self.f.bin[segyio.BinField.Interval] / 1.
+        self.dt = self.f.bin[segyio.BinField.Interval]
         self.trace_num = np.arange(self.data.shape[1]) + 1
         self.trig_level = np.zeros((self.tnum, ))
         self.pressure = np.zeros((self.tnum, ))
         self.flags = RadarFlags()
-        self.travel_time = np.atleast_2d(np.arange(0, self.dt * self.snum, self.dt)).transpose() + self.dt
+        #self.travel_time = np.atleast_2d(np.arange(0, self.dt * self.snum, self.dt)).transpose() + self.dt
 
 
 def load_segy(fn, *args, **kwargs):

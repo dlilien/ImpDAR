@@ -124,7 +124,7 @@ def load_mat(fn):
 
 def _common_start(sa, sb):
     """ returns the longest common substring from the beginning of sa and sb
-    
+
     from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
     """
     def _iter():

@@ -61,20 +61,7 @@ class RadarDataSaving:
         if not segy:
             raise ImportError('segyio failed to import, cannot save as segy')
 
-        spec = segyio.spec()
-        spec.sorting = 2
-        spec.format = 1
-        spec.samples = range(self.snum)
-        spec.tracecount = self.tnum
-        spec.ilines = range(self.tnum)
-
-        # We assume that this is radar data on a line, so there is no cross-line
-        spec.xlines = [0]
-        with segyio.create(fn, spec) as f:
-            for il in spec.ilines:
-                f.header[il] = {segyio.su.offset: 1, segyio.su.iline: il, segyio.su.xline: 0}
-                f.trace[il] = self.data[:, il]
-                f.bin.update(tsort=segyio.TraceSortingFormat.INLINE_SORTING)
+        segyio.tools.from_array2D(fn, self.data.transpose(), iline=self.tnum, xline=self.snum, dt=self.dt * 1.0e6)
 
     def output_shp(self, fn, t_srs=4326, target_out=None):
         """Output a shapefile of the traces.
