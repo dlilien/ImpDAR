@@ -387,15 +387,45 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
 #input a radar profile, and get back a 2d histogram of power vs frequency
 #give a maximum frequency to plot to in MHz: ylimit
 #optional keywords for window and scale parameters
-def specdense(profile, ylimit, window=None, scale='spectrum'):
+"""Make a plot of spectral density across all traces of a radar profile.
+
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    ylimit: int
+        The maximum frequency (in MHz) to limit the y-axis to
+
+    For further information on the 'window' and 'scale' parameters, please see:
+    https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.periodogram.html#scipy.signal.periodogram
+    window: string
+        Type of window to be used for the signal.periodogram() method.
+    scale:
+        Whether to plot power spectral density or power spectrum
+        'density' or 'spectrum', the default being 'spectrum'
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
+
+def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
     #get the timestep variable, remove singleton dimension
-    timestep = np.squeeze(profile['dt'])
+    timestep = dat.dt
 
     #calculate frequency information from timestep variable
     fs = 1/timestep
 
     #extract radar data from matlab file
-    data = profile['data']
+    data = dat.data
 
     #shape of data profile should be (samples, traces)
     shape = np.shape(data)
@@ -415,7 +445,7 @@ def specdense(profile, ylimit, window=None, scale='spectrum'):
         powers.append(p)
 
     #extract trace number from matlab file
-    x = profile['trace_num'][0]
+    x = dat.trace_num
 
     #frequency range will be the same, so we can select the first element
     #set frequency range to be in MHz
@@ -431,8 +461,14 @@ def specdense(profile, ylimit, window=None, scale='spectrum'):
     cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
     cbar.set_label(cbarlabel)
 
-    #limit y-axis to half of the maximum power output
-    ax.set_ylim(0, ylimit)
+    #check to make sure ylimit is not <= 0 or more than the largest frequency 
+    if ylimit is not None:
+        if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)
+            raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
+
+        #limit y-axis to ylimit, maximum power output wanted
+        #else, no need to limit the y-axis
+        ax.set_ylim(0, ylimit)
 
     #add x and y labels
     ax.set_xlabel('Trace Number')
@@ -444,4 +480,4 @@ def specdense(profile, ylimit, window=None, scale='spectrum'):
     #add space between the title and the plot
     ax.set_title(title, pad=20)
 
-    return fig
+    return fig, ax
