@@ -4,13 +4,13 @@
 
 Migration routines for ImpDAR
 
-These are mostly based on older scripts in SeisUnix:
+Much of this code is either directly referencing or written from older scripts in SeisUnix:
 https://github.com/JohnWStockwellJr/SeisUnix/wiki
 Options are:
     Kirchhoff (diffraction summation)
     Stolt (frequency wavenumber, constant velocity)
     Gazdag (phase shift, either constant or depth-varying velocity)
-
+    SeisUnix (reference su routines directly)
 
 Author:
 Benjamin Hills
@@ -26,28 +26,31 @@ import numpy as np
 import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
+import subprocess
+import os
 
 
 def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
-    The algorithm cycles through all every sample in each trace, creating a hypothetical diffraciton
+    The algorithm cycles through every sample in each trace, creating a hypothetical diffraciton
     hyperbola for that location,
         t(x)^2 = t(0)^2 + (2x/v)^2
     To migrate, we integrate the power along that hyperbola and assign the solution to the apex point.
     There are two terms in the integral solution, Yilmaz (2001) eqn 4.5, a far-field term and a
-    near-field term. Most algorithms ignor the near-field term because it is small.
+    near-field term. Most algorithms ignore the near-field term because it is small. Here there is an option,
+    but default is to ignore.
 
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: wave velocity, default is for ice
     nearfield: boolean to indicate whether or not to use the nearfield term in summation
 
     Output
     ---------
-    dat.data: migrated data
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -70,8 +73,9 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     zs2 = zs**2.
 
     # Loop through all traces
+    print('Migrating trace number:', end='')
     for xi in range(dat.tnum):
-        print('Migrating trace number:', xi)
+        print('{:d}, '.format(xi), end='')
         # get the trace distance
         x = dat.dist[xi]
         dists2 = (dat.dist - x)**2.
@@ -98,12 +102,13 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
             migdata[ti, xi] = 1. / (2. * np.pi) * integral
     dat.data = migdata.copy()
     # print the total time
+    print('')
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
           % (dat.tnum, dat.snum, time.time() - start))
     return dat
 
 
-def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
@@ -111,12 +116,14 @@ def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
 
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: wave velocity, default is for ice
+    htaper: number of traces for the linear horizontal taper from the edges of the domain
+    vtaper: number of samples for the vertical taper from the top and bottom.
 
     Output
     ---------
-    dat.data: migrated data
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -126,26 +133,37 @@ def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
 
     # save the start time
     start = time.time()
-    # pad the array with zeros up to the next power of 2 for discrete fft
-    nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
-    nx = 2**(np.ceil(np.log(dat.tnum)/np.log(2))).astype(int)
+    # taper
+    for i in range(dat.snum):
+        for j in range(dat.tnum):
+            if i > vtaper and i < dat.snum-vtaper:
+                vamp = 1.
+            else:
+                vamp = np.min([i,dat.snum-i])/vtaper
+            if j > htaper and j < dat.tnum-htaper:
+                hamp = 1.
+            else:
+                hamp = np.min([j,dat.tnum-j])/htaper
+            dat.data[i,j] *= vamp*hamp
+
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
-    FK = np.fft.fft2(dat.data,(nt,nx))
+    FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
-    ws = 2.*np.pi*np.fft.fftfreq(nt, d=dat.dt)
+    ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
     # get the horizontal wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(nx, d=np.mean(dat.trace_int))
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(dat.trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
     interp_real = interp2d(kx,ws,FK.real)
     interp_imag = interp2d(kx,ws,FK.imag)
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
+    print('Interpolating:',end='')
     # for all temporal frequencies
-    for zj in range(nt):
+    for zj in range(dat.snum//2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
-            print('Interpolating',int(ws[zj]/1e6/2/np.pi),'MHz')
+            print(int(ws[zj]/1e6/2/np.pi),'MHz, ',end='')
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -168,13 +186,13 @@ def migrationStolt(dat, vel=1.68e8, vel_fn=None, nearfield=False):
     # Cut array to input matrix dimensions
     dat.data = dat.data[:dat.snum,:dat.tnum]
     # print the total time
+    print('')
     print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
-# -----------------------------------------------------------------------------
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     """
 
     Phase-Shift Migration
@@ -187,9 +205,15 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
     (i.e. summing over all frequencies to get the solution at t=0)
     for the migrated section at each step.
 
+    **
+    The foundation of this script was taken from two places:
+    Matlab code written by Andreas Tzanis, Dept. of Geophysics, University of Athens (2005)
+    Seis Unix script sumigffd.c, Credits: CWP Baoniu Han, July 21th, 1997
+    **
+
     Parameters
     ---------
-    dat: data as a dictionary in the ImpDAR format
+    dat: data as a class in the ImpDAR format
     vel: v(x,z)
         Up to 2-D array with three columns for velocities (m/s), and z/x (m).
         Array structure is velocities in first column, z location in second, x location in third.
@@ -199,13 +223,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     Output
     ---------
-    dat.data: migrated data
-
-    **
-    The foundation of this script was taken from two places:
-    Matlab code written by Andreas Tzanis, Dept. of Geophysics, University of Athens (2005)
-    Seis Unix script sumigffd.c, Credits: CWP Baoniu Han, July 21th, 1997
-    **
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
 
@@ -215,6 +233,20 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
 
     # save the start time
     start = time.time()
+    # taper
+    for i in range(dat.snum):
+        for j in range(dat.tnum):
+            if i > vtaper and i < dat.snum-vtaper:
+                vamp = 1.
+            else:
+                vamp = np.min([i,dat.snum-i])/vtaper
+            if j > htaper and j < dat.tnum-htaper:
+                hamp = 1.
+            else:
+                hamp = np.min([j,dat.tnum-j])/htaper
+            dat.data[i,j] *= vamp*hamp
+
+
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
@@ -239,17 +271,90 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,nearfield=False):
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
 
-### Supporting functions
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+    """
+
+    Migration through Seis Unix. For now only three options:
+    ---------
+    1) SUMIGTK - Migration via T-K domain method for common-midpoint stacked data
+    2) SUMIGFFD - Fourier finite difference migration for zero-offset data. This method is a hybrid
+                migration which combines the advantages of phase shift and finite difference migrations.
+    3) SUSTOLT - Stolt migration for stacked data or common-offset gathers
+
+
+    Parameters
+    ---------
+    dat: data as a class in the ImpDAR format
+    vel: wave velocity, default is for ice
+    vfile=         name of file containing velocities
+    dx:  distance between successive
+    fmax=Nyquist            maximum frequency
+    tmig=0.0                times corresponding to interval velocities in vmig
+    nxpad=0                 number of cdps to pad with zeros before FFT
+    ltaper=0                length of linear taper for left and right edges
+    verbose=0               =1 for diagnostic print
+    dt=from header(dt) or  .004    time sampling interval
+    ft=0.0                 first time sample
+    ntau=nt(from data)     number of migrated time samples
+    dtau=dt(from header)   migrated time sampling interval
+    ftau=ft                first migrated time sample
+    Q=1e6                  quality factor
+    ceil=1e6               gain ceiling beyond which migration ceases
+
+    Output
+    ---------
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
+
+    """
+
+    try:
+        print('Using SeisUnix migration routine at:')
+        subprocess.run(['which',sutype])
+    except:
+        raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
+
+    segy_name = os.path.splitext(dat.fn)[0]
+    dx = np.mean(dat.trace_int)
+    nxpad = 10
+    ltaper = 10
+
+    if sutype == 'sumigtk':
+        subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(ltaper)+' dxcdp='+str(dx)+\
+                        ' > '+segy_name+'_migtk.su'],shell=True)
+    else:
+        raise ValueError('The SeisUnix migration routine', sutype,
+        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+
+    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
+    # qclip
+    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
+    # read segy and convert to impdar data format
+    #dat.data = migdata_s
+
+    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
+
+    return dat
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Supporting functions
 
 def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     """
 
     Phase-Shift migration to get from frequency-wavenumber (FKx) space to time-wavenumber (TKx) space.
     This is for either constant or layered velocity v(z).
+
+    **
+    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
+    Dept. of Geophysics, University of Athens (2005)
+    **
 
     Parameters
     ---------
@@ -269,11 +374,6 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     ---------
     TK: 2-D array of the migrated data image in time-wavenumber space (TKx).
 
-    **
-    The foundation of this script was taken from Matlab code written by Andreas Tzanis,
-    Dept. of Geophysics, University of Athens (2005)
-    **
-
     """
 
     # initialize the time-wavenumber array to be filled with complex values
@@ -283,12 +383,13 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     if not hasattr(vmig,"__len__"):
         print('Constant velocity %s m/usec'%(vmig/1e6))
         # iterate through all frequencies
+        print('Frequency: ',end='')
         for iw in range(len(ws)):
             w = ws[iw]
             if w == 0.0:
                 w = 1e-10/dat.dt
             if iw%100 == 0:
-                print('Frequency',int(w/1e6/(2.*np.pi)),'MHz')
+                print(int(w/1e6/(2.*np.pi)),'MHz',', ',end='')
             # remove frequencies outside of the domain
             vkx2 = (vmig*kx/2.)**2.
             ik = np.argwhere(vkx2 < w**2.)
@@ -369,7 +470,6 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     TK /= dat.snum
     return TK
 
-# -----------------------------------------------------------------------------
 
 def fourierFiniteDiff(dat, vs, w, FFX, FFX_last, stencil, alpha=0.5,beta=0.25):
     """
@@ -402,9 +502,7 @@ def fourierFiniteDiff(dat, vs, w, FFX, FFX_last, stencil, alpha=0.5,beta=0.25):
     FFX = FFX_last + coeff1*(stencil*FFX) + coeff2*(stencil*FFX - stencil*FFX_last)
     return FFX
 
-# -----------------------------------------------------------------------------
 
-# Define a function to write a sparse matrix
 def Sp_Matr(N,diag,k1,k2,k3=0,k4=0,nx=0):
     A = sparse.lil_matrix((N, N))           #Function to create a sparse Matrix
     A.setdiag((diag)*np.ones(N))            #Set the diagonal
@@ -419,7 +517,6 @@ def Sp_Matr(N,diag,k1,k2,k3=0,k4=0,nx=0):
     A[-1,:-1] = 1
     return A
 
-# -----------------------------------------------------------------------------
 
 def getVelocityProfile(dat,vels_in):
     """
