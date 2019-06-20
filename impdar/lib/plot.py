@@ -394,7 +394,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     ----------
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
-    ylimit: int
+    ylimit: float
         The maximum frequency (in MHz) to limit the y-axis to
 
     For further information on the 'window' and 'scale' parameters, please see:
