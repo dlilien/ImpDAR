@@ -28,6 +28,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Next line is required for Qt, then give us the layout
         super(InteractivePicker, self).__init__()
         self.setupUi(self)
+        self.setWindowTitle(dat.fn)        
         self.FigCanvasWidget.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.FigCanvasWidget.canvas.setFocus()
 
@@ -64,6 +65,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.bwb = 'bwb'
         self.freq = 4
         self.pick_mode = 'select'
+        self.color_reversal = ''
 
         # line is the matplotlib object of the current pick
         self.cline = []
@@ -87,7 +89,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Store some info that we need for later
         self.y = ydat
         self.x = xdat
-        self.clims = [self.lims[0] * 2 if self.lims[0] < 0 else self.lims[0] / 2, self.lims[1] * 2]
         self.minSpinner.setValue(self.lims[0])
         self.maxSpinner.setValue(self.lims[1])
         self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
@@ -124,6 +125,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
         self.bwb_radio.toggled.connect(self._update_polarity)
         self.wbw_radio.toggled.connect(self._update_polarity)
+        self.checkBox_2.stateChanged.connect(self._update_color_reversal)
 
         try:
             plt.show(self.fig)
@@ -140,7 +142,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.dat.picks.pickparams.pol = -1
 
     def _color_select(self, val):
-        self.im.set_cmap(plt.cm.get_cmap(val))
+        self.im.set_cmap(plt.cm.get_cmap(val + self.color_reversal))
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -196,6 +198,13 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     c.set_picker(5)
                     b.set_picker(5)
                     t.set_picker(5)
+
+    def _update_color_reversal(self, state):
+        if state == QtCore.Qt.Checked:
+            self.color_reversal = '_r'
+        else:
+            self.color_reversal = ''
+        self._color_select(self.ColorSelector.currentText())
 
     #######
     # Handling of mouse events
@@ -610,4 +619,4 @@ percents = np.array([0, 63, 95, 114, 123, 127, 130, 134, 143, 162, 194, 256])
 percents = percents / 256.
 
 plt.cm.register_cmap(name='CEGSIC', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC', list(zip(percents, colorb))))
-# plt.cm.register_cmap(name='CEGSIC_r', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r', list(zip(list(reversed(percents)), colorb))))
+plt.cm.register_cmap(name='CEGSIC_r', cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r', list(zip(percents, colorb))))

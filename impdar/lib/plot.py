@@ -137,7 +137,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         x_range = (x_range[0], dat.tnum)
 
     lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]][~np.isnan(dat.data[:, x_range[0]:x_range[-1]])], (10, 90))
-    clims = [lims[0] * 2 if lims[0] < 0 else lims[0] / 2, lims[1] * 2]
 
     if fig is not None:
         if ax is None:
@@ -177,7 +176,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     if not return_plotinfo:
         return fig, ax
     else:
-        return im, xd, yd, x_range, clims
+        return im, xd, yd, x_range, lims
 
 
 def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):

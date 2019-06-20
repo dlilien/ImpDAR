@@ -23,7 +23,7 @@ def _get_args():
 
     parser_load = subparsers.add_parser('load', help='Load data')
     parser_load.set_defaults(func=load.load_and_exit)
-    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy'])
+    parser_load.add_argument('filetype', type=str, help='Type of file', choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
     parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1, help='Receiver channel to load, this is primarily for the St. Olaf HF data.')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
@@ -50,14 +50,13 @@ def _get_args():
 
     parser_plot = subparsers.add_parser('plot', help='Plot data')
     parser_plot.set_defaults(func=plot.plot)
-    parser_plot.add_argument('fn', type=str, nargs='+', help='File(s) to plot')
+    parser_plot.add_argument('fns', type=str, nargs='+', help='File(s) to plot')
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
     parser_plot.add_argument('-tr', nargs=2, type=int, default=None, help='Plot the traces in this range (line plot)')
     parser_plot.add_argument('-power', type=int, default=None, help='Plot the power on this layer number')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
-    parser_plot.add_argument('-power', type=int, help='Plot reflected power of pick')
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)

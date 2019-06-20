@@ -48,6 +48,13 @@ class PickParameters():
             self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.dt)))
             self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.dt))))
             self.scst = int(round((self.plength - self.FWW) / 2))
+            if self.plength < 3:
+                print('Warning: high frequency compared to sampling rate means we are forcing a minimum plength')
+                self.plength = 3
+            if self.FWW == 0:
+                self.FWW = 1
+            if self.scst == 0:
+                self.scst = 0
             self.pol = 1
             self.apickflag = 1
             self.addpicktype = 'zero'
@@ -67,6 +74,13 @@ class PickParameters():
         self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
         self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
         self.scst = int(round((self.plength - self.FWW) / 2))
+        if self.plength < 3:
+            print('Warning: high frequency compared to sampling rate means we are forcing a minimum plength')
+            self.plength = 3
+        if self.FWW == 0:
+            self.FWW = 1
+        if self.scst == 0:
+            self.scst = 0
 
     def to_struct(self):
         mat = {}
