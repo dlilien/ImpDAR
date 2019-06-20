@@ -338,7 +338,7 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*a
     return dat
 
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,*args,**kwargs):
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,nz=1,dz=1,*args,**kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -388,24 +388,28 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose
         trace_int = dat.trace_int
     dx = np.mean(trace_int)
 
-    # Do the migration through the command line
+    ### Do the migration through the command line
     segy_name = os.path.splitext(dat.fn)[0]
+    # Time Wavenumber
     if sutype == 'sumigtk':
-        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
                         ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
                         ' > '+segy_name+'_migtk.sgy'],shell=True)
         subprocess.run(['sustrip < '+segy_name+'_migtk.sgy > '+segy_name+'_mig.bin'],shell=True)
-    #elif sutype == 'sumigffd':
-    #    subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e12)+\
-    #                    ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
-    #                    ' > '+segy_name+'_migtk.su'],shell=True)
-    #    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
+    # Fourier Finite Difference
+    elif sutype == 'sumigffd':
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigffd vfile='+vel_fn+\
+                        ' nz='+str(nz)+' dz='+str(dz)+' dt='+str(dat.dt*1e-6)+' dx='+str(dx)+\
+                        ' > '+segy_name+'_migffd.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_migffd.sgy > '+segy_name+'_mig.bin'],shell=True)
+    # Stolt
     elif sutype == 'sustolt':
-        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sustolt tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sustolt tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
                         ' verbose='+str(verbose)+'lstaper='+str(htaper)+' lbtaper='+str(vtaper)+\
                         ' dxcdp='+str(dx)+' cdpmin='+str(0)+' cdpmax='+str(dat.tnum)+\
                         ' > '+segy_name+'_stolt.sgy'],shell=True)
         subprocess.run(['sustrip < '+segy_name+'_stolt.sgy > '+segy_name+'_mig.bin'],shell=True)
+
     else:
          raise ValueError('The SeisUnix migration routine', sutype,
             'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
