@@ -468,17 +468,14 @@ def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None
     cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
     cbar.set_label(cbarlabel)
 
-<<<<<<< HEAD
     if ylimit is not None:
         if np.logical_or(ylimit <= 0, ylimit > np.max(y)):
             raise ValueError('Y-axis limit {} MHz not found in frequencies.'.format(ylimit))
             return
-=======
     #check to make sure ylimit is not <= 0 or more than the largest frequency
     if ylimit is not None:
         if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)):
             raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
->>>>>>> 0c621a6747ee56eda4ca156221c7ba09457c0af4
 
         #limit y-axis ylimit, maximum power output
         #else, no need to do anything
