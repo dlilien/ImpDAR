@@ -57,7 +57,7 @@ def _get_args():
     parser_plot.add_argument('-tr', nargs=2, type=int, default=None, help='Plot the traces in this range (line plot)')
     parser_plot.add_argument('-power', type=int, default=None, help='Plot the power on this layer number')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
-    #parser_plot.add_argument('-power', type=int, help='Plot reflected power of pick')
+    parser_plot.add_argument('-spectra', nargs=3, default=[None, None, 'spectrum'], metavar=(ylimit, window, scale), help='Plot spectral density across traces of radar profile')
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)
