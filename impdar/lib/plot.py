@@ -42,11 +42,11 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
     elif pe:
         radar_data = load('pe', fns)
     elif gecko:
-        radar_data = load('pe', fns)
+        radar_data = load('gecko', fns)
     elif gprMax:
-        radar_data = load('pe', fns)
+        radar_data = load('gprMax', fns)
     elif segy:
-        radar_data = load('pe', fns)
+        radar_data = load('segy', fns)
     else:
         radar_data = load('mat', fns)
 
@@ -249,7 +249,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
 
 def plot_power(dats, idx, fig=None, ax=None):
     """Make a plot of the reflected power along a given pick
-    
+
 
     Parameters
     ----------
@@ -274,7 +274,7 @@ def plot_power(dats, idx, fig=None, ax=None):
         idx = int(idx)
     except TypeError:
         raise TypeError('Please enter an integer pick number')
-    
+
     if type(dats) not in [list, tuple]:
         dats = [dats]
 
@@ -328,11 +328,11 @@ def plot_power(dats, idx, fig=None, ax=None):
 
 def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     """Update the plotting of the current pick.
-    
+
     Parameters
     ----------
     colors: str
-        You have choices here. This can be a npicksx3 list, an npicks list of 3-letter strings, a 3 letter string, a single string, or a npicks list. Any of the x3 options are interpretted as top, middle, bottom colors. The others are 
+        You have choices here. This can be a npicksx3 list, an npicks list of 3-letter strings, a 3 letter string, a single string, or a npicks list. Any of the x3 options are interpretted as top, middle, bottom colors. The others are
     picker:
         argument to pass to plot of cline (if new) for selection tolerance (use if plotting in select mode)
     """
@@ -461,9 +461,9 @@ def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
     cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
     cbar.set_label(cbarlabel)
 
-    #check to make sure ylimit is not <= 0 or more than the largest frequency 
+    #check to make sure ylimit is not <= 0 or more than the largest frequency
     if ylimit is not None:
-        if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)
+        if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)):
             raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
 
         #limit y-axis to ylimit, maximum power output wanted

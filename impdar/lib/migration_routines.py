@@ -30,7 +30,6 @@ from scipy.interpolate import griddata, interp2d, interp1d
 import subprocess
 import os
 
-
 def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
@@ -243,7 +242,12 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(dat.trace_int))
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(trace_int))
     ws = 2.*np.pi*np.fft.fftfreq(nt,d=dat.dt)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(nt,dat.tnum))
@@ -266,7 +270,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     return dat
 
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,*args,**kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -309,27 +313,33 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 
     segy_name = os.path.splitext(dat.fn)[0]
-    dx = np.mean(dat.trace_int)
-    nxpad = 10
-    ltaper = 10
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    dx = np.mean(trace_int)
 
     if sutype == 'sumigtk':
-        subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
-                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(ltaper)+' dxcdp='+str(dx)+\
-                        ' > '+segy_name+'_migtk.su'],shell=True)
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
+                        ' > '+segy_name+'_migtk.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_migtk.sgy > '+segy_name+'_mig.bin'],shell=True)
+    #elif sutype == 'sumigffd':
+    #    subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e12)+\
+    #                    ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
+    #                    ' > '+segy_name+'_migtk.su'],shell=True)
+    #    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
+    #elif sutype == 'sustolt':
+    #    subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e12)+\
+    #                    ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
+    #                    ' > '+segy_name+'_migtk.su'],shell=True)
+    #    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
     else:
-        raise ValueError('The SeisUnix migration routine', sutype,
-        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+         raise ValueError('The SeisUnix migration routine', sutype,
+            'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
-    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
-    # qclip
-    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
-    # read segy and convert to impdar data format
-    #dat.data = migdata_s
-
-    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
-
-    return dat
+    return
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
