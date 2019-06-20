@@ -45,7 +45,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             elif f[-4:] == '.sgy':
                 if not segy:
                     raise ImportError('You cannot use segy without segyio installed!')
-                loaders[i] = load_segy.load_load_segy
+                loaders[i] = load_segy.load_segy
             else:
                 raise ValueError('Unrecognized file extension {:s}'.format(f[-4:]))
     else:
@@ -79,7 +79,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
         if not segy:
             raise ImportError('You cannot use segy without segyio installed!')
         for loader, f, dat in zip(loaders, fn, data):
-            out_fn = os.path.splitext(f)[0] + '.segy'
+            out_fn = os.path.splitext(f)[0] + '.sgy'
             dat.save_as_segy(out_fn)
 
 

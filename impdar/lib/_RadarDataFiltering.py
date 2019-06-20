@@ -341,7 +341,7 @@ class RadarDataFiltering:
             self.data[:-order, :] = lfilter(taps, 1.0, self.data, axis=0).astype(self.data.dtype)[order:, :]
         else:
             raise ValueError('Filter type {:s} is not recognized'.format(filttype))
-        
+
         print('Bandpass filter complete.')
 
         # set flags structure components

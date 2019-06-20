@@ -50,7 +50,7 @@ def _get_args():
 
     parser_plot = subparsers.add_parser('plot', help='Plot data')
     parser_plot.set_defaults(func=plot.plot)
-    parser_plot.add_argument('fns', type=str, nargs='+', help='File(s) to plot')
+    parser_plot.add_argument('fn', type=str, nargs='+', help='File(s) to plot')
     parser_plot.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
     parser_plot.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
