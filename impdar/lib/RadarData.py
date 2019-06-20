@@ -22,7 +22,6 @@ from ._RadarDataFiltering import RadarDataFiltering
 from .RadarFlags import RadarFlags
 from .Picks import Picks
 
-from .migration_routines import *
 try:
     from osgeo import osr, ogr
     conversions_enabled = True

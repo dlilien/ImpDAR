@@ -366,10 +366,16 @@ class RadarDataFiltering:
             migrationStolt(self, **kwargs)
         elif mtype == 'phsh':
             migrationPhaseShift(self, **kwargs)
+        elif mtype == 'tk':
+            migrationTimeWavenumber(self, **kwargs)
         elif mtype == 'su':
             migrationSeisUnix(self, **kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 
         # change migration flag
-        self.flags.mig = mtype
+        if mtype == 'su':
+            mflag = sutype
+        else:
+            mflag = mtype
+        self.flags.mig = mflag

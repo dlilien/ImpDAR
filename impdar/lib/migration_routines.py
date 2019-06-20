@@ -30,7 +30,7 @@ from scipy.interpolate import griddata, interp2d, interp1d
 import subprocess
 import os
 
-def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
+def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwargs):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
@@ -191,11 +191,11 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     return dat
 
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
     """
 
     Phase-Shift Migration
-    case with velocity, v=constant (Gazdag 1978, Geophysics)
+    case with constant velocity, v=constant (Gazdag 1978, Geophysics)
     case with layered velocities, v(z) (Gazdag 1978, Geophysics)
     case with vertical and lateral velocity variations, v(x,z) (Ristow and Ruhl 1994, Geophysics)
 
@@ -270,7 +270,75 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     return dat
 
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,*args,**kwargs):
+def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
+    """
+
+    Time-Wavenumber Migration
+
+    The migration is a reverse time migration in the (t,k) domain. In the
+    first step, the data g(t,x) are Fourier transformed x->k into
+    the time-wavenumber domain g(t,k).
+    Then looping over wavenumbers, the data are then reverse-time
+    finite-difference migrated, wavenumber by wavenumber.  The resulting
+    migrated data m(tau,k), now in the tau (migrated time) and k domain,
+    are inverse fourier transformed back into m(tau,xout) and written out.
+
+    **
+    The foundation of this script was taken from:
+    Seis Unix script sumigtk.c, Credits: CWP Dave Hale, November 5th, 1990
+    **
+
+    Parameters
+    ---------
+    dat: data as a class in the ImpDAR format
+    vel: v(x,z)
+        Up to 2-D array with three columns for velocities (m/s), and z/x (m).
+        Array structure is velocities in first column, z location in second, x location in third.
+        If uniform velocity (i.e. vel=constant) input constant
+        If layered velocity (i.e. vel=v(z)) input array with shape (#vel-points, 2) (i.e. no x-values)
+    vel_fn: filename for layered velocity input, .txt file with columns for v, x, z
+
+    Output
+    ---------
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
+
+    """
+    print('Time-Wavenumber Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    # check that the arrays are compatible
+    _check_data_shape(dat)
+
+    # save the start time
+    start = time.time()
+    # taper
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
+    # get wavenumbers
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(trace_int))
+    # 1D Forward Fourier Transform to get data in time-wavenumber space, TK = D(kx,z=0,ts)
+
+    # Loop over wavenumbers for reverse time migration
+    for k in kx:
+        continue
+
+    # 1D Inverse Fourier Transform to get data back into migrated time-distance space
+
+    # print the total time
+    print('')
+    print('Time-Wavenumber Migration of %.0fx%.0f matrix complete in %.2f seconds'
+          %(dat.tnum,dat.snum,time.time()-start))
+    return dat
+
+
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,*args,**kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -312,7 +380,7 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
     except:
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 
-    segy_name = os.path.splitext(dat.fn)[0]
+    # Get the trace spacing
     if np.mean(dat.trace_int) <= 0:
         Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
         trace_int = np.gradient(dat.dist)
@@ -320,6 +388,8 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
         trace_int = dat.trace_int
     dx = np.mean(trace_int)
 
+    # Do the migration through the command line
+    segy_name = os.path.splitext(dat.fn)[0]
     if sutype == 'sumigtk':
         subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
                         ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
@@ -330,11 +400,12 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
     #                    ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
     #                    ' > '+segy_name+'_migtk.su'],shell=True)
     #    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
-    #elif sutype == 'sustolt':
-    #    subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e12)+\
-    #                    ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
-    #                    ' > '+segy_name+'_migtk.su'],shell=True)
-    #    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
+    elif sutype == 'sustolt':
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sustolt tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
+                        ' verbose='+str(verbose)+'lstaper='+str(htaper)+' lbtaper='+str(vtaper)+\
+                        ' dxcdp='+str(dx)+' cdpmin='+str(0)+' cdpmax='+str(dat.tnum)+\
+                        ' > '+segy_name+'_stolt.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_stolt.sgy > '+segy_name+'_mig.bin'],shell=True)
     else:
          raise ValueError('The SeisUnix migration routine', sutype,
             'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
