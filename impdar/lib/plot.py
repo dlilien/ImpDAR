@@ -415,7 +415,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Axes that were plotted upon
     """
 
-def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None):
+def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None, **kwargs):
     
     dat = dat[0]
 

@@ -349,7 +349,7 @@ class RadarDataFiltering:
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
 
-    def migrate(self, mtype='stolt', **kwargs):
+    def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
         """Migrate the data.
 
         This is a wrapper around all the migration routines in migration_routines.py.
