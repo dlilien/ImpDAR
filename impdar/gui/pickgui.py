@@ -244,11 +244,14 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _add_point_pick(self, snum, tnum):
         """We are given a snum, tnum location in the image: follow layer to that point, plot it"""
-        picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum], self.dat.picks.lasttrace.snum[self._pick_ind], snum, pickparams=self.dat.picks.pickparams)
-        self.current_pick[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum] = picks
-        self.dat.picks.update_pick(self.dat.picks.picknums[self._pick_ind], self.current_pick)
-        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
-        self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+        try:
+            picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum], self.dat.picks.lasttrace.snum[self._pick_ind], snum, pickparams=self.dat.picks.pickparams)
+            self.current_pick[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum] = picks
+            self.dat.picks.update_pick(self.dat.picks.picknums[self._pick_ind], self.current_pick)
+            self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+            self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+        except ValueError:
+            warn('Frequency too low!', 'Frequency is too low, causing search window for pick to be too large. Increase frequency!')
 
     def _add_nanpick(self, snum, tnum):
         """Update for a nanpick. This is trivial, since the matrix is already NaNs"""
@@ -496,9 +499,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if snum is not None:
             if tnum is None:
                 tnum = 0
-            self.current_pick[:, tnum] = picklib.packet_pick(self.dat.data[:, tnum], self.dat.picks.pickparams, snum)
-            self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
-            self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+            try:
+                self.current_pick[:, tnum] = picklib.packet_pick(self.dat.data[:, tnum], self.dat.picks.pickparams, snum)
+                self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+                self.dat.picks.lasttrace.snum[self._pick_ind] = snum
+            except ValueError:
+                warn('Frequency too low!', 'Frequency is too low, causing search window for pick to be too large. Increase frequency!')
 
 
 class VBPInputDialog(QDialog):
