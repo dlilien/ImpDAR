@@ -385,7 +385,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
 
 
 
-"""Make a plot of spectral density across all traces of a radar profile.
+"""Make a plot of power spectral density across all traces of a radar profile.
 
 
     Parameters
@@ -486,7 +486,7 @@ def specdense(dat, ylimit, window, scale, fig=None, ax=None, **kwargs):
     ax.set_ylabel('Frequency (MHz)')
 
     #set title
-    title = 'Spectral Density as a Function of Trace Number and Frequency'
+    title = 'Power Spectral Density as a Function of Trace Number and Frequency'
 
     #add space between the title and the plot
     ax.set_title(title, pad=20)
