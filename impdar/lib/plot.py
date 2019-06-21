@@ -18,7 +18,7 @@ from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, ylimit=None, window=None, scale='spectrum', gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -70,7 +70,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         figs = [plot_power(radar_data, power)]
     elif spectra != False:
         #call specdense() here
-        figs = [specdense(radar_data)]
+        figs = [specdense(radar_data, ylimit, window, scale)]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -415,7 +415,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Axes that were plotted upon
     """
 
-def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None, **kwargs):
+def specdense(dat, ylimit, window, scale, fig=None, ax=None, **kwargs):
     
     dat = dat[0]
 
