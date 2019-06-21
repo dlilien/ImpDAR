@@ -12,12 +12,13 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.signal as signal
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, specdense=False, ylimit=None, window=None, scale='spectrum', gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -67,9 +68,9 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
     elif power is not None:
         # Do it all on one axis if power
         figs = [plot_power(radar_data, power)]
-    elif specdense != False:
-        #call specdense() method here
-        figs = [specdense(radar_data, ylimit, window, scale)]
+    elif spectra != False:
+        #call specdense() here
+        figs = [specdense(radar_data)]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -384,9 +385,6 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
 
 
 
-#input a radar profile, and get back a 2d histogram of power vs frequency
-#give a maximum frequency to plot to in MHz: ylimit
-#optional keywords for window and scale parameters
 """Make a plot of spectral density across all traces of a radar profile.
 
 
@@ -394,7 +392,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     ----------
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
-    ylimit: int
+    ylimit: float
         The maximum frequency (in MHz) to limit the y-axis to
 
     For further information on the 'window' and 'scale' parameters, please see:
@@ -417,7 +415,10 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Axes that were plotted upon
     """
 
-def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
+def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None):
+    
+    dat = dat[0]
+
     #get the timestep variable, remove singleton dimension
     timestep = dat.dt
 
@@ -452,8 +453,14 @@ def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
     y = freqs[0]/1e6
     xx, yy = np.meshgrid(x, y)
 
+    #set figure and axis if they are not None
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(10, 7))
+
     #plot in MHz
-    fig, ax = plt.subplots(figsize=(10, 7))
     p = ax.contourf(xx, yy, np.transpose(powers))
 
     #set colorbar and colorbar label
@@ -461,13 +468,17 @@ def specdense(dat, ylimit, window=None, scale='spectrum', fig=None, ax=None):
     cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
     cbar.set_label(cbarlabel)
 
+    if ylimit is not None:
+        if np.logical_or(ylimit <= 0, ylimit > np.max(y)):
+            raise ValueError('Y-axis limit {} MHz not found in frequencies.'.format(ylimit))
+            return
     #check to make sure ylimit is not <= 0 or more than the largest frequency
     if ylimit is not None:
         if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)):
             raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
 
-        #limit y-axis to ylimit, maximum power output wanted
-        #else, no need to limit the y-axis
+        #limit y-axis ylimit, maximum power output
+        #else, no need to do anything
         ax.set_ylim(0, ylimit)
 
     #add x and y labels

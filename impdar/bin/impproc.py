@@ -15,6 +15,7 @@ All functionality probably overlaps with impdar, but the call is much cleaner. Y
 import os.path
 import argparse
 import numpy as np
+from impdar.lib.convert import convert
 from impdar.lib.load import load
 from impdar.lib.process import concat
 from impdar.lib.gpslib import interp as interpdeep
