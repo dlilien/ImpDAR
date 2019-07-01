@@ -13,12 +13,7 @@ import os
 import unittest
 import numpy as np
 from impdar.lib.RadarData import NoInitRadarData
-
-try:
-    from impdar.lib.load.load_segy import load_segy
-    SEGY = True
-except ImportError:
-    SEGY = False
+from impdar.lib.load.load_segy import load_segy, SEGY
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
