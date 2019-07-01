@@ -18,15 +18,6 @@ from impdar.lib import process
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.array([[2, 2], [1, 1]])
-        # need to set this to avoid divide by zero later
-        self.dt = 1
-
-
 class TestRadarDataLoading(unittest.TestCase):
 
     def test_ReadSucceeds(self):

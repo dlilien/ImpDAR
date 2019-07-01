@@ -12,24 +12,10 @@ Test the machinery of process. This is broken up to match where it would likely 
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import RadarData
+from impdar.lib.RadarData import NoInitRadarData
 from impdar.lib import process
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.array([[2, 2], [1, 1]])
-        # need to set this to avoid divide by zero later
-        self.dt = 1
-        self.dist = np.array((10., 20.))
-        self.tnum = 2
-        self.trace_num = np.arange(self.tnum) + 1.
-        self.snum = 2
-        self.travel_time = np.array((1, 2))
 
 
 class TestConcat(unittest.TestCase):

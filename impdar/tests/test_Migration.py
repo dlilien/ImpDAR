@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 from impdar.lib import migrationlib
-from impdar.lib.RadarData import RadarData
+from impdar.lib.RadarData import NoInitRadarData
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(THIS_DIR, 'Migration_tests')
@@ -27,25 +27,10 @@ out_prefix = 'rectangle'
 # in_file = out_prefix+'_gprMax_Bscan.h5'
 
 
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.zeros((10, 20))
-        # need to set this to avoid divide by zero later
-        self.dt = 1
-        self.dist = np.arange(20)
-        self.tnum = 20
-        self.trace_num = np.arange(self.tnum) + 1.
-        self.snum = 10
-        self.travel_time = np.arange(10)
-        self.trace_int = 1
-
-
 class TestMigration(unittest.TestCase):
 
     def test_check_data_shape(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
 
         # should pass, i.e. nothing happens
         migrationlib._check_data_shape(data)
@@ -56,7 +41,7 @@ class TestMigration(unittest.TestCase):
             migrationlib._check_data_shape(data)
 
     def test_getVelocityProfile(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         self.assertEqual(1.68e8, migrationlib.getVelocityProfile(data, 1.68e8))
 
         # need reasonable input here for 2d. Needs a different travel time.
@@ -70,14 +55,14 @@ class TestMigration(unittest.TestCase):
         migrationlib.getVelocityProfile(data, twod)
 
         # need reasonable input here for 3d
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         migrationlib.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
 
         # Bad distance with good 3d grid
         data.dist = None
         with self.assertRaises(ValueError):
             migrationlib.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
 
         # this should fail on bad z
         twod_vel = 1.68e8 * np.ones((10, 2))
@@ -105,28 +90,28 @@ class TestMigration(unittest.TestCase):
             migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((8, 4)))
 
     def test_Stolt(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         data = migrationlib.migrationStolt(data)
 
     def test_Kirchhoff(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         data = migrationlib.migrationKirchhoff(data)
 
     def test_PhaseShiftConstant(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data)
 
     def test_PhaseShiftVariable(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         data.travel_time = data.travel_time / 10.
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
 
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         with self.assertRaises(TypeError):
             data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'notafile.txt'))
 
     def test_PhaseShiftLateral(self):
-        data = NoInitRadarData()
+        data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
 
