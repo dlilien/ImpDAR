@@ -20,7 +20,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 class Dummy(unittest.TestCase):
 
     def test_load_pe(self):
-        load_pulse_ekko.PE(os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
+        load_pulse_ekko.load_pe(os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
 
 
 if __name__ == '__main__':

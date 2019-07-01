@@ -10,16 +10,11 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_segy
 from ..RadarData import RadarData
-try:
-    from . import load_segy
-    SEGY = True
-except ImportError:
-    SEGY = False
 
 
-def load(filetype, fns, channel=1):
+def load(filetype, fns_in, channel=1):
     """Load a list of files of a certain type
 
     Parameters
@@ -42,30 +37,33 @@ def load(filetype, fns, channel=1):
     RadarDataList: list of ~impdar.RadarData (or its subclasses)
         Objects with relevant radar information
     """
-    if type(fns) not in {list, tuple}:
-        fns = [fns]
+    if not isinstance(fns_in, (list, tuple)):
+        fns_in = [fns_in]
 
     if filetype == 'gssi':
-        dat = [load_gssi.load_gssi(fn) for fn in fns]
+        dat = [load_gssi.load_gssi(fn) for fn in fns_in]
     elif filetype == 'pe':
-        dat = [load_pulse_ekko.load_pe(fn) for fn in fns]
+        dat = [load_pulse_ekko.load_pe(fn) for fn in fns_in]
     elif filetype == 'mat':
-        dat = [load_mat(fn) for fn in fns]
+        dat = [RadarData(fn) for fn in fns_in]
     elif filetype == 'gprMax':
-        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
+        if load_gprMax.H5:
+            dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
+        else:
+            raise ImportError('You need h5py for gprmax')
     elif filetype == 'gecko':
         # Slightly different because we assume that we want to concat
-        dat = [load_olaf.load_olaf(fns, channel=channel)]
+        dat = [load_olaf.load_olaf(fns_in, channel=channel)]
     elif filetype == 'segy':
-        if SEGY:
-            dat = [load_segy.load_segy(fn) for fn in fns]
+        if load_segy.SEGY:
+            dat = [load_segy.load_segy(fn) for fn in fns_in]
         else:
             raise ImportError('Failed to import segyio, cannot read segy')
     elif filetype == 'gprMax':
-        dat = [load_gprMax.load_gprMax(fn) for fn in fns]
+        dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
     elif filetype == 'mcords':
-        if load_mcords_nc.nc:
-            dat = [load_mcords_nc.load_mcords_nc(fn) for fn in fns]
+        if load_mcords_nc.NC:
+            dat = [load_mcords_nc.load_mcords_nc(fn) for fn in fns_in]
         else:
             raise ImportError('You need netCDF4 in order to read the MCoRDS files')
     else:
@@ -73,7 +71,7 @@ def load(filetype, fns, channel=1):
     return dat
 
 
-def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -85,58 +83,46 @@ def load_and_exit(filetype, fn, channel=1, *args, **kwargs):
                         'gprMax' (synthetics)
                         'gecko' (St Olaf Radar)
                         'segy' (SEG Y)
+                        'mcords' (MCoRDS netcdf)
                         'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
     channel: Receiver channel that the data were recorded on
         This is primarily for the St. Olaf HF data
     """
-    if type(fn) not in {list, tuple}:
-        fn = [fn]
-    dat = load(filetype, fn, channel=channel)
+    if not isinstance(fns_in, (list, tuple)):
+        fns_in = [fns_in]
+    dat = load(filetype, fns_in, channel=channel)
 
     if 'o' in kwargs and kwargs['o'] is not None:
-        out_fn = kwargs['o']
+        fn_out = kwargs['o']
         if len(dat) > 1:
             raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
-        dat[0].save(out_fn)
-    elif filetype == 'gecko' and len(fn) > 1:
-        f = fn[0]
-        for i in range(1, len(fn)):
-            f = _common_start(f, fn[i]).rstrip('[')
-        out_fn = os.path.splitext(f)[0] + '_raw.mat'
-        dat[0].save(out_fn)
+        dat[0].save(fn_out)
+    elif filetype == 'gecko' and len(fns_in) > 1:
+        f_common = fns_in[0]
+        for i in range(1, len(fns_in)):
+            f_common = _common_start(f_common, fns_in[i]).rstrip('[')
+        fn_out = os.path.splitext(f_common)[0] + '_raw.mat'
+        dat[0].save(fn_out)
     else:
-        for d, f in zip(dat, fn):
-            if f[-3:] == 'g00':
-                out_fn = os.path.splitext(f)[0] + '_g00_raw.mat'
+        for d_i, f_i in zip(dat, fns_in):
+            if f_i[-3:] == 'g00':
+                fn_out = os.path.splitext(f_i)[0] + '_g00_raw.mat'
             else:
-                out_fn = os.path.splitext(f)[0] + '_raw.mat'
-            d.save(out_fn)
+                fn_out = os.path.splitext(f_i)[0] + '_raw.mat'
+            d_i.save(fn_out)
 
 
-def load_mat(fn):
-    """Load a .mat with radar info
-
-    Just toss this in here so we have similar naming for
-
-    Parameters
-    ----------
-    fn: str
-        name of matlab file containing relevant variables
-    """
-    return RadarData(fn)
-
-
-def _common_start(sa, sb):
+def _common_start(string_a, string_b):
     """ returns the longest common substring from the beginning of sa and sb
 
     from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
     """
     def _iter():
-        for a, b in zip(sa, sb):
-            if a == b:
-                yield a
+        for char_a, char_b in zip(string_a, string_b):
+            if char_a == char_b:
+                yield char_a
             else:
                 return
 

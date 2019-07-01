@@ -10,5 +10,5 @@
 
 """
 
-from ._RadarData import RadarData
+from ._RadarDataSaving import RadarDataSaving as RadarData
 from ._NoInitRadarData import NoInitRadarData

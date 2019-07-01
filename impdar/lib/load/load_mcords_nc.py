@@ -9,30 +9,34 @@
 """
 Load a NetCDF of MCoRDS data
 """
-from ..RadarData import RadarData
 import numpy as np
+from ..RadarData import RadarData
 
 try:
     from netCDF4 import Dataset
-    nc = True
+    NC = True
 except ImportError:
-    nc = False
+    NC = False
 
 
-class MCorDSNC(RadarData):
+def load_mcords_nc(fn_nc):
+    """Load MCoRDS data in netcdf downloaded from the NSIDC
 
-    def __init__(self, fn):
-        super(MCorDSNC, self).__init__(None)
-        dst = Dataset(fn, 'r')
-        self.data = dst.variables['amplitude'][:]
-        self.long = dst.variables['lon'][:]
-        self.lat = dst.variables['lat'][:]
-        self.time = dst.variables['time'][:]
-        self.travel_time = dst.variables['fasttime'][:]
-        self.dt = np.mean(np.diff(self.travel_time)) * 1.0e-6
-        size = dst.variables['amplitude'].matlab_size
-        self.snum, self.tnum = int(size[0]), int(size[1])
-
-
-def load_mcords_nc(fn):
-    return MCorDSNC(fn)
+    Parameters
+    ----------
+    fn_nc: str
+        The filename to load
+    """
+    if not NC:
+        raise ImportError('Cannot load MCoRDS without netcdf4')
+    mcords_data = RadarData(None)
+    dst = Dataset(fn_nc, 'r')
+    mcords_data.data = dst.variables['amplitude'][:]
+    mcords_data.long = dst.variables['lon'][:]
+    mcords_data.lat = dst.variables['lat'][:]
+    mcords_data.time = dst.variables['time'][:]
+    mcords_data.travel_time = dst.variables['fasttime'][:]
+    mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6
+    size = dst.variables['amplitude'].matlab_size
+    mcords_data.snum, mcords_data.tnum = int(size[0]), int(size[1])
+    return mcords_data

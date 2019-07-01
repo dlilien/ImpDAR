@@ -10,4 +10,4 @@
 Import the basic loaders
 """
 
-from ._load import load, load_and_exit, load_mat
+from ._load import load, load_and_exit

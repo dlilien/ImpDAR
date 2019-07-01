@@ -14,47 +14,53 @@ Mar 17 2019
 
 """
 
-import h5py  # TODO: make h5py a dependency?
-
 import numpy as np
 from ..RadarData import RadarData
 from ..RadarFlags import RadarFlags
 
-
-class h5(RadarData):
-    def __init__(self, fn):
-        # open the h5 file
-        with h5py.File(fn) as f:
-            self.dt = f.attrs['dt']
-            self.data = np.array(f['/rxs/rx1/Ez'])
-
-        # Remove pretrigger
-        trig_threshold = 0.5  # trigger when mean trace gets up to 50% of maximum
-        mean_trace = np.nanmean(np.abs(self.data), axis=1)
-        idx_threshold = np.argwhere(mean_trace > trig_threshold * np.nanmax(mean_trace))
-        idx_trig = np.nanmin(idx_threshold)
-        self.data = self.data[idx_trig:]
-
-        # other variables are from the array shape
-        self.snum = self.data.shape[0]
-        self.tnum = self.data.shape[1]
-        self.trace_num = np.arange(self.data.shape[1]) + 1
-        self.trig_level = np.zeros((self.tnum,))
-        self.pressure = np.zeros((self.tnum,))
-        self.flags = RadarFlags()
-        self.travel_time = self.dt * 1.0e6 * np.arange(self.snum)
-        self.trig = np.zeros((self.tnum,))
-        self.lat = np.zeros((self.tnum,))
-        self.long = np.zeros((self.tnum,))
-        self.x_coord = np.zeros((self.tnum,))
-        self.y_coord = np.zeros((self.tnum,))
-        self.elev = np.zeros((self.tnum,))
-        self.decday = np.arange(self.tnum)
-        self.trace_int = np.ones((self.tnum,))
-
-        self.dist = np.arange(self.tnum)
-        self.chan = -99.
+try:
+    import h5py
+    H5 = True
+except ImportError:
+    H5 = False
 
 
-def load_gprMax(fn, *args, **kwargs):
-    return h5(fn)
+def load_gprMax(fn_h5, *args, **kwargs):
+    """Load a gprMax file, which is really an h5 file, into ImpDAR"""
+    if not H5:
+        raise ImportError('You need H5 to load gprMax')
+
+    h5_data = RadarData(None)
+
+    # open the h5 file
+    with h5py.File(fn_h5) as f_in:
+        h5_data.dt = f_in.attrs['dt']
+        h5_data.data = np.array(f_in['/rxs/rx1/Ez'])
+
+    # Remove pretrigger
+    trig_threshold = 0.5  # trigger when mean trace gets up to 50% of maximum
+    mean_trace = np.nanmean(np.abs(h5_data.data), axis=1)
+    idx_threshold = np.argwhere(mean_trace > trig_threshold * np.nanmax(mean_trace))
+    idx_trig = np.nanmin(idx_threshold)
+    h5_data.data = h5_data.data[idx_trig:]
+
+    # other variables are from the array shape
+    h5_data.snum = h5_data.data.shape[0]
+    h5_data.tnum = h5_data.data.shape[1]
+    h5_data.trace_num = np.arange(h5_data.data.shape[1]) + 1
+    h5_data.trig_level = np.zeros((h5_data.tnum,))
+    h5_data.pressure = np.zeros((h5_data.tnum,))
+    h5_data.flags = RadarFlags()
+    h5_data.travel_time = h5_data.dt * 1.0e6 * np.arange(h5_data.snum)
+    h5_data.trig = np.zeros((h5_data.tnum,))
+    h5_data.lat = np.zeros((h5_data.tnum,))
+    h5_data.long = np.zeros((h5_data.tnum,))
+    h5_data.x_coord = np.zeros((h5_data.tnum,))
+    h5_data.y_coord = np.zeros((h5_data.tnum,))
+    h5_data.elev = np.zeros((h5_data.tnum,))
+    h5_data.decday = np.arange(h5_data.tnum)
+    h5_data.trace_int = np.ones((h5_data.tnum,))
+
+    h5_data.dist = np.arange(h5_data.tnum)
+    h5_data.chan = -99.
+    return h5_data

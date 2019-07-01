@@ -10,13 +10,14 @@
 Define a class with dummy data for use with testing
 """
 import numpy as np
-from ._RadarData import RadarData
+from . import RadarData
 
 
 class NoInitRadarData(RadarData):
     # This only exists so we can do tests on writing without reading
 
     def __init__(self):
+        super(NoInitRadarData, self).__init__(None)
         self.data = np.array([[2, 2], [1, 1]])
         # need to set this to avoid divide by zero later
         self.elevation = np.zeros((2,))

@@ -21,17 +21,17 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 class TestPickMods(unittest.TestCase):
 
     def test_add_pick_loaded(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))[0]
         data.picks.add_pick(2)
         self.assertTrue(data.picks.samp1.shape == (3, data.tnum))
 
     def test_add_pick_blank(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         self.assertTrue(data.picks.samp1.shape == (1, data.tnum))
 
     def test_add_pick_badpicknum(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         # need to do this to prevent overwriting
         data.picks.samp1[0, 0] = 1.
@@ -39,25 +39,25 @@ class TestPickMods(unittest.TestCase):
             data.picks.add_pick(1)
 
     def test_add_pick_overwrite(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         data.picks.add_pick(2)
         self.assertTrue(data.picks.samp1.shape == (1, data.tnum))
 
     def test_update_pick(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         data.picks.update_pick(1, np.zeros((5, data.tnum)))
         self.assertTrue(np.all(data.picks.samp1 == 0))
 
     def test_update_pick_badpick_infoshape(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         with self.assertRaises(ValueError):
             data.picks.update_pick(1, np.zeros((4, 2)))
 
     def test_update_pick_badpicknum(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
+        data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))[0]
         data.picks.add_pick(1)
         with self.assertRaises(ValueError):
             data.picks.update_pick(0, np.zeros((5, data.tnum)))

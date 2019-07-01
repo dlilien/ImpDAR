@@ -8,9 +8,10 @@
 import numpy as np
 from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter
 from .. import migrationlib
+from ._RadarDataBase import RadarDataBase
 
 
-class RadarDataFiltering:
+class RadarDataFiltering(RadarDataBase):
 
     def adaptivehfilt(self, *args, **kwargs):
         """Adaptively filter to reduce noise in upper layers

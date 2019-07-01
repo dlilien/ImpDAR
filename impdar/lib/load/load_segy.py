@@ -9,27 +9,35 @@
 """
 Loading of SEGY files.
 """
-import segyio
 import numpy as np
 from ..RadarData import RadarData
 from ..RadarFlags import RadarFlags
 
+try:
+    import segyio
+    SEGY = True
+except ImportError:
+    SEGY = False
 
-class SEGY(RadarData):
-
-    def __init__(self, fn):
-        self.f = segyio.open(fn, ignore_geometry=True)
-        w = np.where(self.f.attributes(segyio.TraceField.SourceX)[:] == self.f.attributes(segyio.TraceField.SourceX)[0])[0]
-        self.data = segyio.tools.collect(self.f.trace[w[0]:w[-1] + 1]).transpose()
-        self.snum = self.f.bin[segyio.BinField.Samples]
-        self.tnum = self.data.shape[1]
-        self.dt = self.f.bin[segyio.BinField.Interval]
-        self.trace_num = np.arange(self.data.shape[1]) + 1
-        self.trig_level = np.zeros((self.tnum, ))
-        self.pressure = np.zeros((self.tnum, ))
-        self.flags = RadarFlags()
-        #self.travel_time = np.atleast_2d(np.arange(0, self.dt * self.snum, self.dt)).transpose() + self.dt
-
-
-def load_segy(fn, *args, **kwargs):
-    return SEGY(fn)
+def load_segy(fn_sgy, *args, **kwargs):
+    """Load segy data. This is very generic for now,
+    need to do work if there are particular types of segy files that need to be read"""
+    if not SEGY:
+        raise ImportError('Need segyio to load SGY files')
+    segy_data = RadarData(None)
+    segy_data.f = segyio.open(fn_sgy, ignore_geometry=True)
+    where_good = np.where(segy_data.f.attributes(
+        segyio.TraceField.SourceX)[:] == segy_data.f.attributes(segyio.TraceField.SourceX)[0])[0]
+    segy_data.data = segyio.tools.collect(
+        segy_data.f.trace[where_good[0]:where_good[-1] + 1]).transpose()
+    segy_data.snum = segy_data.f.bin[segyio.BinField.Samples]
+    segy_data.tnum = segy_data.data.shape[1]
+    segy_data.dt = segy_data.f.bin[segyio.BinField.Interval]
+    segy_data.trace_num = np.arange(segy_data.data.shape[1]) + 1
+    segy_data.trig_level = np.zeros((segy_data.tnum, ))
+    segy_data.pressure = np.zeros((segy_data.tnum, ))
+    segy_data.flags = RadarFlags()
+    # segy_data.travel_time = np.atleast_2d(np.arange(0,
+    # segy_data.dt * segy_data.snum, segy_data.dt)).transpose()
+    # + segy_data.dt
+    return segy_data

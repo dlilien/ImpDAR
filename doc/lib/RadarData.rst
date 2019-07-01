@@ -1,6 +1,6 @@
 RadarData
 =========
 
-.. automodule:: impdar.lib.RadarData._RadarData
+.. automodule:: impdar.lib.RadarData._RadarDataBase
     :members:
     :inherited-members:

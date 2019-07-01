@@ -7,11 +7,12 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-A class that RadarData inherits so that it has convenient saving methods
+This is the basic object around which ImpDAR is written.
 """
 import numpy as np
 from scipy.io import savemat
 from ..RadarFlags import RadarFlags
+from ._RadarDataFiltering import RadarDataFiltering
 
 # Try to enable saving to shapefiles
 try:
@@ -28,7 +29,7 @@ except ImportError:
     segy = False
 
 
-class RadarDataSaving:
+class RadarDataSaving(RadarDataFiltering):
 
     def save(self, fn):
         """Save the radar data

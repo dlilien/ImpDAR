@@ -7,22 +7,20 @@
 # Distributed under terms of the GNU GPL-3.0 license.
 
 """
-A class that just has the necessary attributes for a StODeep file.
+The basic loading and attributes of a ImpDAR file
 
-This is the basic object around which ImpDAR is written.
-It contains most of the methods used for processing and saving radar data.
-The source code is split across several files containing superclasses to keep file size down,
-but all the methods should be documented here.
+DO NOT IMPORT DIRECTLY--To keep code size down,
+additional functionality is added in other files. Use
 
-This base object is then subclassed for each type of data that ImpDAR can loadso that each of those
-subclasses can have easy initialization.
+    >>>from impdar.lib.RadarData import RadarData
+
+to make sure you have all the different components
 """
+
 
 import numpy as np
 from scipy.io import loadmat
 from scipy.interpolate import interp1d
-from ._RadarDataSaving import RadarDataSaving
-from ._RadarDataFiltering import RadarDataFiltering
 from ..RadarFlags import RadarFlags
 from ..Picks import Picks
 
@@ -34,13 +32,12 @@ except ImportError:
     CONVERSIONS_ENABLED = False
 
 
-class RadarData(RadarDataSaving, RadarDataFiltering):
+class RadarDataBase:
     """A class that holds the relevant information for a radar profile.
 
     We keep track of processing steps with the flags attribute.
-    This thing gets subclassed per input filetype to override the init method,
-    do any necessary initial processing, etc.
     This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
+
 
     Attributes
     ----------

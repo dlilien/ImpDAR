@@ -11,16 +11,15 @@ Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
 """
 
 import os
-from .load import load_mat, load_gssi, load_pulse_ekko
-try:
-    from . import load_segy
-    SEGY = True
-except ImportError:
-    SEGY = False
+from .RadarData import RadarData
+from .load import load_gssi, load_pulse_ekko, load_segy
 
 
-def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
-    # Basic check on the conversion being implemented. This is really simple because I'm not yet allowing conversion from one proprietary form to another
+def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
+    """Convert between formats. Mainly used to create shps and sgy files"""
+
+    # Basic check on the conversion being implemented.
+    # This is really simple because I'm not converting from one proprietary form to another
     if t_srs == 'wgs84':
         t_srs = 4326
 
@@ -28,58 +27,58 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
         raise ValueError('Can only convert to shp or mat')
 
     # Treat this like batch input always
-    if type(fn) not in [tuple, list]:
-        fn = [fn]
+    if not isinstance(fns_in, (tuple, list)):
+        fns_in = [fns_in]
 
     # Prepare a list of filetypes so we can take diverse inputs simultaneously
     if in_fmt is None:
-        loaders = [0 for i in fn]
-        for i, f in enumerate(fn):
-            if f[-4:] == '.mat':
-                loaders[i] = load_mat
-            elif f[-4:] == '.DZT':
+        loaders = [0 for i in fns_in]
+        for i, f_i in enumerate(fns_in):
+            if f_i[-4:] == '.mat':
+                loaders[i] = RadarData
+            elif f_i[-4:] == '.DZT':
                 loaders[i] = load_gssi.load_gssi
-            elif f[-4:] == '.DT1':
+            elif f_i[-4:] == '.DT1':
                 loaders[i] = load_pulse_ekko.load_pe
-            elif f[-4:] == '.sgy':
-                if not SEGY:
+            elif f_i[-4:] == '.sgy':
+                if not load_segy.SEGY:
                     raise ImportError('You cannot use segy without segyio installed!')
-                loaders[i] = load_segy.load_load_segy
+                loaders[i] = load_segy.load_segy
             else:
-                raise ValueError('Unrecognized file extension {:s}'.format(f[-4:]))
+                raise ValueError('Unrecognized file extension {:s}'.format(f_i[-4:]))
     else:
         if in_fmt == 'mat':
-            loaders = [load_mat for i in fn]
+            loaders = [RadarData for i in fns_in]
         elif in_fmt == 'gssi':
-            loaders = [load_gssi.load_gssi for i in fn]
+            loaders = [load_gssi.load_gssi for i in fns_in]
         elif in_fmt == 'pe':
-            loaders = [load_pulse_ekko.load_pe for i in fn]
+            loaders = [load_pulse_ekko.load_pe for i in fns_in]
         elif in_fmt == 'segy':
-            if not SEGY:
+            if not load_segy.SEGY:
                 raise ImportError('You cannot use segy without segyio installed!')
-            loaders = [load_segy.load_segy for i in fn]
+            loaders = [load_segy.load_segy for i in fns_in]
 
     # Now actually load the data
-    data = [loader(f) for loader, f in zip(loaders, fn)]
+    data = [loader(f) for loader, f in zip(loaders, fns_in)]
 
     # Convert
     if out_fmt == 'mat':
-        for loader, f, dat in zip(loaders, fn, data):
+        for loader, f_i, dat in zip(loaders, fns_in, data):
             # Guard against silly re-write
-            if loader == load_mat and out_fmt == 'mat':
+            if loader == RadarData and out_fmt == 'mat':
                 continue
-            out_fn = os.path.splitext(f)[0] + '.mat'
-            dat.save(out_fn)
+            fn_out = os.path.splitext(f_i)[0] + '.mat'
+            dat.save(fn_out)
     elif out_fmt == 'shp':
-        for loader, f, dat in zip(loaders, fn, data):
-            out_fn = os.path.splitext(f)[0] + '.shp'
-            dat.output_shp(out_fn, t_srs=t_srs)
+        for loader, f_i, dat in zip(loaders, fns_in, data):
+            fn_out = os.path.splitext(f_i)[0] + '.shp'
+            dat.output_shp(fn_out, t_srs=t_srs)
     elif out_fmt == 'segy':
-        if not SEGY:
+        if not load_segy.SEGY:
             raise ImportError('You cannot use segy without segyio installed!')
-        for loader, f, dat in zip(loaders, fn, data):
-            out_fn = os.path.splitext(f)[0] + '.segy'
-            dat.save_as_segy(out_fn)
+        for loader, f_i, dat in zip(loaders, fns_in, data):
+            fn_out = os.path.splitext(f_i)[0] + '.segy'
+            dat.save_as_segy(fn_out)
 
 
 if __name__ == '__main__':

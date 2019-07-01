@@ -20,10 +20,6 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class TestLoad(unittest.TestCase):
 
-    def test_load_mat(self):
-        data = load.load_mat(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
-        self.assertEqual(data.data.shape, (20, 40))
-
     def test_loadmat(self):
         data = load.load('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data[0].data.shape, (20, 40))
