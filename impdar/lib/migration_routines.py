@@ -377,6 +377,7 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose
     try:
         print('Using SeisUnix migration routine at:')
         subprocess.run(['which',sutype])
+        #TODO: this does not actually cause an error because 'which' will output a result of 'not found'
     except:
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 
