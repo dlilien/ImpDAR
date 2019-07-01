@@ -11,14 +11,14 @@ A class that RadarData inherits so that it has convenient saving methods
 """
 import numpy as np
 from scipy.io import savemat
-from .RadarFlags import RadarFlags
+from ..RadarFlags import RadarFlags
 
 # Try to enable saving to shapefiles
 try:
     from osgeo import osr, ogr
-    conversions_enabled = True
+    CONVERSIONS_ENABLED = True
 except ImportError:
-    conversions_enabled = False
+    CONVERSIONS_ENABLED = False
 
 # Try to enable saving to segy
 try:
@@ -77,7 +77,7 @@ class RadarDataSaving:
         target_out: str, optional
             Used to overwrite the default output format of picks. By default, try to write depth and if there is no nmo_depth use TWTT. You might want to use this to get the output in TWTT or sample number (options are depth, elev, twtt, snum)
         """
-        if not conversions_enabled:
+        if not CONVERSIONS_ENABLED:
             raise ImportError('osgeo was not imported')
         out_srs = osr.SpatialReference()
         out_srs.ImportFromEPSG(t_srs)
@@ -153,7 +153,7 @@ class RadarDataSaving:
 
     def _get_pick_targ_info(self, target_out):
         """Get the rate type of pick information for returning
-        
+
         Use this code to eliminate some overlap in exporting csvs and shps"""
         if target_out is None:
             if self.nmo_depth is not None:

@@ -11,7 +11,8 @@ Loading of SEGY files.
 """
 import segyio
 import numpy as np
-from .RadarData import RadarData, RadarFlags
+from ..RadarData import RadarData
+from ..RadarFlags import RadarFlags
 
 
 class SEGY(RadarData):

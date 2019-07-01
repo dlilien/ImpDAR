@@ -1,20 +1,18 @@
 #! /usr/bin/env python
-#function [chan,data,decday,dist,dt,elev,...
-#        flags,lat,long,pressure,snum,tnum,trace_int,...
-#        trace_num,travel_time,trig,trig_level,x_coord,y_coord] = read_pulse_ekko(filename,sflag)
-#
-#this is a not done function to read pulse ekko data into matlab and
-#convert to stro_radar format
-#Knut Christianson 6 April 2017; 20 May 2017
+# this is a not done function to read pulse ekko data into matlab and
+# convert to stro_radar format
+# Knut Christianson 6 April 2017; 20 May 2017
 # Pythonized by David Lilien, May 2018
 # Distributed under the GNU GPL3 license
 
 import os.path
-from .gpslib import RadarGPS
-import numpy as np
-from .RadarData import RadarData, RadarFlags
 import struct
 import datetime
+import numpy as np
+
+from ..gpslib import RadarGPS
+from ..RadarData import RadarData
+from ..RadarFlags import RadarFlags
 
 
 class PE(RadarData):

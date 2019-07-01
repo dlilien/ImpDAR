@@ -9,9 +9,13 @@
 """
 A class that just has the necessary attributes for a StODeep file.
 
-This is the basic object around which ImpDAR is written. It contains most of the methods used for processing and saving radar data. The source code is split across several files containing superclasses to keep file size down, but it all the methods should be documented here.
+This is the basic object around which ImpDAR is written.
+It contains most of the methods used for processing and saving radar data.
+The source code is split across several files containing superclasses to keep file size down,
+but all the methods should be documented here.
 
-This base object is then subclassed for each type of data that ImpDAR can load, so that each of those subclasses can have easy initialization.
+This base object is then subclassed for each type of data that ImpDAR can loadso that each of those
+subclasses can have easy initialization.
 """
 
 import numpy as np
@@ -19,21 +23,24 @@ from scipy.io import loadmat
 from scipy.interpolate import interp1d
 from ._RadarDataSaving import RadarDataSaving
 from ._RadarDataFiltering import RadarDataFiltering
-from .RadarFlags import RadarFlags
-from .Picks import Picks
+from ..RadarFlags import RadarFlags
+from ..Picks import Picks
 
-from .migration_routines import *
 try:
     from osgeo import osr, ogr
-    conversions_enabled = True
+    del osr, ogr
+    CONVERSIONS_ENABLED = True
 except ImportError:
-    conversions_enabled = False
+    CONVERSIONS_ENABLED = False
 
 
 class RadarData(RadarDataSaving, RadarDataFiltering):
     """A class that holds the relevant information for a radar profile.
 
-    We keep track of processing steps with the flags attribute. This thing gets subclassed per input filetype to override the init method, do any necessary initial processing, etc. This version's __init__ takes a filename of a .mat file in the old StODeep format to load.
+    We keep track of processing steps with the flags attribute.
+    This thing gets subclassed per input filetype to override the init method,
+    do any necessary initial processing, etc.
+    This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
 
     Attributes
     ----------
@@ -60,14 +67,35 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     x_coord = None
     y_coord = None
     nmo_depth = None
+    elevation = None
     picks = None
     fn = None
-    attrs_guaranteed = ['chan', 'data', 'decday', 'dist', 'dt', 'elev', 'lat', 'long', 'pressure', 'snum', 'tnum', 'trace_int', 'trace_num', 'travel_time', 'trig', 'trig_level']
-    attrs_optional = ['nmo_depth', 'elevation', 'x_coord', 'y_coord']
+    attrs_guaranteed = ['chan',
+                        'data',
+                        'decday',
+                        'dist',
+                        'dt',
+                        'elev',
+                        'lat',
+                        'long',
+                        'pressure',
+                        'snum',
+                        'tnum',
+                        'trace_int',
+                        'trace_num',
+                        'travel_time',
+                        'trig',
+                        'trig_level']
+    attrs_optional = ['nmo_depth',
+                      'elevation',
+                      'x_coord',
+                      'y_coord']
 
     # Now make some load/save methods that will work with the matlab format
-    def __init__(self, fn):
-        mat = loadmat(fn)
+    def __init__(self, fn_mat):
+        if fn_mat is None:
+            return
+        mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
             if mat[attr].shape == (1, 1):
                 setattr(self, attr, mat[attr][0][0])
@@ -86,10 +114,10 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
                     setattr(self, attr, mat[attr])
             else:
                 self.attr = None
-        self.fn = fn
+        self.fn = fn_mat
         self.flags = RadarFlags()
         self.flags.from_matlab(mat['flags'])
-        if ('picks' not in mat):
+        if 'picks' not in mat:
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
@@ -97,7 +125,11 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     def reverse(self):
         """Reverse radar data
 
-        Essentially flip the profile left-right. This is desirable in a number of instances, but is particularly useful for concatenating profiles that were acquired in different directions. The St Olaf version of this function had a bunch of options. They seemed irrelevant to me. We just try to flip everything that might need flipping.
+        Essentially flip the profile left-right.
+        This is desirable in a number of instances,
+        but is particularly useful for concatenating profiles acquired in opposite directions.
+        The St Olaf version of this function had a bunch of options.
+        They seemed irrelevant to me. We just try to flip everything that might need flipping.
         """
         self.data = np.fliplr(self.data)
 
@@ -119,7 +151,9 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         """Normal move-out correction.
 
-        Converts travel time to distance accounting for antenna separation. This potentially affects data and snum. It also defines nmo_depth, the moveout-corrected depth
+        Converts travel time to distance accounting for antenna separation.
+        This potentially affects data and snum.
+        It also defines nmo_depth, the moveout-corrected depth
 
         Parameters
         ----------
@@ -135,14 +169,13 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         #       1) Adapted for Stodeep - L. Smith, 6/15/03
         #       2) Fixed rounding bug - L. Smith, 6/16/03
         #       3) Converted to function and added documentation - B. Welch, 5/8/06
-        #		4) Rescaled uice at end of script to original input value for use
-        #		in other programs.  - J. Olson, 7/3/08
+        #       4) Rescaled uice at end of script to original input value for use
+        #                   other programs.  - J. Olson, 7/3/08
         #       5) Increased function outputs - J. Werner, 7/7/08.
         #       6) Converted flag variables to structure, and updated function I/O
         #       - J. Werner, 7/10/08
-        #
 
-        #calculate travel time of air wave
+        # calculate travel time of air wave
         tair = ant_sep / uair
 
         if np.round(tair / self.dt) > self.trig:
@@ -152,54 +185,66 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         else:
             nmodata = self.data.copy()
 
-        #calculate direct ice wave time
+        # Calculate direct ice wave time
         tice = ant_sep / uice
 
-        #calculate sample location for time=0 when radar pulse is transmitted
-        #	(Note: trig is the air wave arrival)
-        # switched from rounding whole right side to just rounding (tair/dt)
+        # Calculate sample location for time=0 when radar pulse is transmitted
+        #  (Note: trig is the air wave arrival)
+        # Switched from rounding whole right side to just rounding (tair/dt)
         #    -L. Smith, 6/16/03
         nair = int((self.trig) - np.round(tair / self.dt))
 
-        #calculate sample location for direct ice wave arrival
+        # calculate sample location for direct ice wave arrival
         # switched from rounding whole right side to just rounding (tice/dt)
         #    -L. Smith, 6/16/03
         nice = int(nair + np.round(tice / self.dt))
 
-        #calculate vector of recorded travel times starting at time=0
-        #calculate new time vector where t=0 is the emitted pulse
+        # calculate vector of recorded travel times starting at time=0
+        # calculate new time vector where t=0 is the emitted pulse
         pulse_time = np.arange(-self.dt * (nair), (self.snum - nair) * self.dt, self.dt)
         pulse_time[nice] = tice
 
-        #create an empty vector
+        # create an empty vector
         tadj = np.zeros((self.snum, ))
 
-        #calculate legs of travel path triangle (in one-way travel time)
+        # calculate legs of travel path triangle (in one-way travel time)
         hyp = pulse_time[nice:self.snum] / 2.
 
-        #calculate the vertical one-way travel time
+        # calculate the vertical one-way travel time
         tadj[nice:self.snum] = (np.sqrt((hyp**2.) - ((tice / 2.)**2.)))
         tadj[np.imag(tadj) != 0] = 0
 
-        #convert the vertical one-way travel time to vector indices
+        # convert the vertical one-way travel time to vector indices
         nadj = np.zeros((self.snum, ))
-        nadj[nice:self.snum] = pulse_time[nice: self.snum] / self.dt - tadj[nice: self.snum] * 2. / self.dt
+        nadj[nice:self.snum] = pulse_time[nice: self.snum] / self.dt - \
+            tadj[nice: self.snum] * 2. / self.dt
 
-        #loop through samples for all traces in profile
-        for n in range(nice, self.snum):
-            #correct the data by shifting the samples earlier in time by "nadj"
-            nmodata[n - np.round(nadj[n]).astype(int), :] = nmodata[np.round(n).astype(int), :]
+        # loop through samples for all traces in profile
+        for j in range(nice, self.snum):
+            # Correct the data by shifting the samples earlier in time by "nadj"
+            nmodata[j - np.round(nadj[j]).astype(int), :] = nmodata[np.round(j).astype(int), :]
 
-            #Since we're stretching the data near the ice surface we need to interpolate samples in the gaps. B. Welch June 2003 I cannot hit this with a test. D. Lilien 4/2019
-            if (n - np.round(nadj[n])) - ((n - 1) - np.round(nadj[n - 1])) > 1 and n != nice:
-                interper = interp1d(np.array([((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))]), nmodata[[((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n])))], :].transpose())
-                nmodata[((n - 1) - int(round(nadj[n - 1]))): (n - int(round(nadj[n]))), :] = interper(np.arange(((n - 1) - int(round(nadj[n - 1]))), (n - int(round(nadj[n]))))).transpose()
+            # Since we're stretching the data near the ice surface,
+            # we need to interpolate samples in the gaps.
+            # B. Welch June 2003
+            # I cannot trigger this conditional this with a test. D. Lilien 4/2019
+            if (j - np.round(nadj[j])) - ((j - 1) - np.round(nadj[j - 1])) > 1 and j != nice:
+                interper = interp1d(np.array([((j - 1) - int(round(nadj[j - 1]))),
+                                              (j - int(round(nadj[j])))]),
+                                    nmodata[[((j - 1) - int(round(nadj[j - 1]))),
+                                             (j - int(round(nadj[j])))], :].transpose())
+                nmodata[((j - 1) - int(round(nadj[j - 1]))):
+                        (j - int(round(nadj[j]))), :] = interper(
+                            np.arange(((j - 1) - int(round(nadj[j - 1]))),
+                                      (j - int(round(nadj[j]))))).transpose()
 
-        #define the new pre-trigger value based on the nmo-adjustment calculations above:
+        # Define the new pre-trigger value based on the nmo-adjustment calculations above:
         self.trig = nice - np.round(nadj[nice])
 
-        #calculate the new variables for the y-axis after NMO is complete
-        self.travel_time = np.arange((-self.trig) * self.dt, (nmodata.shape[0] - nair) * self.dt, self.dt) * 1.0e6
+        # Calculate the new variables for the y-axis after NMO is complete
+        self.travel_time = np.arange((-self.trig) * self.dt,
+                                     (nmodata.shape[0] - nair) * self.dt,
+                                     self.dt) * 1.0e6
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
 
         self.data = nmodata
@@ -221,9 +266,11 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         lim: float (int if dimension=='snum')
             The value at which to crop.
         top_or_bottom: str, optional
-            Crop off the top (lim is the first remaining return) or the bottom (lim is the last remaining return).
+            Crop off the top (lim is the first remaining return) or the bottom
+            (lim is the last remaining return).
         dimension: str, optional
-            Evaluate in terms of sample (snum), travel time (twtt), or depth (depth). If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
+            Evaluate in terms of sample (snum), travel time (twtt), or depth (depth).
+            If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
             If pretrig, uses the recorded trigger sample to crop.
         uice: float, optional
             Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
@@ -247,14 +294,14 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
                 depth = self.travel_time / 2. * uice * 1.0e-6
             ind = np.min(np.argwhere(depth >= lim))
         elif dimension == 'pretrig':
-            if not (type(self.trig) == np.ndarray):
+            if not isinstance(self.trig, np.ndarray):
                 ind = int(self.trig)
             else:
                 ind = self.trig.astype(int)
         else:
             ind = int(lim)
 
-        if not (type(ind) == np.ndarray) or (dimension != 'pretrig'):
+        if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
             if top_or_bottom == 'top':
                 lims = [ind, self.data.shape[0]]
             else:
@@ -283,12 +330,16 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.crop[0] = 1
             self.flags.crop[2] = self.flags.crop[1] + lims[1]
         self.flags.crop[1] = self.flags.crop[1] + lims[0]
-        print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(int(self.flags.crop[1]), int(self.flags.crop[2])))
+        print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(
+            int(self.flags.crop[1]), int(self.flags.crop[2])))
 
     def restack(self, traces):
         """Restack all relevant data to the given number of traces.
 
-        This function just takes the average of the given number of traces. This reduces file size and can get rid of noise. There are fancier ways to do this--if you can, you probably want to restack to constant trace spacing instead.
+        This function just takes the average of the given number of traces.
+        This reduces file size and can get rid of noise.
+        There are fancier ways to do this---
+        if you have GPS, you probably want to restack to constant trace spacing instead.
 
         Parameters
         ----------
@@ -302,7 +353,15 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         tnum = int(np.floor(self.tnum / traces))
         stack = np.zeros((self.snum, tnum))
         trace_int = np.zeros((tnum, ))
-        oned_restack_vars = ['dist', 'pressure', 'trig_level', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday']
+        oned_restack_vars = ['dist',
+                             'pressure',
+                             'trig_level',
+                             'lat',
+                             'long',
+                             'x_coord',
+                             'y_coord',
+                             'elev',
+                             'decday']
         oned_newdata = {key: np.zeros((tnum, )) for key in oned_restack_vars}
         for j in range(tnum):
             stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])], axis=1)
@@ -325,7 +384,7 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
         slope: float
             The slope of the linear range gain to be applied. Maybe try 1.0e-2?
         """
-        if type(self.trig) in [float, int]:
+        if isinstance(self.trig, (float, int)):
             gain = self.travel_time[int(self.trig) + 1:] * slope
             self.data[int(self.trig + 1):, :] *= np.atleast_2d(gain).transpose()
         else:
@@ -337,20 +396,24 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     def agc(self, window=50, scaling_factor=50):
         """Try to do some automatic gain control
 
-        This is from StoDeep--I'm not sure it is useful but it was easy to roll over so I'm going to keep it. I think you should have most of this gone with a bandpass, but whatever.
+        This is from StoDeep--I'm not sure it is useful but it was easy to roll over so
+        I'm going to keep it. I think you should have most of this gone with a bandpass,
+        but whatever.
 
         Parameters
         ----------
         window: int, optional
             The size of window we use in number of samples (default 50)
         scaling_factor: int, optional
-            The scaling factor. This gets divided by the max amplitude when we rescale the input. Default 50.
+            The scaling factor. This gets divided by the max amplitude when we rescale the input.
+            Default 50.
         """
         maxamp = np.zeros((self.snum,))
         # In the for loop, old code indexed used range(window // 2). This did not make sense to me.
         for i in range(self.snum):
             print(i, max(0, i - window // 2), min(i + window // 2, self.snum))
-            maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):min(i + window // 2, self.snum), :]))
+            maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):
+                                                min(i + window // 2, self.snum), :]))
         maxamp[maxamp == 0] = 1.0e-6
         self.data *= (scaling_factor / np.atleast_2d(maxamp).transpose()).astype(self.data.dtype)
         self.flags.agc = True
@@ -358,24 +421,40 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
     def constant_space(self, spacing, min_movement=1.0e-2):
         """Restack the radar data to a constant spacing.
 
-        This method uses the GPS information (i.e. the distance, x, y, lat, and lon), to do a 1-d interpolation to get new values in the radargram. It also updates related variables like lat, long, elevation, and coordinates. To avoid retaining sections of the radargram when the antenna was in fact stationary, some minimum movement between traces is enforced. This value is in meters, and should change to be commensurate with the collection strategy (e.g. skiing a radar is slower than towing it with a snowmobile).
+        This method uses the GPS information (i.e. the distance, x, y, lat, and lon),
+        to do a 1-d interpolation to get new values in the radargram.
+        It also updates related variables like lat, long, elevation, and coordinates.
+        To avoid retaining sections of the radargram when the antenna was in fact stationary,
+        some minimum movement between traces is enforced.
+        This value is in meters, and should change to be commensurate with the collection strategy
+        (e.g. skiing a radar is slower than towing it with a snowmobile).
 
-        This function comprises the second half of what was done by StoDeep's interpdeep. If you have GPS data from an external, high-precision GPS, you would first want to call `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all improved, then you would want to call this method. `impdar.lib.gpslib` provides some wrappings for doing both steps and for loading in the external GPS data.
+        This function comprises the second half of what was done by StoDeep's interpdeep.
+        If you have GPS data from an external, high-precision GPS, you would first want to call
+        `impdar.lib.gpslib.kinematic_gps_control` so that the GPS-related variables are all
+        improved, then you would want to call this method.
+        `impdar.lib.gpslib` provides some wrappings for doing both steps
+        and for loading in the external GPS data.
 
         Parameters
         ----------
         spacing: float
             Target trace spacing, in meters
         min_movement: float, optional
-            Minimum trace spacing. If there is not this much separation, toss the next shot. Set high to keep everything. Default 1.0e-2.
+            Minimum trace spacing. If there is not this much separation, toss the next shot.
+            Set high to keep everything. Default 1.0e-2.
         """
         # eliminate an interpolation error by masking out little movement
         good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
-        new_dists = np.arange(np.min(self.dist[good_vals]), np.max(self.dist[good_vals]), step=spacing / 1000.0)
+        new_dists = np.arange(np.min(self.dist[good_vals]),
+                              np.max(self.dist[good_vals]),
+                              step=spacing / 1000.0)
         self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
 
         for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
-            setattr(self, attr, interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
+            setattr(self,
+                    attr,
+                    interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
 
         self.tnum = self.data.shape[1]
         self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -387,22 +466,47 @@ class RadarData(RadarDataSaving, RadarDataFiltering):
             self.flags.interp = np.ones((2,))
             self.flags.interp[1] = spacing
 
-    def elev_correct(self, v=1.69e8):
+    def elev_correct(self, v_avg=1.69e8):
+        """Move the surface down in the data array to account for surface elevation.
+
+        NMO depth attribute must have been created before elev_correct is called.
+        This method should generally be called after you have interpolated precision GPS onto
+        the data, otherwise the noise a handheld GPS will make the results look pretty bad.
+
+        Be aware that this is not a precise conversion if your nmo correction had antenna
+        separation, or if you used adepth-variable velocity structure. This is because we have
+        a single vector describing depths in the data array, so only one value for each depth
+        step.
+
+        Parameters
+        ----------
+        v_avg: float, optional
+            Average velocity. This is what will define the depth slices in the new data array.
+            Default 1.69e8.
+
+        Raises
+        ------
+        ValueError:
+            If there is no nmo_depth since this is used for calculating depths
+
+        """
         if self.nmo_depth is None:
-            raise ValueError('nmo must have been run before elev_correct so that we have depth scale')
+            raise ValueError('Run nmo before elev_correct so that we have depth scale')
         # calculate number of rows that must be added
         elev_diffs = np.max(self.elev) - self.elev
         max_diff = np.max(elev_diffs)
 
-        dz = self.dt * (v / 2.)
-        max_samp = int(np.floor(max_diff / dz))
+        dz_avg = self.dt * (v_avg / 2.)
+        max_samp = int(np.floor(max_diff / dz_avg))
 
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] + max_samp, data_old.shape[1]))
         self.data[:, :] = np.nan
 
         for i in range(self.data.shape[1]):
-            self.data[int(elev_diffs[i] // dz): int(elev_diffs[i] // dz) + data_old.shape[0], i] = data_old[:, i]
+            left_ind = int(elev_diffs[i] // dz_avg)
+            self.data[left_ind: left_ind + data_old.shape[0], i] = data_old[:, i]
 
-        self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz), np.min(self.elev) - self.nmo_depth))
+        self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz_avg),
+                                    np.min(self.elev) - self.nmo_depth))
         self.flags.elev = 1

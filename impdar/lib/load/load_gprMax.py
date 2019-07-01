@@ -17,7 +17,8 @@ Mar 17 2019
 import h5py  # TODO: make h5py a dependency?
 
 import numpy as np
-from .RadarData import RadarData, RadarFlags
+from ..RadarData import RadarData
+from ..RadarFlags import RadarFlags
 
 
 class h5(RadarData):

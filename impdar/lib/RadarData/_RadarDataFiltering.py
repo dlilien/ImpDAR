@@ -1,6 +1,13 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+#
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+#
+# Distributed under terms of the GNU GPL-3.0 license.
 import numpy as np
 from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter
-from .migration_routines import *
+from .. import migrationlib
 
 
 class RadarDataFiltering:
@@ -9,15 +16,14 @@ class RadarDataFiltering:
         """Adaptively filter to reduce noise in upper layers
 
         This subtracts the average of traces around an individual trace in order to filter it. You can call this method directly, or it can be called by sending the 'adaptive' option to :func:`RadarData.hfilt() <impdar.lib.RadarData.RadarData.hfilt>`"""
-        # v3.1
-        #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
-        #		or NMO data to reduce the horizontal noise in the upper layers.
-        #		The user need not specify any frequencies.  This program simply
-        #		takes the average of all of the traces and subtracts it from the
-        #		bandpassed data.  It will remove most horizontally-oriented
-        #		features in a radar profile: ringing, horizontal reflectors.  It
-        #		will also create artifacts at travel-times corresponding to any
-        #		bright horizontal reflectors included in the average trace.
+        # HFILTDEEP - This StoDeep subroutine processes bandpass filtered
+        #       or NMO data to reduce the horizontal noise in the upper layers.
+        #       The user need not specify any frequencies.  This program simply
+        #       takes the average of all of the traces and subtracts it from the
+        #       bandpassed data.  It will remove most horizontally-oriented
+        #       features in a radar profile: ringing, horizontal reflectors.  It
+        #       will also create artifacts at travel-times corresponding to any
+        #       bright horizontal reflectors included in the average trace.
         #
         #       You will want to experiment with the creation of the average trace.
         #       Ideally choose an area where all reflectors are sloped and
@@ -26,9 +32,9 @@ class RadarDataFiltering:
         #       filter that will work at all depths.  You will have to experiment
         #       to get the best results for your area of interest.
         #
-        #	WARNING: Do not use hfiltdeep on elevation-corrected data!!!
+        #   WARNING: Do not use hfiltdeep on elevation-corrected data!!!
         #
-        #	Created: Logan Smith - 6/12/02
+        #   Created: Logan Smith - 6/12/02
         #
         #   Modifications:
         #       1) Now has option to horizontally filter any data that exist in
@@ -40,16 +46,15 @@ class RadarDataFiltering:
         #       5)Added double layer filtering and optimized for low gain data.
         #       Added smoothing of average trace--allows retention of more real
         #       data with an adaptive filter.  B. Youngblood 6/13/08
-        #		6) Added flags structure to function input and output.  Also added
-        #		code to set hfilt components of flags structure.  J. Olson 7/10/08
-        #
+        #       6) Added flags structure to function input and output.  Also added
+        #           code to set hfilt components of flags structure.  J. Olson 7/10/08
 
         print('Adaptive filtering')
-        #create average trace for first (rough) scan of data
+        # Create average trace for first (rough) scan of data
         avg_trace = np.mean(self.data, axis=1)
         hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
 
-        #preallocate array
+        # Preallocate array
         avg_trace_scale = np.zeros_like(self.travel_time)
 
         # create a piecewise scaling function (insures that the filter only affects
@@ -58,10 +63,10 @@ class RadarDataFiltering:
         avg_trace_scale[mask] = -0.1 * (self.travel_time[mask] - 0.25) * (self.travel_time[mask] - 0.25) + 1
         avg_trace_scale[~mask] = np.exp(-30. * ((self.travel_time[~mask] - 0.25) - 0.9) * ((self.travel_time[~mask] - 0.25) - 0.9))
 
-        #preallocate array
+        # preallocate array
         hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
 
-        #begin looping through data
+        # begin looping through data
         for i in range(int(self.tnum)):
             # build a packet of 100 traces around the trace in question
             if i <= 50:
@@ -95,15 +100,14 @@ class RadarDataFiltering:
         ntr2: int
             Rightmost trace for averaging
         """
-        # v2.1
-        #	HFILTDEEP - This StoDeep subroutine processes bandpass filtered
-        #		or NMO data to reduce the horizontal noise in the upper layers.
-        #		The user need not specify any frequencies.  This program simply
-        #		takes the average of all of the traces and subtracts it from the
-        #		bandpassed data.  It will remove most horizontally-oriented
-        #		features in a radar profile: ringing, horizontal reflectors.  It
-        #		will also create artifacts at travel-times corresponding to any
-        #		bright horizontal reflectors included in the average trace.
+        # HFILTDEEP - This StoDeep subroutine processes bandpass filtered
+        #       or NMO data to reduce the horizontal noise in the upper layers.
+        #       The user need not specify any frequencies.  This program simply
+        #       takes the average of all of the traces and subtracts it from the
+        #       bandpassed data.  It will remove most horizontally-oriented
+        #       features in a radar profile: ringing, horizontal reflectors.  It
+        #       will also create artifacts at travel-times corresponding to any
+        #       bright horizontal reflectors included in the average trace.
         #
         #       You will want to experiment with the creation of the average trace.
         #       Ideally choose an area where all reflectors are sloped and
@@ -118,8 +122,7 @@ class RadarDataFiltering:
 
         avg_trace = np.mean(self.data[:, htr1:htrn], axis=-1)
 
-        #taper average trace so it mostly affects only the upper layers in the
-        #data
+        # taper average trace so it mostly affects only the upper layers in the data
         avg_trace = avg_trace * (np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05))
         self.data = self.data - np.atleast_2d(avg_trace).transpose().astype(self.data.dtype)
         print('Horizontal filter complete.')
@@ -128,7 +131,7 @@ class RadarDataFiltering:
         self.flags.hfilt = np.ones((2,))
 
     def highpass(self, wavelength, tracespace):
-        #HIGHPASSDEEP - This is NOT a highpass frequency filter--rather it is a
+        # HIGHPASSDEEP - This is NOT a highpass frequency filter--rather it is a
         # horizontal filter to be used after interpolation because our data now has
         # constant spacing and a constant time.  Note that this horizontal filter
         # requires constant trace-spacing in order to be effective.
@@ -139,41 +142,41 @@ class RadarDataFiltering:
         #   Note that generally there is no perfect horizontal filter that will
         #   work at all depths.  You will have to experiment to get the best
         #   results for your area of interest.
-        #:func:`hfilt <impdar.lib.horizontal_filters.hfilt>`
-        #	WARNING: Do not use highpassdeep on elevation-corrected data!!!
+        # :func:`hfilt <impdar.lib.horizontal_filters.hfilt>`
+        # WARNING: Do not use highpassdeep on elevation-corrected data!!!
         #
         #
         # Created by L. Smith and modified by A. Hagen, 6/15/04.
         #
-        #Modifications:
+        # Modifications:
         #    1) Converted to function and added documentation. B. Welch 5/3/06
         #    2) Added ability to bypass user input when running batch files,
-        #    increased function inputs and outputs. - J. Werner, 6/30/08.
-        #	 3) Added flags structure to function input and output.  Also added
-        #		code to set hfilt components of flags structure.  J. Olson 7/10/08
+        #      increased function inputs and outputs. - J. Werner, 6/30/08.
+        #    3) Added flags structure to function input and output.  Also added
+        #       code to set hfilt components of flags structure.  J. Olson 7/10/08
         #
 
-        #Convert wavelength to meters.
+        # Convert wavelength to meters.
         wavelength = int(wavelength * 1000)
-        #Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
+        # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
         fsamp = 100.
-        #Calculate the number of samples per wavelength.
+        # Calculate the number of samples per wavelength.
         nsamp = (wavelength - (wavelength % tracespace)) // tracespace
         if nsamp < 1:
             raise ValueError('wavelength is too small, causing no samples per wavelength')
         print('Sample resolution = {:d}'.format(nsamp))
-        #The high corner frequency is the ratio of the sampling frequency (in MHz)
-        #and the number of samples per wavelength (unitless).
+        # The high corner frequency is the ratio of the sampling frequency (in MHz)
+        # and the number of samples per wavelength (unitless).
         High_Corner_Freq = fsamp / float(nsamp)
         print('High cutoff at {:4.2f} MHz...'.format(High_Corner_Freq))
 
         Sample_Freq = 1. / self.dt
 
         Nyquist_Freq = Sample_Freq / 2.0
-        #Convert High_Corner_Freq to Hz.
+        # Convert High_Corner_Freq to Hz.
         High_Corner_Freq = High_Corner_Freq
 
-        #Corner_Freq is used in the olaf_butter routine.
+        # Corner_Freq is used in the olaf_butter routine.
         Corner_Freq = High_Corner_Freq / Nyquist_Freq
 
         b, a = butter(5, Corner_Freq, 'high')
@@ -187,7 +190,7 @@ class RadarDataFiltering:
         print('Highpass filter complete.')
 
     def winavg_hfilt(self, avg_win, taper='full', filtdepth=100):
-        #WINAVG_HFILTDEEP - This StoDeep subroutine performs a horizontal filter on
+        # WINAVG_HFILTDEEP - This StoDeep subroutine performs a horizontal filter on
         #   the data to reduce the ringing in the upper layers. It uses a moving
         #   window to creat an average trace for each individual trace, applies an
         #   exponential taper to it and then subtracts it from the trace. This is
@@ -203,15 +206,14 @@ class RadarDataFiltering:
         #   work at all depths.  You will have to experiment to get the best
         #   results for your area of interest.
         #
-        #	WARNING: Do not use winavg_hfiltdeep on elevation-corrected data!!!
+        # WARNING: Do not use winavg_hfiltdeep on elevation-corrected data!!!
         #
-        #Created: Kieran Dwyer 6/18/03
+        # Created: Kieran Dwyer 6/18/03
         #
-        #Modifications:
+        # Modifications:
         #    1) Coverted to function and added documentation. B. Welch 5/2/06
-        #	 2) Added flags structure to function input and output.  Also added
-        #		code to set hfilt components of flags structure.  J. Olson 7/10/08
-        #
+        #    2) Added flags structure to function input and output.  Also added
+        #       code to set hfilt components of flags structure.  J. Olson 7/10/08
 
         if avg_win > self.tnum:
             print('Cannot average over more than the whole data matrix. Reducing avg_win to tnum')
@@ -228,7 +230,7 @@ class RadarDataFiltering:
             # Commented out this next line since it seems wrong
             # filtdepth = filtdepth * 100 + self.trig + 1
 
-            #set taper to effect only the initial times
+            # set taper to effect only the initial times
             exptaper[:filtdepth] = exptaper[:filtdepth] - exptaper[filtdepth]
             exptaper[filtdepth:self.snum] = 0
             exptaper = exptaper / np.max(exptaper)
@@ -241,7 +243,7 @@ class RadarDataFiltering:
             raise ValueError('Unrecognized taper. Options are full, pexp, or tukey')
 
         hfiltdata = np.zeros_like(self.data, dtype=self.data.dtype)
-        #set up ranges, create average, taper average, subtract average
+        # set up ranges, create average, taper average, subtract average
 
         for i in range(int(self.tnum)):
             range_start = i - ((avg_win - 1) // 2)
@@ -252,10 +254,10 @@ class RadarDataFiltering:
                 range_start = 0
             if range_end > self.tnum:
                 range_end = self.tnum
-            #create an average trace
+            # Create an average trace
             avg_trace = np.mean(self.data[:, range_start:range_end], axis=-1) * exptaper
 
-            #subtract avg_trace from each trace
+            # Subtract avg_trace from each trace
             hfiltdata[:, i] = self.data[:, i] - avg_trace
 
         self.data = hfiltdata.copy()
@@ -307,12 +309,12 @@ class RadarDataFiltering:
         # time-domain of the radar data to remove environmental noise
 
         # first determine the cut-off corner frequencies - expressed as a
-        #	fraction of the Nyquist frequency (half the sample freq).
-        # 	Note: all of this is in Hz
+        # fraction of the Nyquist frequency (half the sample freq).
+        # Note: all of this is in Hz
 
         Sample_Freq = 1.0 / self.dt  	# dt=time/sample (seconds)
 
-        #calculate the Nyquist frequency
+        # Calculate the Nyquist frequency
         Nyquist_Freq = 0.5 * Sample_Freq
 
         Low_Corner_Freq = low * 1.0e6
@@ -341,7 +343,7 @@ class RadarDataFiltering:
             self.data[:-order, :] = lfilter(taps, 1.0, self.data, axis=0).astype(self.data.dtype)[order:, :]
         else:
             raise ValueError('Filter type {:s} is not recognized'.format(filttype))
-        
+
         print('Bandpass filter complete.')
 
         # set flags structure components
@@ -361,13 +363,13 @@ class RadarDataFiltering:
             Default: stolt
         """
         if mtype == 'kirch':
-            migrationKirchhoff(self, **kwargs)
+            migrationlib.migrationKirchhoff(self, **kwargs)
         elif mtype == 'stolt':
-            migrationStolt(self, **kwargs)
+            migrationlib.migrationStolt(self, **kwargs)
         elif mtype == 'phsh':
-            migrationPhaseShift(self, **kwargs)
+            migrationlib.migrationPhaseShift(self, **kwargs)
         elif mtype == 'su':
-            migrationSeisUnix(self, **kwargs)
+            migrationlib.migrationSeisUnix(self, **kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 

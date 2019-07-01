@@ -7,110 +7,120 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-
+Load data from SIR3000 or SIR4000
 """
 import codecs
 import os.path
 import struct
-import numpy as np
-from .gpslib import RadarGPS
-from .RadarData import RadarData, RadarFlags
 import datetime
+import numpy as np
+from ..gpslib import RadarGPS
+from ..RadarData import RadarData
+from ..RadarFlags import RadarFlags
 
 
 class DZT(RadarData):
+    """Subclass for GSSI data overriding the __init__ on radardata
+
+    Note that the init here is pretty long and reads everything from the GSSI header.
+    I left this in there the in the hopes that it will be useful to somebody,
+    but ImpDAR does not use all this information
+    """
     header = None
     samp = None
 
-    def __init__(self, fn):
-        rh = RH()
-        with open(fn, 'rb') as fid:
+    def __init__(self, fn_dzt):
+        """Read in a DZT
+        """
+        super(DZT, self).__init__(None)
+        gssi_header = GSSIHeader()
+        with open(fn_dzt, 'rb') as fid:
             lines = fid.read()
-        rh.tag = struct.unpack('<H', lines[0:2])[0]
-        rh.data = struct.unpack('<H', lines[2:4])[0]
-        rh.nsamp = struct.unpack('<H', lines[4:6])[0]
-        rh.bits = struct.unpack('<H', lines[6:8])[0]
-        rh.bytes = rh.bits // 8
-        if rh.bits == 32:
-            rh.us_dattype = 'I'
-        elif rh.bits == 16:
-            rh.us_dattype = 'H'
+        gssi_header.tag = struct.unpack('<H', lines[0:2])[0]
+        gssi_header.data = struct.unpack('<H', lines[2:4])[0]
+        gssi_header.nsamp = struct.unpack('<H', lines[4:6])[0]
+        gssi_header.bits = struct.unpack('<H', lines[6:8])[0]
+        gssi_header.bytes = gssi_header.bits // 8
+        if gssi_header.bits == 32:
+            gssi_header.us_dattype = 'I'
+        elif gssi_header.bits == 16:
+            gssi_header.us_dattype = 'H'
 
-        if rh.bits == 32:
-            rh.s_dattype = 'i'
-        elif rh.bits == 16:
-            rh.s_dattype = 'h'
-        rh.zero = struct.unpack('<h', lines[8:10])[0]
-        rh.sps = struct.unpack('<f', lines[10:14])[0]
-        rh.spm = struct.unpack('<f', lines[14:18])[0]
-        rh.mpm = struct.unpack('<f', lines[18:22])[0]
-        rh.position = struct.unpack('<f', lines[22:26])[0]
-        rh.range = struct.unpack('<f', lines[26:30])[0]
+        if gssi_header.bits == 32:
+            gssi_header.s_dattype = 'i'
+        elif gssi_header.bits == 16:
+            gssi_header.s_dattype = 'h'
+        gssi_header.zero = struct.unpack('<h', lines[8:10])[0]
+        gssi_header.sps = struct.unpack('<f', lines[10:14])[0]
+        gssi_header.spm = struct.unpack('<f', lines[14:18])[0]
+        gssi_header.mpm = struct.unpack('<f', lines[18:22])[0]
+        gssi_header.position = struct.unpack('<f', lines[22:26])[0]
+        gssi_header.range = struct.unpack('<f', lines[26:30])[0]
 
-        rh.npass = struct.unpack('<h', lines[30:32])[0]
+        gssi_header.npass = struct.unpack('<h', lines[30:32])[0]
 
         create_full = struct.unpack('<4s', lines[32:36])[0]
         modify_full = struct.unpack('<4s', lines[36:40])[0]
 
-        rh.Create = _to_date(create_full)
-        rh.Modify = _to_date(modify_full)
+        gssi_header.Create = _to_date(create_full)
+        gssi_header.Modify = _to_date(modify_full)
 
-        rh.rgain = struct.unpack('<H', lines[40:42])[0]
-        rh.nrgain = struct.unpack('<H', lines[42:44])[0] + 2
-        rh.text = struct.unpack('<H', lines[44:46])[0]
-        rh.ntext = struct.unpack('<H', lines[46:48])[0]
-        rh.proc = struct.unpack('<H', lines[48:50])[0]
-        rh.nproc = struct.unpack('<H', lines[50:52])[0]
-        rh.nchan = struct.unpack('<H', lines[52:54])[0]
+        gssi_header.rgain = struct.unpack('<H', lines[40:42])[0]
+        gssi_header.nrgain = struct.unpack('<H', lines[42:44])[0] + 2
+        gssi_header.text = struct.unpack('<H', lines[44:46])[0]
+        gssi_header.ntext = struct.unpack('<H', lines[46:48])[0]
+        gssi_header.proc = struct.unpack('<H', lines[48:50])[0]
+        gssi_header.nproc = struct.unpack('<H', lines[50:52])[0]
+        gssi_header.nchan = struct.unpack('<H', lines[52:54])[0]
 
-        rh.epsr = struct.unpack('<f', lines[54:58])[0]
-        rh.top = struct.unpack('<f', lines[58:62])[0]
-        rh.depth = struct.unpack('<f', lines[62:66])[0]
+        gssi_header.epsr = struct.unpack('<f', lines[54:58])[0]
+        gssi_header.top = struct.unpack('<f', lines[58:62])[0]
+        gssi_header.depth = struct.unpack('<f', lines[62:66])[0]
 
-        rh.reserved = struct.unpack('<31c', lines[66:97])
-        rh.dtype = struct.unpack('<c', lines[97:98])[0]
-        rh.antname = struct.unpack('<14c', lines[98:112])
+        gssi_header.reserved = struct.unpack('<31c', lines[66:97])
+        gssi_header.dtype = struct.unpack('<c', lines[97:98])[0]
+        gssi_header.antname = struct.unpack('<14c', lines[98:112])
 
-        rh.chanmask = struct.unpack('<H', lines[112:114])[0]
-        rh.name = struct.unpack('<12c', lines[114:126])
-        rh.chksum = struct.unpack('<H', lines[126:128])[0]
+        gssi_header.chanmask = struct.unpack('<H', lines[112:114])[0]
+        gssi_header.name = struct.unpack('<12c', lines[114:126])
+        gssi_header.chksum = struct.unpack('<H', lines[126:128])[0]
 
-        rh.breaks = struct.unpack('<H', lines[rh.rgain:rh.rgain + 2])[0]
-        rh.Gainpoints = np.array(struct.unpack('<{:d}i'.format(rh.nrgain), lines[rh.rgain + 2:rh.rgain + 2 + 4 * (rh.nrgain)]))
-        rh.Gain = 0
-        if rh.ntext != 0:
-            rh.comments = struct.unpack('<{:d}s'.format(rh.ntext), lines[130 + 2 * rh.Gain: 130 + rh.bytes * rh.Gain + rh.ntext])[0]
+        gssi_header.breaks = struct.unpack('<H', lines[gssi_header.rgain:gssi_header.rgain + 2])[0]
+        gssi_header.Gainpoints = np.array(struct.unpack('<{:d}i'.format(gssi_header.nrgain), lines[gssi_header.rgain + 2:gssi_header.rgain + 2 + 4 * (gssi_header.nrgain)]))
+        gssi_header.Gain = 0
+        if gssi_header.ntext != 0:
+            gssi_header.comments = struct.unpack('<{:d}s'.format(gssi_header.ntext), lines[130 + 2 * gssi_header.Gain: 130 + gssi_header.bytes * gssi_header.Gain + gssi_header.ntext])[0]
         else:
-            rh.comments = ''
-        if rh.nproc != 0:
-            rh.proccessing = struct.unpack('<{:d}s'.format(rh.nproc), lines[130 + rh.bytes * rh.Gain + rh.ntext:130 + rh.bytes * rh.Gain + rh.ntext + rh.nproc])[0]
+            gssi_header.comments = ''
+        if gssi_header.nproc != 0:
+            gssi_header.proccessing = struct.unpack('<{:d}s'.format(gssi_header.nproc), lines[130 + gssi_header.bytes * gssi_header.Gain + gssi_header.ntext:130 + gssi_header.bytes * gssi_header.Gain + gssi_header.ntext + gssi_header.nproc])[0]
         else:
-            rh.proc = ''
-        d = np.array(struct.unpack('<{:d}'.format((len(lines) - 36 * 4096) // rh.bytes) + rh.us_dattype, lines[36 * 4096:]))
-        d = d.reshape((rh.nsamp, -1), order='F')
+            gssi_header.proc = ''
+        d = np.array(struct.unpack('<{:d}'.format((len(lines) - 36 * 4096) // gssi_header.bytes) + gssi_header.us_dattype, lines[36 * 4096:]))
+        d = d.reshape((gssi_header.nsamp, -1), order='F')
         d[0, :] = d[2, :]
         d[1, :] = d[2, :]
-        d = d + rh.zero
+        d = d + gssi_header.zero
 
         # legacy from when this was pygssi
-        self.rh = rh
+        self.gssi_header = gssi_header
 
         # relevant variables for impdar
         self.data = d
-        self.chan = self.rh.nchan
-        self.snum = self.rh.nsamp
+        self.chan = self.gssi_header.nchan
+        self.snum = self.gssi_header.nsamp
         self.tnum = self.data.shape[1]
         self.trace_num = np.arange(self.data.shape[1]) + 1
         self.trig_level = np.zeros((self.tnum, ))
         self.pressure = np.zeros((self.tnum, ))
         self.flags = RadarFlags()
-        self.dt = self.rh.range / self.rh.nsamp * 1.0e-9
-        self.travel_time = np.atleast_2d(np.arange(0, self.rh.range / 1.0e3, self.dt * 1.0e6)).transpose() + self.dt * 1.0e6
-        self.trig = self.rh.zero
+        self.dt = self.gssi_header.range / self.gssi_header.nsamp * 1.0e-9
+        self.travel_time = np.atleast_2d(np.arange(0, self.gssi_header.range / 1.0e3, self.dt * 1.0e6)).transpose() + self.dt * 1.0e6
+        self.trig = self.gssi_header.zero
 
         # Now deal with the gps info
-        if os.path.exists(os.path.splitext(fn)[0] + '.DZG'):
-            self.gps_data = _get_dzg_data(os.path.splitext(fn)[0] + '.DZG', self.trace_num)
+        if os.path.exists(os.path.splitext(fn_dzt)[0] + '.DZG'):
+            self.gps_data = _get_dzg_data(os.path.splitext(fn_dzt)[0] + '.DZG', self.trace_num)
             self.lat = self.gps_data.lat
             self.long = self.gps_data.lon
             self.x_coord = self.gps_data.x
@@ -119,7 +129,7 @@ class DZT(RadarData):
             self.elev = self.gps_data.z
 
             timezero = datetime.datetime(1970, 1, 1, 0, 0, 0)
-            day_offset = self.rh.Create - timezero
+            day_offset = self.gssi_header.Create - timezero
             tmin, tmax = day_offset.days + np.min(self.gps_data.dectime), day_offset.days + np.max(self.gps_data.dectime)
             self.decday = np.linspace(tmin, tmax, self.tnum)
             self.trace_int = np.hstack((np.array(np.nanmean(np.diff(self.dist))), np.diff(self.dist)))
@@ -149,7 +159,7 @@ class _time:
     year = None
 
 
-class RH:
+class GSSIHeader:
     tag = None
     data = None
     nsamp = None

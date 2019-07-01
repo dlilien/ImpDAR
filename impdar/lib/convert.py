@@ -11,13 +11,12 @@ Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
 """
 
 import os
-from .load import load_mat
-from . import load_gssi, load_pulse_ekko
+from .load import load_mat, load_gssi, load_pulse_ekko
 try:
     from . import load_segy
-    segy = True
+    SEGY = True
 except ImportError:
-    segy = False
+    SEGY = False
 
 
 def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
@@ -43,7 +42,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             elif f[-4:] == '.DT1':
                 loaders[i] = load_pulse_ekko.load_pe
             elif f[-4:] == '.sgy':
-                if not segy:
+                if not SEGY:
                     raise ImportError('You cannot use segy without segyio installed!')
                 loaders[i] = load_segy.load_load_segy
             else:
@@ -56,7 +55,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
         elif in_fmt == 'pe':
             loaders = [load_pulse_ekko.load_pe for i in fn]
         elif in_fmt == 'segy':
-            if not segy:
+            if not SEGY:
                 raise ImportError('You cannot use segy without segyio installed!')
             loaders = [load_segy.load_segy for i in fn]
 
@@ -76,7 +75,7 @@ def convert(fn, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             out_fn = os.path.splitext(f)[0] + '.shp'
             dat.output_shp(out_fn, t_srs=t_srs)
     elif out_fmt == 'segy':
-        if not segy:
+        if not SEGY:
             raise ImportError('You cannot use segy without segyio installed!')
         for loader, f, dat in zip(loaders, fn, data):
             out_fn = os.path.splitext(f)[0] + '.segy'

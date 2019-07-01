@@ -16,7 +16,7 @@ Mar 28 2019
 import sys
 import os
 import unittest
-from impdar.lib import load_olaf
+from impdar.lib.load import load_olaf
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 

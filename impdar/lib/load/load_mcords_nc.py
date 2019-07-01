@@ -9,7 +9,7 @@
 """
 Load a NetCDF of MCoRDS data
 """
-from . import RadarData
+from ..RadarData import RadarData
 import numpy as np
 
 try:
@@ -19,9 +19,10 @@ except ImportError:
     nc = False
 
 
-class MCorDSNC(RadarData.RadarData):
+class MCorDSNC(RadarData):
 
     def __init__(self, fn):
+        super(MCorDSNC, self).__init__(None)
         dst = Dataset(fn, 'r')
         self.data = dst.variables['amplitude'][:]
         self.long = dst.variables['lon'][:]

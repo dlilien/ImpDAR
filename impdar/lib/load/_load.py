@@ -11,12 +11,12 @@ A wrapper around the other loading utilities
 """
 import os.path
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc
-from .RadarData import RadarData
+from ..RadarData import RadarData
 try:
     from . import load_segy
-    segy = True
+    SEGY = True
 except ImportError:
-    segy = False
+    SEGY = False
 
 
 def load(filetype, fns, channel=1):
@@ -57,7 +57,7 @@ def load(filetype, fns, channel=1):
         # Slightly different because we assume that we want to concat
         dat = [load_olaf.load_olaf(fns, channel=channel)]
     elif filetype == 'segy':
-        if segy:
+        if SEGY:
             dat = [load_segy.load_segy(fn) for fn in fns]
         else:
             raise ImportError('Failed to import segyio, cannot read segy')

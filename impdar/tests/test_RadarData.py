@@ -185,8 +185,7 @@ class TestRadarDataMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.data.elev_correct()
         self.data.nmo(0, 2.0e6)
-        self.data.elev_correct(v=2.0e6)
-        new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
+        self.data.elev_correct(v_avg=2.0e6)
         self.assertTrue(self.data.data.shape == (27, 40))
 
     def test_constant_space(self):

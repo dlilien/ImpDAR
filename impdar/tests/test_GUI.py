@@ -13,14 +13,14 @@ import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib._RadarDataSaving import conversions_enabled
+from impdar.lib.RadarData._RadarDataSaving import CONVERSIONS_ENABLED
+from impdar.lib.RadarData import RadarData
 
 try:
     import matplotlib
     matplotlib.use('QT5Agg')
-    from PyQt5 import QtCore, QtWidgets, QtGui
+    from PyQt5 import QtWidgets
     from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
-    from PyQt5.QtTest import QTest
     app = QtWidgets.QApplication(sys.argv)
     qt = True
 except ImportError:
@@ -30,7 +30,6 @@ if sys.version_info[0] >= 3:
     from unittest.mock import MagicMock, patch
 else:
     from mock import MagicMock, patch
-from impdar.lib.RadarData import RadarData
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -320,7 +319,7 @@ class TestInteractivePickerLoadingSaving(unittest.TestCase):
         os.remove(os.path.join(THIS_DIR, 'input_data', 'test.csv'))
 
     @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
-    @unittest.skipIf(not conversions_enabled, 'No GDAL on this version')
+    @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     @patch('impdar.gui.pickgui.QFileDialog')
     def test_export_shp(self, patchqfd):
         patchqfd.getSaveFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'test.shp'), True)

@@ -10,12 +10,11 @@
 
 """
 import io
-import sys
 import struct
 import datetime
 import numpy as np
 
-from .RadarData import RadarData
+from ..RadarData import RadarData
 
 
 class Olaf(RadarData):

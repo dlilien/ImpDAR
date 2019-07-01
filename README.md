@@ -18,7 +18,7 @@ In addition to processing, ImpDAR can also be used for interpreting the radargra
 
 ## Documentation
 
-Documentation of the various processing steps is [here](http://dlilien.github.io/ImpDAR). Examples are gradually being added to the documentation.
+Documentation of the various processing steps is [here](https://impdar.readthedocs.io/en/latest/). Examples are gradually being added to the documentation.
 
 ## Installation
 

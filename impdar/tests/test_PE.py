@@ -12,8 +12,7 @@ Make sure that we can successfully read gssi input files
 
 import os
 import unittest
-import numpy as np
-from impdar.lib import load_pulse_ekko
+from impdar.lib.load import load_pulse_ekko
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
