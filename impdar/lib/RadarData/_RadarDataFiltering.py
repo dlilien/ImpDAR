@@ -368,13 +368,9 @@ class RadarDataFiltering(RadarDataBase):
         elif mtype == 'stolt':
             migrationlib.migrationStolt(self, **kwargs)
         elif mtype == 'phsh':
-<<<<<<< HEAD:impdar/lib/RadarData/_RadarDataFiltering.py
             migrationlib.migrationPhaseShift(self, **kwargs)
-=======
-            migrationPhaseShift(self, **kwargs)
         elif mtype == 'tk':
             migrationTimeWavenumber(self, **kwargs)
->>>>>>> ea39e2e9afde296d55064fa6be08a853f745387f:impdar/lib/_RadarDataFiltering.py
         elif mtype == 'su':
             migrationlib.migrationSeisUnix(self, **kwargs)
         else:

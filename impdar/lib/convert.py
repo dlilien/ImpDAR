@@ -76,15 +76,9 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
     elif out_fmt == 'segy':
         if not load_segy.SEGY:
             raise ImportError('You cannot use segy without segyio installed!')
-<<<<<<< HEAD
         for loader, f_i, dat in zip(loaders, fns_in, data):
             fn_out = os.path.splitext(f_i)[0] + '.segy'
             dat.save_as_segy(fn_out)
-=======
-        for loader, f, dat in zip(loaders, fn, data):
-            out_fn = os.path.splitext(f)[0] + '.sgy'
-            dat.save_as_segy(out_fn)
->>>>>>> ea39e2e9afde296d55064fa6be08a853f745387f
 
 
 if __name__ == '__main__':

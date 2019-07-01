@@ -202,9 +202,9 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
     offset: float, optional
         Translate the GPS times by this amount for alignment with the radar
     """
-    int_lat = interp1d(decday, lat)
-    int_long = interp1d(decday, lon)
-    int_elev = interp1d(decday, elev)
+    int_lat = interp1d(decday, lat, kind='linear', fill_value='extrapolate')
+    int_long = interp1d(decday, lon, kind='linear', fill_value='extrapolate')
+    int_elev = interp1d(decday, elev, kind='linear', fill_value='extrapolate')
     if type(dats) not in [list, tuple]:
         dats = [dats]
     for dat in dats:
