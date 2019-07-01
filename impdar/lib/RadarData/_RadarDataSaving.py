@@ -61,8 +61,8 @@ class RadarDataSaving(RadarDataFiltering):
     def save_as_segy(self, fn):
         if not segy:
             raise ImportError('segyio failed to import, cannot save as segy')
-
-        segyio.tools.from_array2D(fn, self.data.transpose(), dt=self.dt * 1.0e6)
+        # TODO: try for a more elegant fix of dt, but it needs to be an integer...
+        segyio.tools.from_array2D(fn, self.data.transpose(), dt=self.dt*1e12)
 
     def output_shp(self, fn, t_srs=4326, target_out=None):
         """Output a shapefile of the traces.

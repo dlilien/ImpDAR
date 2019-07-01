@@ -1,0 +1,6 @@
+[console_scripts]
+impdar = impdar.bin.impdar:main
+imppick = impdar.bin.imppick:main
+impplot = impdar.bin.impplot:main
+impproc = impdar.bin.impproc:main
+

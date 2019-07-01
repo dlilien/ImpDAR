@@ -352,7 +352,7 @@ class RadarDataFiltering(RadarDataBase):
         self.flags.bpass[1] = low
         self.flags.bpass[2] = high
 
-    def migrate(self, mtype='stolt', **kwargs):
+    def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
         """Migrate the data.
 
         This is a wrapper around all the migration routines in migration_routines.py.
@@ -368,11 +368,21 @@ class RadarDataFiltering(RadarDataBase):
         elif mtype == 'stolt':
             migrationlib.migrationStolt(self, **kwargs)
         elif mtype == 'phsh':
+<<<<<<< HEAD:impdar/lib/RadarData/_RadarDataFiltering.py
             migrationlib.migrationPhaseShift(self, **kwargs)
+=======
+            migrationPhaseShift(self, **kwargs)
+        elif mtype == 'tk':
+            migrationTimeWavenumber(self, **kwargs)
+>>>>>>> ea39e2e9afde296d55064fa6be08a853f745387f:impdar/lib/_RadarDataFiltering.py
         elif mtype == 'su':
             migrationlib.migrationSeisUnix(self, **kwargs)
         else:
             raise ValueError('Unrecognized migration routine')
 
         # change migration flag
-        self.flags.mig = mtype
+        if mtype == 'su':
+            mflag = sutype
+        else:
+            mflag = mtype
+        self.flags.mig = mflag
