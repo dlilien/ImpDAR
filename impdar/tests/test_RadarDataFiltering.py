@@ -12,8 +12,9 @@
 
 import unittest
 import numpy as np
-from impdar.lib.RadarData import NoInitRadarDataFiltering as NoInitRadarData
+from impdar.lib.NoInitRadarData import NoInitRadarDataFiltering as NoInitRadarData
 from impdar.lib import process
+from impdar.lib.ImpdarError import ImpdarError
 
 data_dummy = np.ones((500, 400))
 
@@ -40,7 +41,10 @@ class TestHighPass(unittest.TestCase):
 
     def test_HighPass(self):
         radardata = NoInitRadarData()
-        radardata.highpass(1000.0, 1)
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+        radardata.highpass(1000.0)
         # There is no high-frequency variability, so this result should be small
         # We only have residual variability from the quality of the filter
         print(np.abs((radardata.data - radardata.data[0, 0]) / radardata.data[0, 0]))
@@ -48,9 +52,18 @@ class TestHighPass(unittest.TestCase):
 
     def test_HighPassBadcutoff(self):
         radardata = NoInitRadarData()
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
         with self.assertRaises(ValueError):
             # We have a screwed up filter here because of sampling vs. frequency used
-            radardata.highpass(1.0e-4, 100)
+            radardata.highpass(1.0e-4)
+
+    def test_HighPassNotspaced(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ImpdarError):
+            # We have a screwed up filter here because of sampling vs. frequency used
+            radardata.highpass(1000.0)
 
 
 class TestWinAvgHfilt(unittest.TestCase):

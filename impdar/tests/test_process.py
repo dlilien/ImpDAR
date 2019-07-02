@@ -12,7 +12,7 @@ Test the machinery of process. This is broken up to match where it would likely 
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import NoInitRadarData
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib import process
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))

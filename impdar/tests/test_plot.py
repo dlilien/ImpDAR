@@ -13,7 +13,8 @@ import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import NoInitRadarData, RadarData
+from impdar.lib.RadarData import RadarData
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.Picks import Picks
 from impdar.lib import plot
 import matplotlib.pyplot as plt

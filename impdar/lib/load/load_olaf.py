@@ -357,10 +357,12 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.freq = sinfo[0].nominal_frequency
     olaf_data.travel_time = stacks[0].travel_time * 1.0e6
     olaf_data.trig_level = stacks[0].trigger_level
+    olaf_data.trig = stacks[0].trigger_level  #TODO this is not correct, but works for now
 
     olaf_data.fnames = [si.fn_in for si in sinfo]
 
     # Data and things we derive from it
+    olaf_data.chan = channel
     olaf_data.data = np.hstack([s_i.data for s_i in stacks])
     olaf_data.snum = olaf_data.data.shape[0]
     olaf_data.tnum = olaf_data.data.shape[1]
@@ -373,4 +375,5 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.long = np.hstack([s_i.long for s_i in stacks])
     olaf_data.trace_int = np.hstack([s_i.trace_interval for s_i in stacks])
     olaf_data.pressure = np.hstack([s_i.pressure for s_i in stacks])
+    olaf_data.check_attrs()
     return olaf_data

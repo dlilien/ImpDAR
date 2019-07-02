@@ -13,7 +13,8 @@
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import RadarData, NoInitRadarData
+from impdar.lib.RadarData import RadarData
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.RadarData._RadarDataSaving import CONVERSIONS_ENABLED
 from impdar.lib.RadarFlags import RadarFlags
 from impdar.lib.Picks import Picks

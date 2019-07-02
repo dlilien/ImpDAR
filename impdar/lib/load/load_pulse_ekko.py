@@ -152,4 +152,5 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
     pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
                                    np.diff(pe_data.dist)))
+    pe_data.check_attrs()
     return pe_data

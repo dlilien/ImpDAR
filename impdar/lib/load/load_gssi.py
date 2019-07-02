@@ -218,4 +218,5 @@ def load_gssi(fn_dzt, *args, **kwargs):
         dzt_data.decday = np.arange(dzt_data.data.shape[1])
         dzt_data.trace_int = np.ones((dzt_data.data.shape[1],))
 
+    dzt_data.check_attrs()
     return dzt_data

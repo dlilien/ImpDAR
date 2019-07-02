@@ -34,6 +34,7 @@ class TestRadarDataMethods(unittest.TestCase):
     def setUp(self):
         self.data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.data.x_coord = np.arange(40)
+        self.data.nmo_depth = None
         self.data.travel_time = np.arange(0, 0.2, 0.01)
         self.data.dt = 1.0e-8
         self.data.trig = 0.

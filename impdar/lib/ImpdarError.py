@@ -7,11 +7,9 @@
 # Distributed under terms of the GNU-GPL3.0 license.
 
 """
-This is just a dummy class to combine everything
+Define an exception class for exceptions that do not fit in other categories
 """
 
-from _RadarDataSaving import RadarDataSaving
 
-
-class RadarData(RadarDataSaving):
-    pass
+class ImpdarError(Exception):
+    """Used for exceptions caused by something radar-y"""

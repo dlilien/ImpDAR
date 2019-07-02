@@ -13,7 +13,7 @@ import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import NoInitRadarData
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib import gpslib
 if sys.version_info[0] >= 3:
     from unittest.mock import patch, MagicMock

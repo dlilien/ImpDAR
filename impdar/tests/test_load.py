@@ -13,7 +13,6 @@ import sys
 import os
 import unittest
 from impdar.lib import load
-from impdar.lib.load import _load
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -65,13 +64,13 @@ class TestLoad(unittest.TestCase):
             load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
 
     def test_common_start(self):
-        start = _load._common_start('abra', 'abracadabra')
+        start = load._common_start('abra', 'abracadabra')
         self.assertEqual('abra', start)
 
-        start = _load._common_start('abra', 'abra')
+        start = load._common_start('abra', 'abra')
         self.assertEqual('abra', start)
 
-        start = _load._common_start('', 'abra')
+        start = load._common_start('', 'abra')
         self.assertEqual('', start)
 
     def tearDown(self):

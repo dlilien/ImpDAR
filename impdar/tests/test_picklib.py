@@ -13,6 +13,7 @@ Test the methods on the Pick object
 import os
 import unittest
 import numpy as np
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib import picklib, Picks, RadarData
 
 traces = np.random.random((300, 200))
@@ -20,9 +21,10 @@ traces = np.random.random((300, 200))
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class BareRadarData(RadarData.RadarData):
+class BareRadarData(NoInitRadarData):
 
     def __init__(self):
+        super(BareRadarData, self).__init__()
         self.dt = 1.0e-7
         self.data = traces
         self.picks = Picks.Picks(self)

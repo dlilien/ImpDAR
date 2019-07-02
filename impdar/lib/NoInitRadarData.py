@@ -10,8 +10,8 @@
 Define a class with dummy data for use with testing
 """
 import numpy as np
-from . import RadarData
-from ..RadarFlags import RadarFlags
+from .RadarData import RadarData
+from .RadarFlags import RadarFlags
 
 DATA_DUMMY = np.ones((500, 400))
 
