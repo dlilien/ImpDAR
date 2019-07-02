@@ -13,7 +13,7 @@ import numpy as np
 from . import RadarData
 from ..RadarFlags import RadarFlags
 
-data_dummy = np.ones((500, 400))
+DATA_DUMMY = np.ones((500, 400))
 
 
 class NoInitRadarData(RadarData):
@@ -45,16 +45,17 @@ class NoInitRadarDataFiltering(RadarData):
     # This only exists so we can do tests on writing without reading
 
     def __init__(self):
-        self.data = data_dummy.copy()
+        super(NoInitRadarDataFiltering, self).__init__(None)
+        self.data = DATA_DUMMY.copy()
         self.dt = 0.1
         self.tnum = self.data.shape[1]
         self.snum = self.data.shape[0]
         self.travel_time = 0.001 * np.arange(self.data.shape[0]) + 0.001
         self.dt = 0.001e-6
         self.flags = RadarFlags()
-        self.hfilt_target_output = data_dummy * np.atleast_2d(1. - np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)).transpose()
+        self.hfilt_target_output = DATA_DUMMY * np.atleast_2d(1. - np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)).transpose()
         pexp = np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)
         pexp = pexp - pexp[-1]
         pexp = pexp / np.max(pexp)
-        self.pexp_target_output = data_dummy * np.atleast_2d(1. - pexp).transpose()
-        self.ahfilt_target_output = np.zeros_like(data_dummy)
+        self.pexp_target_output = DATA_DUMMY * np.atleast_2d(1. - pexp).transpose()
+        self.ahfilt_target_output = np.zeros_like(DATA_DUMMY)

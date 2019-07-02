@@ -32,7 +32,7 @@ except ImportError:
     CONVERSIONS_ENABLED = False
 
 
-class RadarDataBase:
+class RadarDataBase(object):
     """A class that holds the relevant information for a radar profile.
 
     We keep track of processing steps with the flags attribute.
