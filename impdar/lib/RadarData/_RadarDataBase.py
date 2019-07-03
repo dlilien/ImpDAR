@@ -441,6 +441,12 @@ class RadarDataBase:
             Minimum trace spacing. If there is not this much separation, toss the next shot.
             Set high to keep everything. Default 1.0e-2.
         """
+        #if len(self.dist) != len(self.x_coord):
+        """
+        TO DO: Fix this to check whether the self.dist parameter has attribute (len)
+        """
+        self.dist = np.hstack(([0], np.cumsum(np.sqrt(np.diff(self.x_coord) ** 2.0 + np.diff(self.y_coord) ** 2.0))))
+
         # eliminate an interpolation error by masking out little movement
         good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
         new_dists = np.arange(np.min(self.dist[good_vals]),
