@@ -370,14 +370,14 @@ class TestVBP(unittest.TestCase):
 
     def test_VBPInputDialog(self):
         vbp = VBPInputDialog()
-        vbp.clickOK()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (50, 250))
         self.assertTrue(vbp.accepted)
 
         vbp = VBPInputDialog()
         vbp.minspin.setValue(2)
         vbp.maxspin.setValue(298)
-        vbp.clickOK()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (2, 298))
         self.assertTrue(vbp.accepted)
 
@@ -385,8 +385,8 @@ class TestVBP(unittest.TestCase):
         vbp.minspin.setValue(299)
         vbp.maxspin.setValue(298)
         # click OK twice since we have bad lims
-        vbp.clickOK()
-        vbp.clickOK()
+        vbp._click_ok()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (297, 298))
         self.assertTrue(vbp.accepted)
 
@@ -396,7 +396,7 @@ class TestCrop(unittest.TestCase):
 
     def test_CropInputDialog(self):
         cid = CropInputDialog()
-        cid.clickOK()
+        cid._click_ok()
         self.assertTrue(cid.accepted)
 
         cid = CropInputDialog()
@@ -409,7 +409,7 @@ class TestCrop(unittest.TestCase):
         cid.inputtype.setCurrentText('depth')
         self.assertTrue(cid.spinnerlabel.text() == 'Cutoff in depth (m):')
 
-        cid.clickOK()
+        cid._click_ok()
         self.assertTrue(cid.accepted)
 
 

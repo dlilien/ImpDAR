@@ -1,7 +1,7 @@
 Loading Examples
 ================
 
-Loading (i.e. converting raw radar output into the ImpDAR/StoDeep matlab format) is accomplished in a single command with the :doc:`impdar load </../bin/impdar>`.
+There is not a lot documented here because loading supported files is extremely straightforward in ImpDAR. Loading (i.e. converting raw radar output into the ImpDAR/StoDeep matlab format) is accomplished in a single command with the :doc:`impdar load </../bin/impdar>`.
 
 GSSI
 ----
