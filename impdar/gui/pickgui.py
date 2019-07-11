@@ -500,11 +500,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     # Enable the key presses from the old stointerpret
     #######
     def _press(self, event):
-        if event.key == 'd':
-            self.press_f()
-        elif event.key == ' ':
-            self.press_space()
-        elif event.key == 'n':
+        if event.key == 'n':
             self._n_pressed = True
 
     def _release(self, event):

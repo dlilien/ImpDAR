@@ -19,8 +19,8 @@ from impdar.lib.RadarData import RadarData
 try:
     import matplotlib
     matplotlib.use('QT5Agg')
-    from PyQt5 import QtWidgets
-    from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
+    from PyQt5 import QtWidgets, QtCore
+    from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog, warn, plt
     app = QtWidgets.QApplication(sys.argv)
     qt = True
 except ImportError:
@@ -76,6 +76,16 @@ class TestInteractivePicker(unittest.TestCase):
 
     def test_PickNum(self):
         self.ip.pickNumberBox.setValue(1)
+
+    def test_update_polarity(self):
+        self.assertEqual(self.ip.dat.picks.pickparams.pol, 1)
+        self.ip.wbw_radio.setChecked(True)
+        self.assertEqual(self.ip.dat.picks.pickparams.pol, -1)
+
+    def test_reverse_color(self):
+        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText()))
+        self.ip._update_color_reversal(QtCore.Qt.Checked)
+        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText() + '_r'))
 
     def test_select_lines_click(self):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
@@ -412,6 +422,11 @@ class TestCrop(unittest.TestCase):
         cid._click_ok()
         self.assertTrue(cid.accepted)
 
+@unittest.skipIf(not qt, 'No Qt')
+class TestCrop(unittest.TestCase):
+
+    def test_warn(self):
+        warning = warn('dummy', 'longdummy').clickOk()
 
 if __name__ == '__main__':
     unittest.main()
