@@ -56,7 +56,7 @@ class TestConvert(unittest.TestCase):
             convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'mat', in_fmt='segy')
 
         with self.assertRaises(ImportError):
-            convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'segy', in_fmt='mat')
+            convert.convert([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], 'segy', in_fmt='mat')
 
     @unittest.skipIf(not SEGY, 'SEGY needed for this test')
     def test_segy_save(self):
