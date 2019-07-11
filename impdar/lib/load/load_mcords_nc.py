@@ -34,10 +34,17 @@ def load_mcords_nc(fn_nc):
     mcords_data.data = dst.variables['amplitude'][:]
     mcords_data.long = dst.variables['lon'][:]
     mcords_data.lat = dst.variables['lat'][:]
-    mcords_data.time = dst.variables['time'][:]
+    mcords_data.decday = dst.variables['time'][:]
+    mcords_data.trace_int = mcords_data.decday[1] - mcords_data.decday[0]
     mcords_data.travel_time = dst.variables['fasttime'][:]
     mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6
     size = dst.variables['amplitude'].matlab_size
     mcords_data.snum, mcords_data.tnum = int(size[0]), int(size[1])
+    mcords_data.trace_num = np.arange(mcords_data.tnum) + 1
+
+    mcords_data.chan = 0
+    mcords_data.pressure = np.zeros_like(dst.variables['lat'][:])
+    mcords_data.trig = np.zeros_like(dst.variables['lat'][:]).astype(int)
+    mcords_data.trig_level = 0.
     mcords_data.check_attrs()
     return mcords_data

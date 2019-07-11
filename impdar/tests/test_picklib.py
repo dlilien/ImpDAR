@@ -53,8 +53,15 @@ class TestPickLib(unittest.TestCase):
         easy_pick_trace[107] = bpeak
         easy_pick_trace[95] = tpeak
         data = BareRadarData()
+        # do something ill-advised where we now have mismatched plength, scst, and FWW
         data.picks.pickparams.scst = 200
         data.picks.pickparams.FWW = 200
+        with self.assertRaises(ValueError):
+            picklib.packet_pick(traces[:, 0], data.picks.pickparams, 100)
+
+        # This should also be an error due to mismatched plength, scst, and FWW
+        data.picks.pickparams.scst = 2
+        data.picks.pickparams.FWW = 0
         with self.assertRaises(ValueError):
             picklib.packet_pick(traces[:, 0], data.picks.pickparams, 100)
 
