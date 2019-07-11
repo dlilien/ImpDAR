@@ -423,7 +423,7 @@ class TestCrop(unittest.TestCase):
         self.assertTrue(cid.accepted)
 
 @unittest.skipIf(not qt, 'No Qt')
-class TestCrop(unittest.TestCase):
+class TestWarn(unittest.TestCase):
 
     def test_warn(self):
         warning = warn('dummy', 'longdummy').clickOk()
