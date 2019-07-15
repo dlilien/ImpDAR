@@ -26,7 +26,7 @@ def _get_args():
     parser_load.add_argument('filetype', type=str,
                              help='Type of file',
                              choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
-    parser_load.add_argument('fn', type=str, nargs='+', help='File(s) to load')
+    parser_load.add_argument('fns_in', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1,
                              help='Receiver channel to load, \
                                      this is primarily for the St. Olaf HF data.')

@@ -5,6 +5,7 @@
 # Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
+"""The picking gui classes (i.e. the different windows that can pop up)"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,30 +52,42 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.ColorSelector.currentTextChanged.connect(self._color_select)
 
         # Easy access to normal mpl figure and axes
+        #: The axes upon which things get plotted.
         self.ax = self.FigCanvasWidget.canvas.ax
+        #: The figure upon which things get plotted.
         self.fig = self.FigCanvasWidget.canvas.fig
         plt.ion()
 
         # Two constants to keep track of how to prompt for saves
+        #: The filename, updated by things like "save as"
         self.fn = None
         self._saved = True
 
         # Set defaults
+        #: Pick black-white-black or white-black-white (value is either 'bwb' or 'wbw')
         self.bwb = 'bwb'
+        #: Frequency of the picks we seek
         self.freq = 4
+        #: The mode we are in (either select or edit)
         self.pick_mode = 'select'
+        #: A string holding information about whether to reverse the colormap (either '' or '_r')
         self.color_reversal = ''
 
         # line is the matplotlib object of the current pick
+        #: That matplotlib line objects for the central picks, retained in this way for select mode
         self.cline = []
+        #: That matplotlib line objects for the top of picks, retained in this way for select mode
         self.tline = []
+        #: That matplotlib line objects for bottom picks, retained in this way for select mode
         self.bline = []
 
         # pick_pts contains our picked points,
-        # which will differ from what we want to save in the file.
+        # which may differ from what we want to save in the file.
         # Need to have one per line.
         self.pick_pts = []
+        #: The RadarData object being plotted
         self.dat = dat
+        #: a numpy.ndarray 5xtnum containing the lines, twtt, and reflector power
         self.current_pick = None
 
         # For loading cross profiles, we want to use multiple symbols
