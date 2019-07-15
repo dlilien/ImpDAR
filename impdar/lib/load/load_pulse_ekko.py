@@ -145,10 +145,9 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.dist = pe_data.gps_data.dist.flatten()
     pe_data.elev = pe_data.gps_data.z
 
-    timezero = datetime.datetime(2017, 1, 1, 0, 0, 0)
-    day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0) - timezero
-    tmin = day_offset.days + np.min(pe_data.gps_data.dectime)
-    tmax = day_offset.days + np.max(pe_data.gps_data.dectime)
+    day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+    tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
+    tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
     pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
     pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
                                    np.diff(pe_data.dist)))

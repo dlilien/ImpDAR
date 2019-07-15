@@ -49,7 +49,8 @@ class GSSITime:
     def to_datetime(self):
         """Convert from the GSSI data to a datetime.datetime output"""
         if self.year > 0:
-            return datetime.datetime(self.year,
+            # Not 100% sure that 1980 is the correct offset here
+            return datetime.datetime(self.year + 1980,
                                      self.month,
                                      self.day,
                                      self.hour,
@@ -200,10 +201,11 @@ def load_gssi(fn_dzt, *args, **kwargs):
         dzt_data.dist = dzt_data.gps_data.dist.flatten()
         dzt_data.elev = dzt_data.gps_data.z
 
-        timezero = datetime.datetime(1970, 1, 1, 0, 0, 0)
+        timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
+        print(dzt_data.create)
         day_offset = dzt_data.create - timezero
-        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime)
-        tmax = day_offset.days + np.max(dzt_data.gps_data.dectime)
+        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime)  + 377.  # matlab compat
+        tmax = day_offset.days + np.max(dzt_data.gps_data.dectime) + 377.
         dzt_data.decday = np.linspace(tmin, tmax, dzt_data.tnum)
         dzt_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(dzt_data.dist))),
                                         np.diff(dzt_data.dist)))

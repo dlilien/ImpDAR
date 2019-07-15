@@ -9,6 +9,7 @@
 """
 Load a NetCDF of MCoRDS data
 """
+import datetime
 import numpy as np
 from ..RadarData import RadarData
 
@@ -34,7 +35,13 @@ def load_mcords_nc(fn_nc):
     mcords_data.data = dst.variables['amplitude'][:]
     mcords_data.long = dst.variables['lon'][:]
     mcords_data.lat = dst.variables['lat'][:]
-    mcords_data.decday = dst.variables['time'][:]
+    # time has units of seconds according to documentation, but this seems wrong
+    # numbers are way too big. Leaving it since that is how it is documented though?
+    partial_days = dst.variables['time'][:] / (24. * 60. * 60.)
+    start_day = datetime.datetime(int(dst.variables['time'].units[14:18]),
+                                  int(dst.variables['time'].units[19:21]),
+                                  int(dst.variables['time'].units[22:24])).toordinal() + 366.
+    mcords_data.decday = partial_days + start_day
     mcords_data.trace_int = mcords_data.decday[1] - mcords_data.decday[0]
     mcords_data.travel_time = dst.variables['fasttime'][:]
     mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6

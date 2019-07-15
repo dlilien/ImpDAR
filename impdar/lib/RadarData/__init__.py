@@ -11,6 +11,8 @@ The basic class of ImpDAR. Methods for saving, processing, and filtering are def
 """
 
 
+import datetime
+import numpy as np
 from scipy.io import loadmat
 from ..RadarFlags import RadarFlags
 from ..ImpdarError import ImpdarError
@@ -70,7 +72,10 @@ class RadarData(object):
             self.trig_level = None  #: float, The value on which the radar was triggering
 
             # Per-trace attributes
-            self.decday = None  #: np.ndarray(tnum,) of the acquisition time of each trace
+            #: np.ndarray(tnum,) of the acquisition time of each trace
+            #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
+            #: for convenience, use the `datetime` attribute to access a python version of the day
+            self.decday = None
             #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
             self.lat = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
@@ -162,3 +167,8 @@ class RadarData(object):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
         return
+
+    @property
+    def datetime(self):
+        """A python operable version of the time of acquisition of each trace"""
+        return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366) for dd in self.decday], dtype=np.datetime64)
