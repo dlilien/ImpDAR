@@ -86,6 +86,10 @@ def _get_args():
     parser_plot.add_argument('-power', type=int, default=None,
                              help='Plot the power on this layer number')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
+    parser_plot.add_argument('-spectra', type=bool, default=False, help='Plot power spectral density across traces of radar profile')
+    parser_plot.add_argument('-freq_limit', type=float, default=None, help='Maximum frequeny to plot power spectral density to')
+    parser_plot.add_argument('-window', type=str, default=None, help='Type of window function to be used for the singal.periodogram() method')
+    parser_plot.add_argument('-scale', type=str, default='spectrum', help='Whether to plot power spectral density or power spectrum: default is spectrum')
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)

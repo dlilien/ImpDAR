@@ -182,7 +182,7 @@ class RadarGPS(nmea_info):
         self.get_dist()
 
 
-def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
+def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False):
     """Use new, better GPS data for lat, lon, and elevation
 
     The interpolation in this function is done using the time since the radar has accurate timing from its GPS. The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist). I've dropped that dependency.
@@ -201,10 +201,19 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
         Decimal day. You need to reference this to match up with what the radar uses using offset
     offset: float, optional
         Translate the GPS times by this amount for alignment with the radar
+    extrapoloate: bool, optional
+        If true, extrapolate data to fill values rather than using NaNs.
+        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
+        the geolocation and not get an error.
+        USE WITH CAUTION.
     """
-    int_lat = interp1d(decday, lat)
-    int_long = interp1d(decday, lon)
-    int_elev = interp1d(decday, elev)
+    if extrapolate:
+        fill_value = 'extrapolate'
+    else:
+        fill_value = np.NaN
+    int_lat = interp1d(decday, lat, kind='linear', fill_value=fill_value)
+    int_long = interp1d(decday, lon, kind='linear', fill_value=fill_value)
+    int_elev = interp1d(decday, elev, kind='linear', fill_value=fill_value)
     if type(dats) not in [list, tuple]:
         dats = [dats]
     for dat in dats:
@@ -221,7 +230,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0):
             dat.dist = gpsdat.dist
 
 
-def kinematic_gps_mat(dats, mat_fn, offset=0.0):
+def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False):
     """Use a matlab file with gps info to redo radar GPS
 
     Parameters
@@ -232,16 +241,21 @@ def kinematic_gps_mat(dats, mat_fn, offset=0.0):
         The matlab file, containing lat, long, elev, and decday, to use
     offset: float, optional
         Change decday by this much to match the radar's gps
+    extrapoloate: bool, optional
+        If true, extrapolate data to fill values rather than using NaNs.
+        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
+        the geolocation and not get an error.
+        USE WITH CAUTION.
     """
     from scipy.io import loadmat
     mat = loadmat(mat_fn)
     for val in ['lat', 'long', 'elev', 'decday']:
         if val not in mat:
             raise ValueError('{:s} needs to be contained in matlab input file'.format(val))
-    kinematic_gps_control(dats, mat['lat'].flatten(), mat['long'].flatten(), mat['elev'].flatten(), mat['decday'].flatten(), offset=offset)
+    kinematic_gps_control(dats, mat['lat'].flatten(), mat['long'].flatten(), mat['elev'].flatten(), mat['decday'].flatten(), offset=offset, extrapolate=extrapolate)
 
 
-def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', **genfromtxt_flags):
+def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extrapolate=False, **genfromtxt_flags):
     """Use a csv gps file to redo the GPS on radar data.
 
     The csv is read using numpy.genfromtxt, which supports a number of options. One, 'names', is set explicitly by the argument 'names' to this function: you can change the value of that string to True to read column names from the first post-header line in the file. You can also manually change the column names by giving a different comma-separated string. The names must contain 'decday', 'long', 'lat', and 'elev'.
@@ -256,14 +270,20 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', **ge
         Change decday by this much to match the radar's gps
     names: str, bool, list, or None
         names argument to numpy.genfromtxt used to read the csv.
+    extrapoloate: bool, optional
+        If true, extrapolate data to fill values rather than using NaNs.
+        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
+        the geolocation and not get an error.
+        USE WITH CAUTION.
+
 
     Any additional kwargs are passed to numpy.genfromtxt
     """
     data = np.genfromtxt(csv_fn, names=names, **genfromtxt_flags)
-    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset)
+    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset, extrapolate=extrapolate)
 
 
-def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, **kwargs):
+def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, extrapolate=False, **kwargs):
     """Do kinematic GPS control then interpolate the data to constant spacing
 
     Parameters
@@ -280,12 +300,17 @@ def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2
         use this separation to try to cull stationary entries in the gps
     genfromtxt_kwargs: dict, optional
         kwargs to pass to genfromtxt when reading a csv. Ignored otherwise.
+    extrapoloate: bool, optional
+        If true, extrapolate data to fill values rather than using NaNs.
+        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
+        the geolocation and not get an error.
+        USE WITH CAUTION.
     """
     if fn is not None:
         if fn_type == 'mat' or ((fn_type is None) and (fn[-4:] == '.mat')):
-            kinematic_gps_mat(dats, fn, offset=offset)
+            kinematic_gps_mat(dats, fn, offset=offset, extrapolate=extrapolate)
         elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
-            kinematic_gps_csv(dats, fn, offset=offset, **genfromtxt_kwargs)
+            kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, **genfromtxt_kwargs)
         else:
             raise ValueError('fn_type must be mat or csv')
     for dat in dats:

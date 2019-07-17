@@ -65,7 +65,7 @@ class TestGPS(unittest.TestCase):
         self.assertTrue(np.allclose(np.arange(0, 20, 1), mock_kgc.call_args[0][4]))
 
         with self.assertRaises(ValueError):
-            gpslib.kinematic_gps_mat(dats, os.path.join(THIS_DIR, 'input_data', 'gps_control_badfields.mat'))
+            gpslib.kinematic_gps_mat(dats, os.path.join(THIS_DIR, 'input_data', 'gps_control_badfields.mat'), extrapolate=False)
 
     @patch('impdar.lib.gpslib.kinematic_gps_mat')
     @patch('impdar.lib.gpslib.kinematic_gps_csv')
