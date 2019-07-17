@@ -88,13 +88,6 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="checkBox">
-           <property name="text">
-            <string>Autopick</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QGroupBox" name="groupBox_3">
            <property name="minimumSize">
             <size>
@@ -156,7 +149,7 @@
         <property name="maximumSize">
          <size>
           <width>161</width>
-          <height>180</height>
+          <height>200</height>
          </size>
         </property>
         <property name="title">
@@ -227,6 +220,13 @@
              <string>bone</string>
             </property>
            </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_2">
+           <property name="text">
+            <string>Reverse colors</string>
+           </property>
           </widget>
          </item>
         </layout>

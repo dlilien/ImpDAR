@@ -7,11 +7,11 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-This is the overarching function that collects information about the processing steps we want to perform
+Define generic processing functions to ease calls from executables.
 """
+import numpy as np
 import os.path
 from .load import load
-import numpy as np
 from .gpslib import interp as interpdeep
 
 
@@ -175,8 +175,13 @@ def concat(radar_data):
 
     Parameters
     ----------
-    fns: list of strs
-        files to concatenate
+    radar_data: list of RadarData
+        Objects to concatenate
+
+    Returns
+    -------
+    RadarData
+        A single, concatenated output.
     """
     from copy import deepcopy
     # let's do some checks to make sure we are consistent here
@@ -196,6 +201,5 @@ def concat(radar_data):
     out.dist = np.hstack([dat.dist + dist for dat, dist in zip(radar_data, dists)])
     for attr in ['pressure', 'trig_level', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday', 'trace_int']:
         setattr(out, attr, np.hstack([getattr(dat, attr) for dat in radar_data]))
-    radar_data = [out]
-    print('Files concatenated')
-    return radar_data
+    print('Objects concatenated')
+    return [out]

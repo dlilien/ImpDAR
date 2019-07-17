@@ -13,6 +13,7 @@ Test the methods on the Pick object
 import os
 import unittest
 import numpy as np
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib import picklib, Picks, RadarData
 
 traces = np.random.random((300, 200))
@@ -20,9 +21,10 @@ traces = np.random.random((300, 200))
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class BareRadarData(RadarData.RadarData):
+class BareRadarData(NoInitRadarData):
 
     def __init__(self):
+        super(BareRadarData, self).__init__()
         self.dt = 1.0e-7
         self.data = traces
         self.picks = Picks.Picks(self)
@@ -51,8 +53,15 @@ class TestPickLib(unittest.TestCase):
         easy_pick_trace[107] = bpeak
         easy_pick_trace[95] = tpeak
         data = BareRadarData()
+        # do something ill-advised where we now have mismatched plength, scst, and FWW
         data.picks.pickparams.scst = 200
         data.picks.pickparams.FWW = 200
+        with self.assertRaises(ValueError):
+            picklib.packet_pick(traces[:, 0], data.picks.pickparams, 100)
+
+        # This should also be an error due to mismatched plength, scst, and FWW
+        data.picks.pickparams.scst = 2
+        data.picks.pickparams.FWW = 0
         with self.assertRaises(ValueError):
             picklib.packet_pick(traces[:, 0], data.picks.pickparams, 100)
 

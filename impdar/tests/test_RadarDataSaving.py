@@ -14,27 +14,12 @@ import os
 import unittest
 import numpy as np
 from impdar.lib.RadarData import RadarData
-from impdar.lib._RadarDataSaving import conversions_enabled
+from impdar.lib.NoInitRadarData import NoInitRadarData
+from impdar.lib.RadarData._RadarDataSaving import CONVERSIONS_ENABLED
 from impdar.lib.RadarFlags import RadarFlags
 from impdar.lib.Picks import Picks
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.array([[2, 2], [1, 1]])
-        # need to set this to avoid divide by zero later
-        self.elevation = np.zeros((2,))
-        self.lat = np.ones((2,)) * 89.
-        self.long = np.ones((2,))
-        self.dt = 0.1
-        self.tnum = self.data.shape[1]
-        self.snum = self.data.shape[0]
-        self.travel_time = 0.001 * np.arange(self.data.shape[0]) + 0.001
-        self.dt = 1
 
 
 class TestRadarDataSaving(unittest.TestCase):
@@ -77,7 +62,7 @@ class TestRadarDataSaving(unittest.TestCase):
         # We are going to create a really bad file (most info missing) and see if we recover it or get an error
         rd = NoInitRadarData()
         rd.save(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
-        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
+        RadarData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
 
     def tearDown(self):
         for fn in ['test_out.mat', 'test.shp', 'test.shx', 'test.prj', 'test.dbf']:
@@ -148,12 +133,12 @@ class TestRadarDataExports(unittest.TestCase):
         out_name, tout = rd._get_pick_targ_info('elev')
         self.assertEqual(out_name, 'elev')
 
-    @unittest.skipIf(not conversions_enabled, 'No GDAL on this version')
+    @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     def test_output_shp_nolayers(self):
         rd = NoInitRadarData()
         rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'))
 
-    @unittest.skipIf(not conversions_enabled, 'No GDAL on this version')
+    @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     def test_output_shp_picks(self):
         # Make sure that we are selecting the proper output format
         rd = NoInitRadarData()
@@ -175,7 +160,7 @@ class TestRadarDataExports(unittest.TestCase):
         # Check geometry
         rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs=3413)
 
-    @unittest.skipIf(conversions_enabled, 'Version has GDAL, just checking we fail without')
+    @unittest.skipIf(CONVERSIONS_ENABLED, 'Version has GDAL, just checking we fail without')
     def test_output_shp_nolayers_nogdal(self):
         rd = NoInitRadarData()
         with self.assertRaises(ImportError):

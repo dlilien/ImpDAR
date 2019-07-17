@@ -10,8 +10,9 @@
 class PickParameters():
     """Some information used for determining for picks
 
-    This object contains several things that you need to know in order to pick a radar layer, like the frequency of layers you are looking for or the size window in which to search
-    
+    This object contains several things that you need to know in order to pick a radar layer,
+    like the frequency of layers you are looking for or the size window in which to search
+
     Attributes
     ----------
     apickthresh: float
@@ -35,28 +36,36 @@ class PickParameters():
     radardata: `RadarData`
         A link back up to the RadarData object with which this is affiliated
     """
-    attrs = ['apickthresh', 'freq', 'dt', 'plength', 'FWW', 'scst', 'pol', 'apickflag', 'addpicktype']
+    attrs = ['apickthresh',
+             'freq',
+             'dt',
+             'plength',
+             'FWW',
+             'scst',
+             'pol',
+             'apickflag',
+             'addpicktype']
 
     def __init__(self, radardata, pickparams_struct=None):
         if pickparams_struct is not None:
             for attr in self.attrs:
                 setattr(self, attr, pickparams_struct[0][0][attr][0][0][0][0])
         else:
-            self.apickthresh = 10
             self.freq = 4
+            self.apickthresh = 10
             self.dt = radardata.dt
-            self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.dt)))
-            self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.dt))))
-            self.scst = int(round((self.plength - self.FWW) / 2))
             self.pol = 1
             self.apickflag = 1
             self.addpicktype = 'zero'
+
         self.radardata = radardata
+        self.freq_update(self.freq)
 
     def freq_update(self, freq):
         """Update the frequency at which we are looking
 
-        This is more complicated than just setting freq because other variables are a function of frequency and if not updated will break.
+        This is more complicated than just setting freq because other variables are a
+        function of frequency and if not updated will break.
 
         Parameters
         ----------
@@ -67,8 +76,23 @@ class PickParameters():
         self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
         self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
         self.scst = int(round((self.plength - self.FWW) / 2))
+        if self.plength < 3:
+            print('Warning: high freq compared to sampling rate. Forcing a minimum plength')
+            self.plength = 3
+        if self.FWW == 0:
+            self.FWW = 1
+
+        # Guard against tiny datasets in this check...
+        if self.plength > self.radardata.snum and self.radardata.snum >= 3:
+            print('Warning: Low freq compared to sampling rate. Forcing a maximum plength')
+            self.plength = self.radardata.snum
+            self.FWW = self.radardata.snum // 2
 
     def to_struct(self):
+        """Return attributes as a dictionary for saving
+
+        Guards against Nones so we can export to matlab
+        """
         mat = {}
         for attr in self.attrs:
             if getattr(self, attr) is not None:

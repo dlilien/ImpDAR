@@ -13,14 +13,14 @@ import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib._RadarDataSaving import conversions_enabled
+from impdar.lib.RadarData._RadarDataSaving import CONVERSIONS_ENABLED
+from impdar.lib.RadarData import RadarData
 
 try:
     import matplotlib
     matplotlib.use('QT5Agg')
-    from PyQt5 import QtCore, QtWidgets, QtGui
-    from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog
-    from PyQt5.QtTest import QTest
+    from PyQt5 import QtWidgets, QtCore
+    from impdar.gui.pickgui import InteractivePicker, VBPInputDialog, CropInputDialog, warn, plt
     app = QtWidgets.QApplication(sys.argv)
     qt = True
 except ImportError:
@@ -30,7 +30,6 @@ if sys.version_info[0] >= 3:
     from unittest.mock import MagicMock, patch
 else:
     from mock import MagicMock, patch
-from impdar.lib.RadarData import RadarData
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -77,6 +76,16 @@ class TestInteractivePicker(unittest.TestCase):
 
     def test_PickNum(self):
         self.ip.pickNumberBox.setValue(1)
+
+    def test_update_polarity(self):
+        self.assertEqual(self.ip.dat.picks.pickparams.pol, 1)
+        self.ip.wbw_radio.setChecked(True)
+        self.assertEqual(self.ip.dat.picks.pickparams.pol, -1)
+
+    def test_reverse_color(self):
+        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText()))
+        self.ip._update_color_reversal(QtCore.Qt.Checked)
+        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText() + '_r'))
 
     def test_select_lines_click(self):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
@@ -320,7 +329,7 @@ class TestInteractivePickerLoadingSaving(unittest.TestCase):
         os.remove(os.path.join(THIS_DIR, 'input_data', 'test.csv'))
 
     @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')
-    @unittest.skipIf(not conversions_enabled, 'No GDAL on this version')
+    @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     @patch('impdar.gui.pickgui.QFileDialog')
     def test_export_shp(self, patchqfd):
         patchqfd.getSaveFileName.return_value = (os.path.join(THIS_DIR, 'input_data', 'test.shp'), True)
@@ -371,14 +380,14 @@ class TestVBP(unittest.TestCase):
 
     def test_VBPInputDialog(self):
         vbp = VBPInputDialog()
-        vbp.clickOK()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (50, 250))
         self.assertTrue(vbp.accepted)
 
         vbp = VBPInputDialog()
         vbp.minspin.setValue(2)
         vbp.maxspin.setValue(298)
-        vbp.clickOK()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (2, 298))
         self.assertTrue(vbp.accepted)
 
@@ -386,8 +395,8 @@ class TestVBP(unittest.TestCase):
         vbp.minspin.setValue(299)
         vbp.maxspin.setValue(298)
         # click OK twice since we have bad lims
-        vbp.clickOK()
-        vbp.clickOK()
+        vbp._click_ok()
+        vbp._click_ok()
         self.assertTrue(vbp.lims == (297, 298))
         self.assertTrue(vbp.accepted)
 
@@ -397,7 +406,7 @@ class TestCrop(unittest.TestCase):
 
     def test_CropInputDialog(self):
         cid = CropInputDialog()
-        cid.clickOK()
+        cid._click_ok()
         self.assertTrue(cid.accepted)
 
         cid = CropInputDialog()
@@ -410,7 +419,7 @@ class TestCrop(unittest.TestCase):
         cid.inputtype.setCurrentText('depth')
         self.assertTrue(cid.spinnerlabel.text() == 'Cutoff in depth (m):')
 
-        cid.clickOK()
+        cid._click_ok()
         self.assertTrue(cid.accepted)
 
 

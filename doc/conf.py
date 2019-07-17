@@ -59,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'ImpDAR'
-copyright = '2018, David Lilien'
+copyright = '2019, David Lilien'
 author = 'David Lilien'
 
 # The version info for the project you're documenting, acts as replacement for

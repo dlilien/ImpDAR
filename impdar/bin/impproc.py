@@ -101,25 +101,26 @@ def _get_args():
 
 
 def add_simple_procparser(subparsers, name, helpstr, func, defname='proc'):
+    """Add a sub parser that can do a simple thing with no arguments"""
     parser = add_procparser(subparsers, name, helpstr, func, defname=defname)
     add_def_args(parser)
     return parser
 
 
 def add_procparser(subparsers, name, helpstr, func, defname='proc'):
+    """A wrapper around adding a subparser because we mostly want the same arguments"""
     parser = subparsers.add_parser(name, help=helpstr)
     parser.set_defaults(func=func, name=defname)
     return parser
 
 
 def add_def_args(parser):
+    """Set some default arguments common to the different processing types"""
     parser.add_argument('fns', type=str, nargs='+', help='The files to process')
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
-    parser.add_argument('-pe', action='store_true', help='Inputs are pulse ekko files')
-    parser.add_argument('-gssi', action='store_true', help='Inputs are gssi files')
-    parser.add_argument('-gprMax', action='store_true', help='Inputs are gprMax files')
-    parser.add_argument('-gecko', action='store_true', help='Inputs are gecko files')
-    parser.add_argument('-segy', action='store_true', help='Inputs are segy files')
+    parser.add_argument('--ftype', type=str, default='mat',
+                        help='Type of file to load (default ImpDAR mat)',
+                        choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
 
 
 def main():
@@ -129,20 +130,7 @@ def main():
         parser.parse_args(['-h'])
         return
 
-    if args.gssi and args.pe:
-        raise ValueError('Input cannot be both pulse-ekko and gssi')
-    if args.gssi:
-        radar_data = load('gssi', args.fns)
-    elif args.pe:
-        radar_data = load('pe', args.fns)
-    elif args.gprMax:
-        radar_data = load('gprMax', args.fns)
-    elif args.gecko:
-        radar_data = load('gecko', args.fns)
-    elif args.segy:
-        radar_data = load('segy', args.fns)
-    else:
-        radar_data = load('mat', args.fns)
+    radar_data = load(args.ftype, args.fns)
 
     if args.name == 'cat':
         radar_data = concat(radar_data)

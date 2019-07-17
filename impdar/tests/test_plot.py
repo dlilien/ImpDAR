@@ -14,31 +14,16 @@ import os
 import unittest
 import numpy as np
 from impdar.lib.RadarData import RadarData
+from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.Picks import Picks
 from impdar.lib import plot
 import matplotlib.pyplot as plt
 if sys.version_info[0] >= 3:
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
 else:
-    from mock import patch, MagicMock
+    from mock import patch
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.zeros((10, 20))
-        # need to set this to avoid divide by zero later
-        self.dt = 1
-        self.dist = np.arange(20)
-        self.lat = np.arange(20) * 2
-        self.long = np.arange(20) * 3
-        self.tnum = 20
-        self.trace_num = np.arange(self.tnum) + 1.
-        self.snum = 10
-        self.travel_time = np.arange(10)
 
 
 class DummyFig:
@@ -114,7 +99,7 @@ class TestPlotTraces(unittest.TestCase):
     
     def test_plot_traces(self):
         # Only checking that these do not throw errors
-        dat = NoInitRadarData()
+        dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_traces(dat, 0)
         fig, ax = plot.plot_traces(dat, [1, 1])
         fig, ax = plot.plot_traces(dat, [1, 18])
@@ -142,7 +127,7 @@ class TestPlotPower(unittest.TestCase):
     
     def test_plot_power(self):
         # Only checking that these do not throw errors
-        dat = NoInitRadarData()
+        dat = NoInitRadarData(big=True)
         with self.assertRaises(TypeError):
             fig, ax = plot.plot_power(dat, [12, 14])
         with self.assertRaises(ValueError):
@@ -166,7 +151,7 @@ class TestPlotRadargram(unittest.TestCase):
     
     def test_plot_radargram_figaxin(self):
         # Only checking that these do not throw errors
-        dat = NoInitRadarData()
+        dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_radargram(dat)
 
         fig, ax = plt.subplots()
@@ -179,7 +164,7 @@ class TestPlotPicks(unittest.TestCase):
     
     def test_plot_picks(self):
         # Only checking that these do not throw errors
-        dat = NoInitRadarData()
+        dat = NoInitRadarData(big=True)
 
         fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time)
 

@@ -18,15 +18,6 @@ from impdar.lib import process
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = np.array([[2, 2], [1, 1]])
-        # need to set this to avoid divide by zero later
-        self.dt = 1
-
-
 class TestRadarDataLoading(unittest.TestCase):
 
     def test_ReadSucceeds(self):
@@ -43,6 +34,7 @@ class TestRadarDataMethods(unittest.TestCase):
     def setUp(self):
         self.data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.data.x_coord = np.arange(40)
+        self.data.nmo_depth = None
         self.data.travel_time = np.arange(0, 0.2, 0.01)
         self.data.dt = 1.0e-8
         self.data.trig = 0.
@@ -185,8 +177,7 @@ class TestRadarDataMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.data.elev_correct()
         self.data.nmo(0, 2.0e6)
-        self.data.elev_correct(v=2.0e6)
-        new_rows_needed = np.where(self.data.elev[-1] > self.data.nmo_depth)[0][-1]
+        self.data.elev_correct(v_avg=2.0e6)
         self.assertTrue(self.data.data.shape == (27, 40))
 
     def test_constant_space(self):

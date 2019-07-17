@@ -10,33 +10,13 @@
 
 """
 
-import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import RadarData
-from impdar.lib.RadarFlags import RadarFlags
+from impdar.lib.NoInitRadarData import NoInitRadarDataFiltering as NoInitRadarData
 from impdar.lib import process
+from impdar.lib.ImpdarError import ImpdarError
 
 data_dummy = np.ones((500, 400))
-
-
-class NoInitRadarData(RadarData):
-    # This only exists so we can do tests on writing without reading
-
-    def __init__(self):
-        self.data = data_dummy.copy()
-        self.dt = 0.1
-        self.tnum = self.data.shape[1]
-        self.snum = self.data.shape[0]
-        self.travel_time = 0.001 * np.arange(self.data.shape[0]) + 0.001
-        self.dt = 0.001e-6
-        self.flags = RadarFlags()
-        self.hfilt_target_output = data_dummy * np.atleast_2d(1. - np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)).transpose()
-        pexp = np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)
-        pexp = pexp - pexp[-1]
-        pexp = pexp / np.max(pexp)
-        self.pexp_target_output = data_dummy * np.atleast_2d(1. - pexp).transpose()
-        self.ahfilt_target_output = np.zeros_like(data_dummy)
 
 
 class TestAdaptive(unittest.TestCase):
@@ -61,7 +41,10 @@ class TestHighPass(unittest.TestCase):
 
     def test_HighPass(self):
         radardata = NoInitRadarData()
-        radardata.highpass(1000.0, 1)
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+        radardata.highpass(1000.0)
         # There is no high-frequency variability, so this result should be small
         # We only have residual variability from the quality of the filter
         print(np.abs((radardata.data - radardata.data[0, 0]) / radardata.data[0, 0]))
@@ -69,9 +52,18 @@ class TestHighPass(unittest.TestCase):
 
     def test_HighPassBadcutoff(self):
         radardata = NoInitRadarData()
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
         with self.assertRaises(ValueError):
             # We have a screwed up filter here because of sampling vs. frequency used
-            radardata.highpass(1.0e-4, 100)
+            radardata.highpass(1.0e-4)
+
+    def test_HighPassNotspaced(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ImpdarError):
+            # We have a screwed up filter here because of sampling vs. frequency used
+            radardata.highpass(1000.0)
 
 
 class TestWinAvgHfilt(unittest.TestCase):

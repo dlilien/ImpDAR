@@ -18,7 +18,7 @@ from matplotlib.widgets import Slider
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scale='spectrum', gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -70,7 +70,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         figs = [plot_power(radar_data, power)]
     elif spectra != False:
         #call specdense() here
-        figs = [specdense(radar_data)]
+        figs = [specdense(radar_data, freq_limit, window, scale)]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -141,7 +141,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         x_range = (x_range[0], dat.tnum)
 
     lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]][~np.isnan(dat.data[:, x_range[0]:x_range[-1]])], (10, 90))
-    clims = [lims[0] * 2 if lims[0] < 0 else lims[0] / 2, lims[1] * 2]
 
     if fig is not None:
         if ax is None:
@@ -181,7 +180,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     if not return_plotinfo:
         return fig, ax
     else:
-        return im, xd, yd, x_range, clims
+        return im, xd, yd, x_range, lims
 
 
 def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
@@ -385,14 +384,14 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
 
 
 
-"""Make a plot of spectral density across all traces of a radar profile.
+"""Make a plot of power spectral density across all traces of a radar profile.
 
 
     Parameters
     ----------
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
-    ylimit: float
+    freq_limit: float
         The maximum frequency (in MHz) to limit the y-axis to
 
     For further information on the 'window' and 'scale' parameters, please see:
@@ -415,7 +414,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Axes that were plotted upon
     """
 
-def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None, **kwargs):
+def specdense(dat, freq_limit, window, scale, fig=None, ax=None, **kwargs):
     
     dat = dat[0]
 
@@ -468,25 +467,22 @@ def specdense(dat, ylimit=None, window=None, scale='spectrum', fig=None, ax=None
     cbar = plt.colorbar(p, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
     cbar.set_label(cbarlabel)
 
-    if ylimit is not None:
-        if np.logical_or(ylimit <= 0, ylimit > np.max(y)):
-            raise ValueError('Y-axis limit {} MHz not found in frequencies.'.format(ylimit))
+    #check to make sure freq_limit is not <= 0 or more than the largest frequency
+    if freq_limit is not None:
+        if np.logical_or(freq_limit <= 0, freq_limit > np.max(y)):
+            raise ValueError('Y-axis limit {} MHz not found in frequencies.'.format(freq_limit))
             return
-    #check to make sure ylimit is not <= 0 or more than the largest frequency
-    if ylimit is not None:
-        if np.logical_or(ylimit <= 0, ylimit > np.max(freqs)):
-            raise ValueError('Y-axis limit {} not found in frequencies.'.format(ylimit))
 
-        #limit y-axis ylimit, maximum power output
+        #limit y-axis to freq_limit, maximum power output
         #else, no need to do anything
-        ax.set_ylim(0, ylimit)
+        ax.set_ylim(0, freq_limit)
 
     #add x and y labels
     ax.set_xlabel('Trace Number')
     ax.set_ylabel('Frequency (MHz)')
 
     #set title
-    title = 'Spectral Density as a Function of Trace Number and Frequency'
+    title = 'Power Spectral Density as a Function of Trace Number and Frequency'
 
     #add space between the title and the plot
     ax.set_title(title, pad=20)

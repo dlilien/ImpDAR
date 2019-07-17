@@ -1,6 +1,6 @@
 # ImpDAR: an impulse radar processor
 
-[![Build Status](https://travis-ci.org/dlilien/ImpDAR.svg?branch=master)](https://travis-ci.org/dlilien/ImpDAR) [![Coverage Status](https://coveralls.io/repos/github/dlilien/ImpDAR/badge.svg?branch=master)](https://coveralls.io/github/dlilien/ImpDAR?branch=master)
+[![DOI](https://zenodo.org/badge/134008583.svg)](https://zenodo.org/badge/latestdoi/134008583) [![Build Status](https://travis-ci.org/dlilien/ImpDAR.svg?branch=master)](https://travis-ci.org/dlilien/ImpDAR) [![Coverage Status](https://coveralls.io/repos/github/dlilien/ImpDAR/badge.svg?branch=master)](https://coveralls.io/github/dlilien/ImpDAR?branch=master)
 
 ImpDAR is a suite of processing and interpretation tools for impulse radar (targeted for ice-penetrating radar applications but usable for ground-penetrating radar as well). The core processing steps and general terminology come from of the St. Olaf Deep Radar processor, but everything is re-written in python and significant improvements to speed, readability, documentation, and interface have been made across the board. However, this code has a lot of history of contributors--I've tried to preserve acknowledgment of many of them in the file headers. ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, GSSI, PulseEKKO, GPRMax, Gecko, and SEGY files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The integrated migration routines are in development but Stolt is working.
 
@@ -18,7 +18,7 @@ In addition to processing, ImpDAR can also be used for interpreting the radargra
 
 ## Documentation
 
-Documentation of the various processing steps is [here](http://dlilien.github.io/ImpDAR). Examples are gradually being added to the documentation.
+Documentation of the various processing steps is [here](https://impdar.readthedocs.io/en/latest/). Examples are gradually being added to the documentation.
 
 ## Installation
 

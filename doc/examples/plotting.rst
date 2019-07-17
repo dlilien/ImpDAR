@@ -31,7 +31,7 @@ This command is used to look at the variability in reflected power in space. You
 
 API
 ===
-There are several reasons you might want to use an API call rather than :code:`impplot`: perhaps want to modify the output, perhaps by annotating it or plotting on top of it; you may want to put a panel made by ImpDAR in a figure with other subplots; or maybe you just need to have multiple panels plotted by ImpDAR. Regardless, in these cases I would recommend loading up the data then using the explicit plotting functions in :doc:`the plotting library<\../lib/plot>`. I'll just give an example of a several-panel plot with all panels produced through ImpDAR. Say you want to make a 3-panel plot showing two profiles and the power returned from both. You could use
+There are several reasons you might want to use an API call rather than :code:`impplot`: perhaps want to modify the output, perhaps by annotating it or plotting on top of it; you may want to put a panel made by ImpDAR in a figure with other subplots; or maybe you just need to have multiple panels plotted by ImpDAR. Regardless, in these cases I would recommend loading up the data then using the explicit plotting functions in :doc:`the plotting library<\../lib/Plotting>`. I'll just give an example of a several-panel plot with all panels produced through ImpDAR. Say you want to make a 3-panel plot showing two profiles and the power returned from both. You could use
 
 .. code-block:: python
 
