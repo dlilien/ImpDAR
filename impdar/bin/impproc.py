@@ -82,6 +82,7 @@ def _get_args():
     parser_interp.add_argument('--gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat. Default is None--use associated (presumably non-precision) GPS', default=None)
     parser_interp.add_argument('--offset', type=float, default=0.0, help='Offset from GPS time to radar time')
     parser_interp.add_argument('--minmove', type=float, default=1.0e-2, help='Minimum movement to not be stationary')
+    parser_interp.add_argument('--extrapolate', action='store_true', help='Extrapolate GPS data beyond bounds')
     add_def_args(parser_interp)
 
     # Migration
@@ -203,8 +204,8 @@ def agc(dat, window=50, scale_factor=50, **kwargs):
     dat.agc(window=window, scaling_factor=scale_factor)
 
 
-def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, **kwargs):
-    interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove)
+def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False, **kwargs):
+    interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove, extrapolate=extrapolate)
 
 
 def mig(dat, mtype='stolt', **kwargs):

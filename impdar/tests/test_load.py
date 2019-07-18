@@ -58,9 +58,10 @@ class TestLoad(unittest.TestCase):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')))
 
+    @unittest.skipIf(sys.version_info[0] < 3, 'FileNotFoundError not in 2')
     def test_load_and_exiterror(self):
-        # We are blocking multiple outputs with o kwarg
-        with self.assertRaises(ValueError):
+        # We dont have an output folder
+        with self.assertRaises(FileNotFoundError):
             load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
 
     def test_common_start(self):

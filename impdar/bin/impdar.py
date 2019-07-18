@@ -93,7 +93,7 @@ def _get_args():
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)
-    parser_convert.add_argument('fn', type=str, nargs='+', help='File(s) to convert')
+    parser_convert.add_argument('fns_in', type=str, nargs='+', help='File(s) to convert')
     parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
     parser_convert.add_argument('-in_fmt', type=str, default=None,
                                 choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko', 'segy', 'mcords_nc', 'mcords_mat'],

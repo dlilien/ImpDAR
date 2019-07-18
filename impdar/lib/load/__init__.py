@@ -99,23 +99,25 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
         fns_in = [fns_in]
     dat = load(filetype, fns_in, channel=channel)
 
-    if 'o' in kwargs and kwargs['o'] is not None:
-        fn_out = kwargs['o']
-        if len(dat) > 1:
-            raise ValueError('Cannot specify output with multiple inputs. Quitting without saving')
-        dat[0].save(fn_out)
-    elif filetype == 'gecko' and len(fns_in) > 1:
+    if filetype == 'gecko' and len(fns_in) > 1:
         f_common = fns_in[0]
         for i in range(1, len(fns_in)):
             f_common = _common_start(f_common, fns_in[i]).rstrip('[')
         fn_out = os.path.splitext(f_common)[0] + '_raw.mat'
+        if 'o' in kwargs and kwargs['o'] is not None:
+            fn_out = os.path.join(kwargs['o'], os.path.split(fn_out)[-1])
         dat[0].save(fn_out)
+    elif 'o' in kwargs and kwargs['o'] is not None:
+        if len(fns_in) > 1:
+            for d_i, f_i in zip(dat, fns_in):
+                fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(f_i)[0] + '_raw.mat')[-1])
+                d_i.save(fn_out)
+        else:
+            fn_out = kwargs['o']
+            dat[0].save(fn_out)
     else:
         for d_i, f_i in zip(dat, fns_in):
-            if f_i[-3:] == 'g00':
-                fn_out = os.path.splitext(f_i)[0] + '_g00_raw.mat'
-            else:
-                fn_out = os.path.splitext(f_i)[0] + '_raw.mat'
+            fn_out = os.path.splitext(f_i)[0] + '_raw.mat'
             d_i.save(fn_out)
 
 
