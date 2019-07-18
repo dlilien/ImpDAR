@@ -9,8 +9,9 @@
 """
 Define generic processing functions to ease calls from executables.
 """
-import numpy as np
 import os.path
+import numpy as np
+
 from .load import load
 from .gpslib import interp as interpdeep
 
@@ -60,7 +61,7 @@ def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
                 bn = os.path.split(os.path.splitext(f)[0])[1]
                 if bn[-4:] == '_raw':
                     bn = bn[:-4]
-                out_fn = kwargs['o'] + '/' + bn + '_proc.mat'
+                out_fn = os.path.join(kwargs['o'], bn + '_proc.mat')
                 d.save(out_fn)
         else:
             out_fn = kwargs['o']
