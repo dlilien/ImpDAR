@@ -22,6 +22,11 @@ class Dummy(unittest.TestCase):
     def test_load(self):
         load_gprMax.load_gprMax(os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
 
+    def tearDown(self):
+        fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan_raw.mat')
+        if os.path.exists(fn):
+            os.path.remove(fn)
+
 
 if __name__ == '__main__':
     unittest.main()

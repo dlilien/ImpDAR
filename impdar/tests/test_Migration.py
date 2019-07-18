@@ -114,6 +114,11 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
+    def tearDown(self):
+            for suff in ['PhaseShiftLateral', 'PhaseShiftConstant', 'PhaseShiftVariable', 'Kirchoff', 'Stolt']:
+                if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat')):
+                    os.remove(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat'))
+
 
 if __name__ == '__main__':
     unittest.main()

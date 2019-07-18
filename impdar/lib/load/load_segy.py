@@ -19,6 +19,7 @@ try:
 except ImportError:
     SEGY = False
 
+
 def load_segy(fn_sgy, *args, **kwargs):
     """Load segy data. This is very generic for now,
     need to do work if there are particular types of segy files that need to be read"""
@@ -32,7 +33,7 @@ def load_segy(fn_sgy, *args, **kwargs):
         segy_data.f.trace[where_good[0]:where_good[-1] + 1]).transpose()
     segy_data.snum = segy_data.f.bin[segyio.BinField.Samples]
     segy_data.tnum = segy_data.data.shape[1]
-    segy_data.dt = segy_data.f.bin[segyio.BinField.Interval]
+    segy_data.dt = segy_data.f.bin[segyio.BinField.Interval] * 1.0e-12
     segy_data.travel_time = np.arange(segy_data.snum) * segy_data.dt * 1.0e6
     segy_data.trace_num = np.arange(segy_data.data.shape[1]) + 1
     segy_data.flags = RadarFlags()

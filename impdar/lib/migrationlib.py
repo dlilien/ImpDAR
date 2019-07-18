@@ -31,8 +31,7 @@ from scipy.interpolate import griddata, interp2d, interp1d
 import subprocess
 import os
 
-
-def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
+def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwargs):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
@@ -69,7 +68,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
     max_travel_time = np.max(tt_sec)
-        
+
     # Cache the depths
     zs = vel * tt_sec
     zs2 = zs**2.
@@ -136,24 +135,23 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     # save the start time
     start = time.time()
     # taper
-    for i in range(dat.snum):
-        for j in range(dat.tnum):
-            if i > vtaper and i < dat.snum-vtaper:
-                vamp = 1.
-            else:
-                vamp = np.min([i,dat.snum-i])/vtaper
-            if j > htaper and j < dat.tnum-htaper:
-                hamp = 1.
-            else:
-                hamp = np.min([j,dat.tnum-j])/htaper
-            dat.data[i,j] *= vamp*hamp
-
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
     ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
     # get the horizontal wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(dat.trace_int))
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
     interp_real = interp2d(kx,ws,FK.real)
     interp_imag = interp2d(kx,ws,FK.imag)
@@ -194,11 +192,11 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     return dat
 
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
     """
 
     Phase-Shift Migration
-    case with velocity, v=constant (Gazdag 1978, Geophysics)
+    case with constant velocity, v=constant (Gazdag 1978, Geophysics)
     case with layered velocities, v(z) (Gazdag 1978, Geophysics)
     case with vertical and lateral velocity variations, v(x,z) (Ristow and Ruhl 1994, Geophysics)
 
@@ -221,7 +219,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
         Array structure is velocities in first column, z location in second, x location in third.
         If uniform velocity (i.e. vel=constant) input constant
         If layered velocity (i.e. vel=v(z)) input array with shape (#vel-points, 2) (i.e. no x-values)
-    vel_fn: filename for layered velocity input
+    vel_fn: filename for layered velocity input, .txt file with columns for v, x, z
 
     Output
     ---------
@@ -236,23 +234,21 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     # save the start time
     start = time.time()
     # taper
-    for i in range(dat.snum):
-        for j in range(dat.tnum):
-            if i > vtaper and i < dat.snum-vtaper:
-                vamp = 1.
-            else:
-                vamp = np.min([i,dat.snum-i])/vtaper
-            if j > htaper and j < dat.tnum-htaper:
-                hamp = 1.
-            else:
-                hamp = np.min([j,dat.tnum-j])/htaper
-            dat.data[i,j] *= vamp*hamp
-
-
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
     # pad the array with zeros up to the next power of 2 for discrete fft
     nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
-    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(dat.trace_int))
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(trace_int))
     ws = 2.*np.pi*np.fft.fftfreq(nt,d=dat.dt)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(nt,dat.tnum))
@@ -262,19 +258,88 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
             vel = np.genfromtxt(vel_fn)
             print('Velocities loaded from %s.'%vel_fn)
         except:
-            raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat.'%vel_fn)
+            raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat to txt file.'%vel_fn)
     vmig = getVelocityProfile(dat,vel)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     TK = phaseShift(dat, vmig, vel, kx, ws, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
     dat.data = np.fft.ifft(TK).real
     # print the total time
+    print('')
     print('Phase-Shift Migration of %.0fx%.0f matrix complete in %.2f seconds'
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,ltaper=100):
+def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
+    """
+
+    Time-Wavenumber Migration
+
+    The migration is a reverse time migration in the (t,k) domain. In the
+    first step, the data g(t,x) are Fourier transformed x->k into
+    the time-wavenumber domain g(t,k).
+    Then looping over wavenumbers, the data are then reverse-time
+    finite-difference migrated, wavenumber by wavenumber.  The resulting
+    migrated data m(tau,k), now in the tau (migrated time) and k domain,
+    are inverse fourier transformed back into m(tau,xout) and written out.
+
+    **
+    The foundation of this script was taken from:
+    Seis Unix script sumigtk.c, Credits: CWP Dave Hale, November 5th, 1990
+    **
+
+    Parameters
+    ---------
+    dat: data as a class in the ImpDAR format
+    vel: v(x,z)
+        Up to 2-D array with three columns for velocities (m/s), and z/x (m).
+        Array structure is velocities in first column, z location in second, x location in third.
+        If uniform velocity (i.e. vel=constant) input constant
+        If layered velocity (i.e. vel=v(z)) input array with shape (#vel-points, 2) (i.e. no x-values)
+    vel_fn: filename for layered velocity input, .txt file with columns for v, x, z
+
+    Output
+    ---------
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
+
+    """
+    print('Time-Wavenumber Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    # check that the arrays are compatible
+    _check_data_shape(dat)
+
+    # save the start time
+    start = time.time()
+    # taper
+    h = np.minimum(np.arange(dat.tnum),np.arange(dat.tnum)[::-1])/htaper
+    v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
+    h[h>1.] = 1.
+    v[v>1.] = 1.
+    H,V = np.meshgrid(h,v)
+    dat.data *= H*V
+    # get wavenumbers
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum,d=np.mean(trace_int))
+    # 1D Forward Fourier Transform to get data in time-wavenumber space, TK = D(kx,z=0,ts)
+
+    # Loop over wavenumbers for reverse time migration
+    for k in kx:
+        continue
+
+    # 1D Inverse Fourier Transform to get data back into migrated time-distance space
+
+    # print the total time
+    print('')
+    print('Time-Wavenumber Migration of %.0fx%.0f matrix complete in %.2f seconds'
+          %(dat.tnum,dat.snum,time.time()-start))
+    return dat
+
+
+def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,nz=1,dz=1,*args,**kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -316,28 +381,41 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,nearfield=False,sutype='sumigtk
     except:
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 
-    segy_name = os.path.splitext(dat.fn)[0]
-    dx = np.mean(dat.trace_int)
-    nxpad = 10
-    ltaper = 10
-
-    if sutype == 'sumigtk':
-        subprocess.run(['segyread tape='+segy_name+'.segy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel/1e6)+\
-                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(ltaper)+' dxcdp='+str(dx)+\
-                        ' > '+segy_name+'_migtk.su'],shell=True)
+    # Get the trace spacing
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
     else:
-        raise ValueError('The SeisUnix migration routine', sutype,
-        'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+        trace_int = dat.trace_int
+    dx = np.mean(trace_int)
 
-    subprocess.run(['sustrip < '+segy_name+'_migtk.su > '+segy_name+'_migtk.bin'],shell=True)
-    # qclip
-    #~,~ = unix(['sustrip < ' mname{n} ' > ' mname{n2}])
-    # read segy and convert to impdar data format
-    #dat.data = migdata_s
+    ### Do the migration through the command line
+    segy_name = os.path.splitext(dat.fn)[0]
+    # Time Wavenumber
+    if sutype == 'sumigtk':
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
+                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
+                        ' > '+segy_name+'_migtk.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_migtk.sgy > '+segy_name+'_mig.bin'],shell=True)
+    # Fourier Finite Difference
+    elif sutype == 'sumigffd':
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigffd vfile='+vel_fn+\
+                        ' nz='+str(nz)+' dz='+str(dz)+' dt='+str(dat.dt*1e-6)+' dx='+str(dx)+\
+                        ' > '+segy_name+'_migffd.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_migffd.sgy > '+segy_name+'_mig.bin'],shell=True)
+    # Stolt
+    elif sutype == 'sustolt':
+        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sustolt tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
+                        ' verbose='+str(verbose)+'lstaper='+str(htaper)+' lbtaper='+str(vtaper)+\
+                        ' dxcdp='+str(dx)+' cdpmin='+str(0)+' cdpmax='+str(dat.tnum)+\
+                        ' > '+segy_name+'_stolt.sgy'],shell=True)
+        subprocess.run(['sustrip < '+segy_name+'_stolt.sgy > '+segy_name+'_mig.bin'],shell=True)
 
-    #eval(['!rm ' mname{3} ' ' mname{4} ' *.sgy binary header'])
+    else:
+         raise ValueError('The SeisUnix migration routine', sutype,
+            'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
-    return dat
+    return
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -417,11 +495,12 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             print('1-D velocity structure, Gazdag Migration')
             print('Velocities (m/s): %.2e',vels_in[:,0])
             print('Depths (m):',vels_in[:,1])
+            print('Travel Times ($\mu$ sec):',dat.travel_time)
         # iterate through all output travel times
         for itau in range(dat.snum):
             tau = dat.travel_time[itau]/1e6
-            if itau%10 == 0:
-                print('Time %.2e of %.2e' %(tau,dat.travel_time[-1]/1e6))
+            if itau%100 == 0:
+                print('Time %.2e, ' %(tau),end='')
             # iterate through all frequencies
             for iw in range(len(ws)):
                 w = ws[iw]
