@@ -58,6 +58,7 @@ class TestLoad(unittest.TestCase):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')))
 
+    @unittest.skipIf(sys.version_info[0] < 3, 'FileNotFoundError not in 2')
     def test_load_and_exiterror(self):
         # We dont have an output folder
         with self.assertRaises(FileNotFoundError):
