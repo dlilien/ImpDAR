@@ -25,7 +25,7 @@ def _get_args():
     parser_load.set_defaults(func=load.load_and_exit)
     parser_load.add_argument('filetype', type=str,
                              help='Type of file',
-                             choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
+                             choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords_nc', 'mcords_mat'])
     parser_load.add_argument('fns_in', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1,
                              help='Receiver channel to load, \
@@ -96,7 +96,7 @@ def _get_args():
     parser_convert.add_argument('fns_in', type=str, nargs='+', help='File(s) to convert')
     parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
     parser_convert.add_argument('-in_fmt', type=str, default=None,
-                                choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko', 'segy', 'mcords'],
+                                choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko', 'segy', 'mcords_nc', 'mcords_mat'],
                                 help='Input format type. If none, guess from extension')
     parser_convert.add_argument('-t_srs', type=int, default=4326,
                                 help='Target spatial reference system (only used if out_fmt==shp). \
