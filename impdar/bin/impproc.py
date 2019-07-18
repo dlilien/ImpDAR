@@ -97,7 +97,7 @@ def _get_args():
     parser_mig.add_argument('--nxpad', type=int, default=100, help='Number of traces to pad with zeros for FFT')
     parser_mig.add_argument('--tmig', type=int, default=0, help='Times for velocity profile')
     parser_mig.add_argument('--verbose', type=int, default=1, help='Print output from SeisUnix migration')
-    parser_mig.add_argument('--sutype', type=str, default='sumigtk', choices=['sustolt','sumigtk','sumigffd'], help='Migration command for SeisUnix')
+    parser_mig.add_argument('--sutype', type=str, default='sumigtk', choices=['sustolt', 'sumigtk', 'sumigffd'], help='Migration command for SeisUnix')
     add_def_args(parser_mig)
 
     return parser

@@ -12,11 +12,7 @@ Define processing steps for Radar Data. These are all instance methods.
 
 import numpy as np
 from scipy.interpolate import interp1d
-# from ._RadarData import RadarData
 
-
-# class RadarDataProcessing(RadarData):
-#     """Processing for radar data"""
 
 def reverse(self):
     """Reverse radar data
@@ -43,6 +39,7 @@ def reverse(self):
     else:
         print('Profile direction reversed')
         self.flags.reverse = True
+
 
 def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     """Normal move-out correction.
@@ -152,6 +149,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
 
+
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     """Crop the radar data in the vertical. We can take off the top or bottom.
 
@@ -226,6 +224,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(
         int(self.flags.crop[1]), int(self.flags.crop[2])))
 
+
 def restack(self, traces):
     """Restack all relevant data to the given number of traces.
 
@@ -269,6 +268,7 @@ def restack(self, traces):
         setattr(self, var, val)
     self.flags.restack = True
 
+
 def rangegain(self, slope):
     """Apply a range gain.
 
@@ -285,6 +285,7 @@ def rangegain(self, slope):
             gain = self.travel_time[int(trig) + 1:] * slope
             self.data[int(trig) + 1:, i] *= gain
     self.flags.rgain = True
+
 
 def agc(self, window=50, scaling_factor=50):
     """Try to do some automatic gain control
@@ -310,6 +311,7 @@ def agc(self, window=50, scaling_factor=50):
     maxamp[maxamp == 0] = 1.0e-6
     self.data *= (scaling_factor / np.atleast_2d(maxamp).transpose()).astype(self.data.dtype)
     self.flags.agc = True
+
 
 def constant_space(self, spacing, min_movement=1.0e-2):
     """Restack the radar data to a constant spacing.
@@ -359,6 +361,7 @@ def constant_space(self, spacing, min_movement=1.0e-2):
         self.flags.interp = np.ones((2,))
         self.flags.interp[1] = spacing
 
+
 def elev_correct(self, v_avg=1.69e8):
     """Move the surface down in the data array to account for surface elevation.
 
@@ -403,4 +406,3 @@ def elev_correct(self, v_avg=1.69e8):
     self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz_avg),
                                 np.min(self.elev) - self.nmo_depth))
     self.flags.elev = 1
-

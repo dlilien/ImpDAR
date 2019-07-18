@@ -427,7 +427,7 @@ def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
     elif mtype == 'tk':
         migrationlib.migrationTimeWavenumber(self, **kwargs)
     elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, **kwargs)
+        migrationlib.migrationSeisUnix(self, sutype=sutype, **kwargs)
     else:
         raise ValueError('Unrecognized migration routine')
 

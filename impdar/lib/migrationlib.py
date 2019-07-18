@@ -343,10 +343,10 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose
 
     Migration through Seis Unix. For now only three options:
     ---------
-    1) SUMIGTK - Migration via T-K domain method for common-midpoint stacked data
-    2) SUMIGFFD - Fourier finite difference migration for zero-offset data. This method is a hybrid
+    1) sumigtk - Migration via T-K domain method for common-midpoint stacked data
+    2) sugffd - Fourier finite difference migration for zero-offset data. This method is a hybrid
                 migration which combines the advantages of phase shift and finite difference migrations.
-    3) SUSTOLT - Stolt migration for stacked data or common-offset gathers
+    3) sustolt - Stolt migration for stacked data or common-offset gathers
 
 
     Parameters
@@ -398,6 +398,8 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose
         subprocess.run(['sustrip < '+segy_name+'_migtk.sgy > '+segy_name+'_mig.bin'],shell=True)
     # Fourier Finite Difference
     elif sutype == 'sumigffd':
+        if vel_fn is None:
+            raise ValueError('vel_fn needed for gffd')
         subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigffd vfile='+vel_fn+\
                         ' nz='+str(nz)+' dz='+str(dz)+' dt='+str(dat.dt*1e-6)+' dx='+str(dx)+\
                         ' > '+segy_name+'_migffd.sgy'],shell=True)
