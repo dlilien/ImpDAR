@@ -149,7 +149,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         fig, ax = plt.subplots(figsize=(12, 8))
 
     if hasattr(dat.flags, 'elev') and dat.flags.elev:
-        yd = dat.elevation
+        yd = dat.elev
         ax.set_ylabel('Elevation (m)')
     else:
         ax.invert_yaxis()
