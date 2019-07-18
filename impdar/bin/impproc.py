@@ -118,7 +118,7 @@ def add_def_args(parser):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
     parser.add_argument('--ftype', type=str, default='mat',
                         help='Type of file to load (default ImpDAR mat)',
-                        choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
+                        choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords_nc', 'mcords_mat'])
 
 
 def main():
