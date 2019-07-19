@@ -89,6 +89,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.dat = dat
         #: a numpy.ndarray 5xtnum containing the lines, twtt, and reflector power
         self.current_pick = None
+        self._pick_ind = 0
 
         # For loading cross profiles, we want to use multiple symbols
         self.cross_profile = 0
@@ -353,6 +354,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _save_cancel_close(self, event):
         dialog = QMessageBox()
         dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Close | QMessageBox.Cancel)
+        dialog.setText('Unsaved data')
+        dialog.setInformativeText('Changes will be lost if closed')
         result = dialog.exec_()
         if result == QMessageBox.Cancel:
             print(result, QMessageBox.Cancel)

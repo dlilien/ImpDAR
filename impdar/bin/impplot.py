@@ -14,7 +14,6 @@
 #       3)  Added call for new batchdeep.m shell - B. Youngblood 7/12/08
 
 import argparse
-from matplotlib.pyplot import show
 from impdar import plot
 
 

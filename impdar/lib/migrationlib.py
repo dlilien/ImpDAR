@@ -338,7 +338,19 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*a
     return dat
 
 
-def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,nz=1,dz=1,*args,**kwargs):
+def migrationSeisUnix(dat,
+                      vel=1.69e8,
+                      vel_fn=None,
+                      sutype='sumigtk',
+                      tmig=0,
+                      verbose=1,
+                      nxpad=100,
+                      htaper=100,
+                      vtaper=1000,
+                      nz=1,
+                      dz=1,
+                      *args,
+                      **kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -376,7 +388,7 @@ def migrationSeisUnix(dat,vel=1.69e8,vel_fn=None,sutype='sumigtk',tmig=0,verbose
 
     try:
         print('Using SeisUnix migration routine at:')
-        subprocess.run(['which',sutype])
+        subprocess.run(['which', sutype])
     except:
         raise Exception('Cannot find chosen SeisUnix migration routine,', sutype,'. Either install or choose a different migration routine.')
 

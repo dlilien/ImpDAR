@@ -24,13 +24,13 @@ class Picks():
     samp1: nsamp x tnum array
         Min/max above the center of each pick. A new row is added for each new pick.
     samp2: nsamp x tnum array
-        Min/max at the center of each pick. A new row is added for each new pick.
+        Max/min at the center of each pick. A new row is added for each new pick.
     samp3: nsamp x tnum array
-        Min/max below the center of each pick. A new row is added for each new pick.
+        Max/min below the center of each pick. A new row is added for each new pick.
     time: nsamp x tnum array
         In StoDeep used to contain TWTT samp2. Since this is redundant I'm deptrecating it, and it will be zeros for impdar processed data.
     power: nsamp x tnum array
-        Power across a pick.
+        Power across a pick. To get this in decibels, you need to take 10. * np.log10(power)
     picknums: list of length nsamp
         The number of each pick.
     lasttrace: impdar.lib.LastTrace.LastTrace

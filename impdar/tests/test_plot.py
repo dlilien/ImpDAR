@@ -183,5 +183,53 @@ class TestPlotPicks(unittest.TestCase):
             fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'])
 
 
+class TestPlotSpectral(unittest.TestCase):
+    def test_plot_specdense(self):
+        # Only checking that these do not throw errors
+        dat = NoInitRadarData(big=True)
+
+        dat.picks = Picks(dat)
+        dat.picks.samp1 = np.ones((2, len(dat.lat)))
+        dat.picks.samp2 = np.ones((2, len(dat.lat)))
+        dat.picks.samp3 = np.ones((2, len(dat.lat)))
+
+        fig, ax = plot.plot_specdense(dat, 3.0e-7)
+        plot.plot_specdense(dat, 3.0e-7, fig=fig)
+        plot.plot_specdense(dat, 3.0e-7, fig=fig, ax=ax)
+        plot.plot_specdense(dat, 3.0e-7, window='hamming')
+        plot.plot_specdense(dat, 3.0e-7, scaling='density')
+
+        # freq too low
+        with self.assertRaises(ValueError):
+            plot.plot_specdense(dat, -100)
+
+        with self.assertRaises(ValueError):
+            plot.plot_specdense(dat, 3.0e-7, scaling='dummy')
+
+        with self.assertRaises(ValueError):
+            plot.plot_specdense(dat, 3.0e-7, window='dummy')
+
+
+    @unittest.skipIf(sys.version_info[0] < 3, 'Att error on 2')
+    def test_failure_3(self):
+        dat = NoInitRadarData(big=True)
+        dat.picks = Picks(dat)
+        dat.picks.samp1 = np.ones((2, len(dat.lat)))
+        dat.picks.samp2 = np.ones((2, len(dat.lat)))
+        dat.picks.samp3 = np.ones((2, len(dat.lat)))
+        with self.assertRaises(TypeError):
+            plot.plot_specdense(dat, 'bad')
+
+    @unittest.skipIf(sys.version_info[0] >= 3, 'Type error on 3')
+    def test_failure_3(self):
+        dat = NoInitRadarData(big=True)
+        dat.picks = Picks(dat)
+        dat.picks.samp1 = np.ones((2, len(dat.lat)))
+        dat.picks.samp2 = np.ones((2, len(dat.lat)))
+        dat.picks.samp3 = np.ones((2, len(dat.lat)))
+        with self.assertRaises(AttributeError):
+            plot.plot_specdense(dat, 'bad')
+
+
 if __name__ == '__main__':
     unittest.main()

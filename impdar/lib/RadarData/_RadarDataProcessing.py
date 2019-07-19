@@ -71,7 +71,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     # calculate travel time of air wave
     tair = ant_sep / uair
 
-    if np.round(tair / self.dt) > self.trig:
+    if np.round(tair / self.dt) > np.mean(self.trig):
         self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
         nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
         self.snum = nmodata.shape[0]
@@ -256,10 +256,12 @@ def restack(self, traces):
                          'decday']
     oned_newdata = {key: np.zeros((tnum, )) for key in oned_restack_vars}
     for j in range(tnum):
-        stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])], axis=1)
+        stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],
+                              axis=1)
         trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
         for var, val in oned_newdata.items():
-            val[j] = np.mean(getattr(self, var)[j * traces:min((j + 1) * traces, self.data.shape[1])])
+            val[j] = np.mean(getattr(self, var)[j * traces:
+                                                min((j + 1) * traces, self.data.shape[1])])
     self.tnum = tnum
     self.data = stack
     self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -354,6 +356,8 @@ def constant_space(self, spacing, min_movement=1.0e-2):
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
     self.dist = new_dists
+    self.trace_int = np.hstack((np.array(np.nanmean(np.diff(self.dist))),
+                                np.diff(self.dist))) * 1000.
     try:
         self.flags.interp[0] = 1
         self.flags.interp[1] = spacing
