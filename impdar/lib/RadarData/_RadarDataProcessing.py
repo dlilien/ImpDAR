@@ -72,7 +72,10 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     tair = ant_sep / uair
 
     if np.round(tair / self.dt) > np.mean(self.trig):
-        self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
+        if isinstance(self.trig, (int, float)):
+            self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
+        else:
+            self.trig = int(np.mean(np.round(1.1 * np.round(tair / self.dt))))
         nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
         self.snum = nmodata.shape[0]
     else:
@@ -85,7 +88,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     #  (Note: trig is the air wave arrival)
     # Switched from rounding whole right side to just rounding (tair/dt)
     #    -L. Smith, 6/16/03
-    nair = int((self.trig) - np.round(tair / self.dt))
+    nair = int(np.mean((self.trig) - np.round(tair / self.dt)))
 
     # calculate sample location for direct ice wave arrival
     # switched from rounding whole right side to just rounding (tice/dt)

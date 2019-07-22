@@ -17,6 +17,7 @@ Mar 12 2019
 import os
 import unittest
 import numpy as np
+import subprocess as sp
 
 from impdar.lib import migrationlib
 from impdar.lib.NoInitRadarData import NoInitRadarData
@@ -114,10 +115,26 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
+    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0, 'SeisUnix not found')
+    def test_sumigtk(self):
+        data = NoInitRadarData(big=True)
+        data.dt = 1.0e-9
+        data.travel_time = data.travel_time * 1.0e-9
+        data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sumigtk.mat')
+        migrationlib.migrationSeisUnix(data)
+
+    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0, 'SeisUnix not found')
+    def test_sustolt(self):
+        data = NoInitRadarData(big=True)
+        data.dt = 1.0e-9
+        data.travel_time = data.travel_time * 1.0e-9
+        data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
+        migrationlib.migrationSeisUnix(data)
+
     def tearDown(self):
-            for suff in ['PhaseShiftLateral', 'PhaseShiftConstant', 'PhaseShiftVariable', 'Kirchoff', 'Stolt']:
-                if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat')):
-                    os.remove(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat'))
+        for suff in ['PhaseShiftLateral', 'PhaseShiftConstant', 'PhaseShiftVariable', 'Kirchoff', 'Stolt', 'sumigtk', 'sustolt']:
+            if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat')):
+                os.remove(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat'))
 
 
 if __name__ == '__main__':

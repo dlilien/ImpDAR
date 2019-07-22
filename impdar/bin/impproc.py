@@ -14,11 +14,11 @@ All functionality probably overlaps with impdar, but the call is much cleaner. Y
 
 import os.path
 import argparse
-import numpy as np
-from impdar.lib.convert import convert
+
 from impdar.lib.load import load
 from impdar.lib.process import concat
 from impdar.lib.gpslib import interp as interpdeep
+
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -211,22 +211,8 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False,
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, **kwargs):
-    # save to seisunix format for migration with SU routines
-    if mtype == 'su':
-        try:
-            out_fn = os.path.splitext(dat.fn)[0] + '.sgy'
-            dat.save_as_segy(out_fn)
-        except:
-            raise ValueError('Could not save .sgy')
-    # migrate
     dat.migrate(mtype, vel=vel, **kwargs)
 
-    # Read the migrated .bin file
-    if mtype == 'su':
-        bin_fn = os.path.splitext(dat.fn)[0] + '_mig.bin'
-        with open(bin_fn,'rb') as fid:
-            data_flat = np.fromfile(fid,np.float32)
-        dat.data = np.transpose(np.reshape(data_flat,(dat.tnum,dat.snum)))
 
 if __name__ == '__main__':
     main()
