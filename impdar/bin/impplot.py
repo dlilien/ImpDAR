@@ -6,12 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 #
-# Legacy header:
-#	Created: B. Welch - 10/15/01
-#	Modification History:
-#       1)  Added ability to load processed in Stodeep - S. Harris 6/5/02
-# 		2)	Converted to new structure-based flagging format - J. Olson 7/10/08
-#       3)  Added call for new batchdeep.m shell - B. Youngblood 7/12/08
+# Legacy header: Created: B. Welch, modified by S. Harris, J. Olson, and B. Youngblood.
 
 import argparse
 from impdar import plot
@@ -21,7 +16,7 @@ def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    radargram_parser = add_simple_procparser(subparsers, 'rg', 'Plot radargram', plot_radargram, defname='radargram', xd=True, yd=True)
+    add_simple_procparser(subparsers, 'rg', 'Plot radargram', plot_radargram, defname='radargram', xd=True, yd=True)
 
     trace_parser = add_simple_procparser(subparsers, 'traces', 'Plot traces vs depth', plot_traces, defname='traces', xd=False, yd=True)
     trace_parser.add_argument('t_start', type=int, help='Starting trace number')

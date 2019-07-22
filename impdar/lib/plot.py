@@ -82,7 +82,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         plt.show()
 
 
-def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None):
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None):
     """This is the function to plot the normal radargrams that we are used to.
 
     This function is a little weird since I want to be able to plot on top of existing figures/axes or on new figures an axes. There is therefore an argument `return_plotinfo` that funnels between these options and changes the return types
@@ -96,7 +96,9 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     ydat: str, optional
         The vertical axis units. Either twtt or or depth. Default twtt.
     x_range: 2-tuple, optional
-        The range of values to plot. Default is plot everything (0, -1)
+        The range of values to plot, in tnum space. Default is plot everything (0, -1)
+    y_range: 2-tuple, optional
+        The range of values to plot, in snum space. Default is plot everything (0, -1)
     cmap: matplotlib.pyplot.cm, optional
         The colormap to use
     fig: matplotlib.pyplot.Figure
@@ -129,36 +131,45 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
     """
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
-    if ydat not in ['twtt', 'depth']:
-        raise ValueError('y axis choices are twtt or depth')
+    if ydat not in ['twtt', 'depth', 'elev']:
+        raise ValueError('y axis choices are twtt, depth, or elev')
 
     if x_range is None:
         x_range = (0, -1)
     if x_range[-1] == -1:
         x_range = (x_range[0], dat.tnum)
 
-    lims = np.percentile(dat.data[:, x_range[0]:x_range[-1]][~np.isnan(dat.data[:, x_range[0]:x_range[-1]])], (10, 90))
+    if y_range is None:
+        y_range = (0, -1)
+    if y_range[-1] == -1:
+        y_range = (y_range[0], dat.snum)
+
+    lims = np.percentile(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])], (10, 90))
 
     if fig is not None:
         if ax is None:
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(12, 8))
-
-    if hasattr(dat.flags, 'elev') and dat.flags.elev:
-        yd = dat.elev
-        ax.set_ylabel('Elevation (m)')
+    if ydat == 'elev':
+        if hasattr(dat.flags, 'elev') and dat.flags.elev:
+            yd = dat.elev[y_range[0]:y_range[-1]]
+            ax.set_ylabel('Elevation (m)')
+        else:
+            raise ValueError('Elevation plot requested but we have none')
     else:
         ax.invert_yaxis()
         if ydat == 'twtt':
-            yd = dat.travel_time
+            yd = dat.travel_time[y_range[0]:y_range[-1]]
             ax.set_ylabel('Two way travel time (usec)')
         elif ydat == 'depth':
             if dat.nmo_depth is not None:
-                yd = dat.nmo_depth
+                yd = dat.nmo_depth[y_range[0]:y_range[-1]]
             else:
-                yd = dat.travel_time / 2.0 * 1.69e8 * 1.0e-6
+                yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * 1.69e8 * 1.0e-6
             ax.set_ylabel('Depth (m)')
+        else:
+            raise ValueError('Unrecognized ydat')
 
     if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
@@ -168,9 +179,9 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), cmap=plt.cm.g
         ax.set_xlabel('Distance (km)')
 
     if hasattr(dat.flags, 'elev') and dat.flags.elev:
-        im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
+        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
     else:
-        im = ax.imshow(dat.data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
 
     if pick_colors is not None:
         plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
