@@ -20,6 +20,7 @@ import numpy as np
 import subprocess as sp
 
 from impdar.lib import migrationlib
+from impdar.lib.load import load_segy
 from impdar.lib.NoInitRadarData import NoInitRadarData
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -115,7 +116,7 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
-    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0, 'SeisUnix not found')
+    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix or segy not found')
     def test_sumigtk(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
@@ -123,13 +124,31 @@ class TestMigration(unittest.TestCase):
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sumigtk.mat')
         migrationlib.migrationSeisUnix(data)
 
-    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0, 'SeisUnix not found')
+    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix or segy not found')
     def test_sustolt(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
         migrationlib.migrationSeisUnix(data)
+
+    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or load_segy.SEGY, 'Test of edge case')
+    def test_sustolt_nosegy(self):
+        data = NoInitRadarData(big=True)
+        data.dt = 1.0e-9
+        data.travel_time = data.travel_time * 1.0e-9
+        data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
+        with self.assertRaises(ImportError):
+            migrationlib.migrationSeisUnix(data)
+
+    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() == 0, 'Test for no SeisUnix')
+    def test_sustolt_seisunix(self):
+        data = NoInitRadarData(big=True)
+        data.dt = 1.0e-9
+        data.travel_time = data.travel_time * 1.0e-9
+        data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
+        with self.assertRaises(FileNotFoundError):
+            migrationlib.migrationSeisUnix(data)
 
     def tearDown(self):
         for suff in ['PhaseShiftLateral', 'PhaseShiftConstant', 'PhaseShiftVariable', 'Kirchoff', 'Stolt', 'sumigtk', 'sustolt']:

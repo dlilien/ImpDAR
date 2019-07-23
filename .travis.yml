@@ -10,21 +10,28 @@ services:
       - xvfb
 
 env:
-    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true
-    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true
-    - segyio_inc=true qt5_inc=true gdal_inc=true COVERALLS_PARALLEL=true
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
+    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
+    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true
+    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
+    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=false
+    - segyio_inc=true qt5_inc=true gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=true
 
 before_install:
  - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
  - sudo add-apt-repository --yes ppa:ubuntu-sdk-team/ppa
  - sudo apt-get update -qq
+ - export CWPROOT=$HOME/seisunix
+ - export PATH=$PATH:$CWPROOT/bin
 
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
 - if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; export CPLUS_INCLUDE_PATH=/usr/include/gdal; export C_INCLUDE_PATH=/usr/include/gdal; pip install gdal==1.10.0; fi
+  # for seisunix we need to spoof the license to prevent prompting
+  # fix the version to avoid problems with this
+- if [ "$seisunix_inc" = true ] ; export thisdir=$PWD; then sudo apt-get install gfortran ; git clone https://github.com/JohnWStockwellJr/SeisUnix $HOME/seisunix; cd $CWPROOT/src ; git checkout 7ee78c1b70f258fc406385e6bb752fe2bdb35850 ; mv configs/Makefile.config_Linux_x86_64 Makefile.config; touch LICENSE_44R14_ACCEPTED; touch MAILHOME_44R14; make install <<< y; make finstall <<< y; cd $thisdir; fi
 - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
 - pip install -r requirements.txt
 - pip install coveralls
@@ -35,6 +42,7 @@ cache:
     directories:
       - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1
       - /home/travis/PyQt5_install-5.7.1
+      - $CWPROOT
       - $HOME/.cache/pip
 
 deploy:
