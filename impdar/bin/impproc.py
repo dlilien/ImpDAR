@@ -70,6 +70,13 @@ def _get_args():
     parser_crop.add_argument('lim', type=float, help='The cutoff value')
     add_def_args(parser_crop)
 
+    # Crop in the horizontal
+    parser_hcrop = add_procparser(subparsers, 'hcrop', 'Crop the data in the horizontal', hcrop, defname='hcropped')
+    parser_hcrop.add_argument('left_or_right', choices=['left', 'right'], help='Remove from the left or right')
+    parser_hcrop.add_argument('dimension', choices=['tnum', 'dist'], help='Set the bound in terms of tnum (trace number, 1 indexed) or dist (distance in km)')
+    parser_hcrop.add_argument('lim', type=float, help='The cutoff value')
+    add_def_args(parser_hcrop)
+
     # Normal move-out
     parser_nmo = add_procparser(subparsers, 'nmo', 'Normal move-out correction', nmo, defname='nmo')
     parser_nmo.add_argument('ant_sep', type=float, help='Antenna separation')
@@ -123,7 +130,7 @@ def add_def_args(parser):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
     parser.add_argument('--ftype', type=str, default='mat',
                         help='Type of file to load (default ImpDAR mat)',
-                        choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
+                        choices=load.FILETYPE_OPTIONS)
 
 
 def main():
@@ -188,6 +195,10 @@ def vbp(dat, low_MHz=1, high_MHz=10000, **kwargs):
 
 def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
     dat.crop(lim, top_or_bottom=top_or_bottom, dimension=dimension)
+
+
+def hcrop(dat, lim=0, left_or_right='left', dimension='tnum', **kwargs):
+    dat.hcrop(lim, left_or_right=left_or_right, dimension=dimension)
 
 
 def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, **kwargs):

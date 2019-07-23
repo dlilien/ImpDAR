@@ -485,6 +485,8 @@ def migrationSeisUnix(dat,
 
     dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
     os.remove(bin_fn)
+    os.remove('header')
+    os.remove('binary')
     os.remove(segy_name + '.sgy')
     return dat
 

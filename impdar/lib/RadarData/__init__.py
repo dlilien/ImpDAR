@@ -52,7 +52,7 @@ class RadarData(object):
                       'y_coord',
                       'fn']
 
-    from ._RadarDataProcessing import reverse, nmo, crop, restack, \
+    from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
         rangegain, agc, constant_space, elev_correct
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, _get_pick_targ_info
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
@@ -171,4 +171,5 @@ class RadarData(object):
     @property
     def datetime(self):
         """A python operable version of the time of acquisition of each trace"""
-        return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366) for dd in self.decday], dtype=np.datetime64)
+        return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
+                         for dd in self.decday], dtype=np.datetime64)

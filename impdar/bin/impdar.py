@@ -6,12 +6,6 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 #
-# Legacy header:
-#       Created: B. Welch - 10/15/01
-#       Modification History:
-#       1)  Added ability to load processed in Stodeep - S. Harris 6/5/02
-# 		2)	Converted to new structure-based flagging format - J. Olson 7/10/08
-#       3)  Added call for new batchdeep.m shell - B. Youngblood 7/12/08
 
 import argparse
 from impdar import load, process, plot, convert
@@ -25,7 +19,7 @@ def _get_args():
     parser_load.set_defaults(func=load.load_and_exit)
     parser_load.add_argument('filetype', type=str,
                              help='Type of file',
-                             choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
+                             choices=load.FILETYPE_OPTIONS)
     parser_load.add_argument('fns_in', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1,
                              help='Receiver channel to load, \
@@ -35,14 +29,10 @@ def _get_args():
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
     parser_proc.set_defaults(func=process.process_and_exit)
-    parser_proc.add_argument('-gssi', action='store_true',
-                             help='Indicates that the file(s) are gssi output')
-    parser_proc.add_argument('-pe', action='store_true',
-                             help='Indicates that the file(s) are pulse ekko output')
-    parser_proc.add_argument('-gprMax', action='store_true',
-                             help='Indicates that the file(s) are gprMax output')
-    parser_proc.add_argument('-gecko', action='store_true',
-                             help='Indicates that the file(s) are gecko output')
+    parser_load.add_argument('--filetype', type=str,
+                             help='Type of file',
+                             default='mat',
+                             choices=load.FILETYPE_OPTIONS)
     parser_proc.add_argument('-cat', action='store_true',
                              help='Concatenate the files')
     parser_proc.add_argument('-vbp', nargs=2, type=float,
@@ -61,6 +51,10 @@ def _get_args():
                              help='Crop the radar data in the travel-time direction. \
                                      Arguments are the limit, whether to crop off ["top", "bottom"], \
                                      with limit defined in terms of ["snum", "twtt", "depth"]')
+    parser_proc.add_argument('-hcrop', nargs=3, type=str,
+                             help='Crop the radar data in the horizontal direction. \
+                                     Arguments are the limit, whether to crop off ["left", "right], \
+                                     with limit defined in terms of ["tnum", "dist"]')
     parser_proc.add_argument('-restack', nargs=1, type=int,
                              help='Restack to this (odd) number of traces')
     parser_proc.add_argument('-interp', nargs=2, type=str,
@@ -73,6 +67,7 @@ def _get_args():
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')
     parser_proc.add_argument('-o', type=str, help='Write to this filename')
 
+    # plotting
     parser_plot = subparsers.add_parser('plot', help='Plot data')
     parser_plot.set_defaults(func=plot.plot)
     parser_plot.add_argument('fns', type=str, nargs='+', help='File(s) to plot')

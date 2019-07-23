@@ -228,6 +228,67 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
         int(self.flags.crop[1]), int(self.flags.crop[2])))
 
 
+def hcrop(self, lim, left_or_right='left', dimension='tnum'):
+    """Crop the radar data in the horizontal. We can take off the left or right.
+
+    This will affect all trace-wise variables:
+    data, lat, long, dist, x_coord, y_coord, elev, trace_num, trace_int, tnum,
+    decday, pressure, and trig.
+
+    Parameters
+    ----------
+    lim: float (int if dimension=='snum')
+        The value at which to crop.
+    top_or_bottom: str, optional
+        Crop off the left (lim is the first remaining trace/dist) or the right
+        (lim is the first trace deleted).
+        Default is left
+    dimension: str, optional
+        Evaluate in terms of trace_num (tnum) or distance (dist).
+        Note that trace_num is 1-indexed.
+        This defines the units for left_or_right.
+        Default is tnum.
+    """
+    if left_or_right not in ['left', 'right']:
+        raise ValueError('left_or_right must be left or right, not {:s}'.format(left_or_right))
+    if dimension not in ['tnum', 'dist']:
+        raise ValueError('Dimension must be in ["tnum", "dist"]')
+
+    if dimension == 'dist':
+        if lim > np.max(self.dist):
+            raise ValueError('lim is larger than largest distance')
+        if lim <= 0:
+            raise ValueError('Distance should be strictly positive')
+        ind = np.min(np.argwhere(self.dist >= lim))
+    else:
+        if int(lim) in (0, 1):
+            raise ValueError('lim should be at least two to preserve some data')
+        if lim > self.tnum:
+            raise ValueError('lim should be less than tnum+1 {:d} in order to do anything'.format(self.tnum + 1))
+        if lim == -1 or lim < -self.tnum:
+            raise ValueError('If negative, lim should be in [-self.tnum; -1)')
+        ind = int(lim) - 1
+
+    if left_or_right == 'left':
+        lims = [ind, self.data.shape[1]]
+    else:
+        lims = [0, ind]
+
+    # Most variable just need subsetting
+    self.data = self.data[:, lims[0]:lims[1]]
+    for var in ['lat', 'long', 'pressure', 'trace_int', 'trig', 'elev', 'x_coord', 'y_coord', 'decday']:
+        # some of these are optional, and trig may be set to a float rather than an array
+        if getattr(self, var) is not None and isinstance(getattr(self, var), np.ndarray):
+            setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
+
+    # More complex modifications for these two
+    self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
+    self.travel_time = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
+
+    # Finally tnum
+    self.tnum = self.data.shape[1]
+
+
 def restack(self, traces):
     """Restack all relevant data to the given number of traces.
 

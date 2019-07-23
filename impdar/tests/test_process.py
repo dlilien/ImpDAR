@@ -46,16 +46,6 @@ class TestProcess_and_exit(unittest.TestCase):
     def test_process_and_exitPROCESS(self):
         process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], rev=True)
 
-    def test_process_and_exitLOADGSSI(self):
-        process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], gssi=True)
-
-    def test_process_and_exitLOADPE(self):
-        process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], pe=True)
-
-    def test_process_and_exitPE_and_GSSI_EXCEPTION(self):
-        with self.assertRaises(ValueError):
-            process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], pe=True, gssi=True)
-
     def test_process_and_exitOUTNAMING(self):
         process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'data_raw.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], cat=True)
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'data_cat.mat')))
@@ -63,7 +53,7 @@ class TestProcess_and_exit(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_cat.mat')))
         process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'data_raw.mat')], rev=True)
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_proc.mat')))
-        process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], gssi=True, rev=True)
+        process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], filetype='gssi', rev=True)
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_gssi_proc.mat')))
         process.process_and_exit([os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], cat=True, o=os.path.join(THIS_DIR, 'small_data_cat.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'small_data_cat.mat')))

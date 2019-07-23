@@ -16,31 +16,22 @@ from .load import load
 from .gpslib import interp as interpdeep
 
 
-def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
+def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
     """Perform one or more processing steps, save, and exit
 
     Parameters
     ----------
     fn: list of strs
         The filename(s) to process. Assumed to be .mat files unless gssi or pe is True.
-    gssi: bool, optional
-        If True, expect a gssi radar file as input rather than a .mat file.
-    pe: bool, optional
-        If True, expect a Pulse Ekko radar file as input rather than a .mat file.
     cat: bool, optional
         If True, concatenate files before processing rather than running through each individually
+    filetype: str, optional
+        The type of input file. Default is .mat.
     kwargs:
         These are the processing arguments for `process`
     """
 
-    if gssi and pe:
-        raise ValueError('Input cannot be both pulse-ekko and gssi')
-    if gssi:
-        radar_data = load('gssi', fn)
-    elif pe:
-        radar_data = load('pe', fn)
-    else:
-        radar_data = load('mat', fn)
+    radar_data = load(filetype, fn)
 
     # first we do the quirky one
     if cat:
@@ -78,7 +69,7 @@ def process_and_exit(fn, cat=False, gssi=False, pe=False, **kwargs):
             d.save(out_fn)
 
 
-def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, restack=None, migrate=None, **kwargs):
+def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None, migrate=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -116,7 +107,26 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         except TypeError:
             raise TypeError('Crop must be subscriptible')
 
+    if hcrop is not None:
+        try:
+            if crop[1] not in ['left', 'right']:
+                raise ValueError('First element of crop must be in ["left", "right"]')
+            if crop[2] not in ['tnum', 'dist']:
+                raise ValueError('Second element of crop must be in ["tnum", "dist"]')
+            try:
+                crop = (float(crop[0]), crop[1], crop[2])
+            except ValueError:
+                raise ValueError('Third element of crop must be convertible to a float')
+        except TypeError:
+            raise TypeError('Crop must be subscriptible')
+
     done_stuff = False
+    # hcrop first to reduce computation
+    if hcrop is not None:
+        for dat in RadarDataList:
+            dat.hcrop(*hcrop)
+        done_stuff = True
+
     if restack is not None:
         for dat in RadarDataList:
             if type(restack) in [list, tuple]:

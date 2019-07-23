@@ -13,6 +13,11 @@ import os.path
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_segy
 from ..RadarData import RadarData
 
+# This should be updated as new functionality arrives
+# executables that accept multiple ftypes should use this
+# to figure out what the available options are
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords']
+
 
 def load(filetype, fns_in, channel=1):
     """Load a list of files of a certain type
@@ -21,12 +26,13 @@ def load(filetype, fns_in, channel=1):
     ----------
     filetype: str
         The type of file to load. Options are:
+                        'mat' (StODeep matlab format)
                         'pe' (pulse ekko)
                         'gssi' (from sir controller)
                         'gprMax' (synthetics)
                         'gecko' (St Olaf Radar)
                         'segy' (SEG Y)
-                        'mat' (StODeep matlab format)
+                        'mcords' (mcords netcdf)
     fns: list
         List of files to load
     channel: Receiver channel that the data were recorded on

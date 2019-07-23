@@ -121,6 +121,50 @@ class TestRadarDataMethods(unittest.TestCase):
         process.process([self.data], crop=(6, 'top', 'snum'))
         self.assertTrue(self.data.data.shape == (11, 40))
 
+    def test_HCropTnum(self):
+        self.data.hcrop(2, 'left', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 39))
+        self.data.hcrop(15, 'right', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 14))
+        # Make sure we can ditch the last one
+        self.data.hcrop(14, 'right', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 13))
+
+    def test_HCropInputErrors(self):
+        with self.assertRaises(ValueError):
+            self.data.hcrop(2, 'left', dimension='dummy')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(2, 'dummy', dimension='tnum')
+
+    def test_HCropBoundsErrors(self):
+        # There are lots of bad inputs for tnum
+        with self.assertRaises(ValueError):
+            self.data.hcrop(44, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-44, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(0, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(1, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-1, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(41, 'right', dimension='tnum')
+
+        # Fewer ways to screw up distance
+        with self.assertRaises(ValueError):
+            self.data.hcrop(1.6, 'right', dimension='dist')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(0, 'right', dimension='dist')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-1, 'right', dimension='dist')
+
+    def test_HCropDist(self):
+        self.data.hcrop(0.01, 'left', dimension='dist')
+        self.assertTrue(self.data.data.shape == (20, 39))
+        self.data.hcrop(1.4, 'right', dimension='dist')
+        self.assertTrue(self.data.data.shape == (20, 38))
+
     def test_agc(self):
         self.data.agc()
         self.assertTrue(self.data.flags.agc)
