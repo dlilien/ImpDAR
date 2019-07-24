@@ -7,6 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 #
 
+import sys
 import argparse
 from impdar import load, process, plot, convert
 
@@ -101,7 +102,7 @@ def _get_args():
 
 def main():
     parser = _get_args()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
         return None

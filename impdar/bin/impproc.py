@@ -9,13 +9,15 @@
 """
 Make an executable for single actions of impulse radar processing.
 
-All functionality probably overlaps with impdar, but the call is much cleaner. You get a lot more flexibility on things like keyword arguments. However, you are limited to one processing step.
+All functionality probably overlaps with impdar, but the call is much cleaner.
+You get a lot more flexibility on things like keyword arguments.
+However, you are limited to one processing step.
 """
-
+import sys
 import os.path
 import argparse
 
-from impdar.lib.load import load
+from impdar.lib.load import load, FILETYPE_OPTIONS
 from impdar.lib.process import concat
 from impdar.lib.gpslib import interp as interpdeep
 
@@ -52,7 +54,7 @@ def _get_args():
     parser_rgain.add_argument('-slope', type=float, default=0.1, help='Slope of the linear range gain. Default 0.1')
     add_def_args(parser_rgain)
 
-    # Range gain
+    # Automatic range gain
     parser_agc = add_procparser(subparsers, 'agc', 'Add an automatic gain', agc, defname='agc')
     parser_agc.add_argument('-window', type=int, default=50, help='Number of samples to average')
     add_def_args(parser_agc)
@@ -130,15 +132,14 @@ def add_def_args(parser):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
     parser.add_argument('--ftype', type=str, default='mat',
                         help='Type of file to load (default ImpDAR mat)',
-                        choices=load.FILETYPE_OPTIONS)
+                        choices=FILETYPE_OPTIONS)
 
 
 def main():
     parser = _get_args()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
-        return
 
     radar_data = load(args.ftype, args.fns)
 
@@ -148,7 +149,6 @@ def main():
         args.fns = [bn + '.mat']
     elif args.name == 'interp':
         interp(radar_data, **vars(args))
-
     else:
         for dat in radar_data:
             args.func(dat, **vars(args))
@@ -221,8 +221,8 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False,
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove, extrapolate=extrapolate)
 
 
-def mig(dat, mtype='stolt', vel=1.69e8, **kwargs):
-    dat.migrate(mtype, vel=vel, **kwargs)
+def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0, verbose=0, vel_fn=None, nxpad=1, nearfield=False, **kwargs):
+    dat.migrate(mtype, vel=vel, vtaper=vtaper, htaper=htaper, tmig=tmig, verbose=verbose, vel_fn=vel_fn, nxpad=nxpad, nearfield=nearfield)
 
 
 if __name__ == '__main__':

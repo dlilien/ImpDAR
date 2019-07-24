@@ -33,7 +33,7 @@ from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 
 
-def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwargs):
+def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
@@ -112,7 +112,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwa
     return dat
 
 
-def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
@@ -203,7 +203,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     return dat
 
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     """
 
     Phase-Shift Migration
@@ -282,7 +282,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,
     return dat
 
 
-def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*args,**kwargs):
+def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     """
 
     Time-Wavenumber Migration
@@ -360,9 +360,7 @@ def migrationSeisUnix(dat,
                       htaper=100,
                       vtaper=1000,
                       nz=None,
-                      dz=None,
-                      *args,
-                      **kwargs):
+                      dz=None):
     """
 
     Migration through Seis Unix. For now only three options:

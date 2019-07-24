@@ -51,7 +51,9 @@ class NoInitRadarDataFiltering(RadarData):
         self.tnum = self.data.shape[1]
         self.snum = self.data.shape[0]
         self.travel_time = 0.001 * np.arange(self.data.shape[0]) + 0.001
+        self.trace_num = np.arange(self.tnum) + 1.
         self.dt = 0.001e-6
+        self.trace_int = self.dt * np.ones((self.tnum, ))
         self.flags = RadarFlags()
         self.hfilt_target_output = DATA_DUMMY * np.atleast_2d(1. - np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)).transpose()
         pexp = np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05)
@@ -59,3 +61,11 @@ class NoInitRadarDataFiltering(RadarData):
         pexp = pexp / np.max(pexp)
         self.pexp_target_output = DATA_DUMMY * np.atleast_2d(1. - pexp).transpose()
         self.ahfilt_target_output = np.zeros_like(DATA_DUMMY)
+        self.long = np.arange(self.tnum) * 3.
+        self.lat = np.arange(self.tnum) * 2.
+        self.x_coord = np.arange(self.tnum) * 3.
+        self.y_coord = np.arange(self.tnum) * 2.
+        self.decday = np.arange(self.tnum)
+        self.elev = np.arange(self.tnum) * 0.001 + 100
+        self.trig = np.zeros_like(self.elev).astype(int)
+

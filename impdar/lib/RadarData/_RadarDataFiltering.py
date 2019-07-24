@@ -407,7 +407,7 @@ def vertical_band_pass(self,
     self.flags.bpass[2] = high
 
 
-def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
+def migrate(self, mtype='stolt', sutype='sumigtk', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
     """Migrate the data.
 
     This is a wrapper around all the migration routines in migration_routines.py.
@@ -419,15 +419,15 @@ def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
         Default: stolt
     """
     if mtype == 'kirch':
-        migrationlib.migrationKirchhoff(self, **kwargs)
+        migrationlib.migrationKirchhoff(self, vel=vel, vel_fn=vel_fn, nearfield=nearfield)
     elif mtype == 'stolt':
-        migrationlib.migrationStolt(self, **kwargs)
+        migrationlib.migrationStolt(self, vel=vel, htaper=htaper, vtaper=vtaper)
     elif mtype == 'phsh':
-        migrationlib.migrationPhaseShift(self, **kwargs)
+        migrationlib.migrationPhaseShift(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'tk':
-        migrationlib.migrationTimeWavenumber(self, **kwargs)
+        migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, sutype=sutype, **kwargs)
+        migrationlib.migrationSeisUnix(self, sutype=sutype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 

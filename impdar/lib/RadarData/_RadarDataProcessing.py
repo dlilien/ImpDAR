@@ -318,14 +318,15 @@ def restack(self, traces):
                          'y_coord',
                          'elev',
                          'decday']
-    oned_newdata = {key: np.zeros((tnum, )) for key in oned_restack_vars}
+    oned_newdata = {key: np.zeros((tnum, )) if getattr(self, key) is not None else None for key in oned_restack_vars}
     for j in range(tnum):
         stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],
                               axis=1)
         trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
         for var, val in oned_newdata.items():
-            val[j] = np.mean(getattr(self, var)[j * traces:
-                                                min((j + 1) * traces, self.data.shape[1])])
+            if val is not None:
+                val[j] = np.mean(getattr(self, var)[j * traces:
+                                                    min((j + 1) * traces, self.data.shape[1])])
     self.tnum = tnum
     self.data = stack
     self.trace_num = np.arange(self.tnum).astype(int) + 1
