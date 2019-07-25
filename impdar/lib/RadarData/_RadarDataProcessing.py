@@ -52,8 +52,17 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     ----------
     ant_sep: float
         Antenna separation in meters.
-    uice: float, optional
-        Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8
+    uice: float or np.ndarray (2 x m), optional
+        Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8.
+        This can also be a 2d array to give variable wavespeed with depth (positive down).
+        First column is depths, second column wavespeeds.
+        Note that using a variable uice will break the linear scaling between depth and time,
+        so we are forced to choose whether the y-axis is linear in speed or time.
+        I chose time, since this eases calculations like migration.
+        For plotting vs. depth, however, the functions just use the bounds,
+        so the depth variations are averaged out.
+        You can use the helper function constant_sample_depth_spacing() in order to correct this,
+        but you should call that after migration.
     uair: float, optional
         Speed of light in air. Default 3.0e8
     """
@@ -67,6 +76,14 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     #       5) Increased function outputs - J. Werner, 7/7/08.
     #       6) Converted flag variables to structure, and updated function I/O
     #       - J. Werner, 7/10/08
+
+    # Preliminary handling of the uice
+    # We are going to standardize for either type of uice input
+    if isinstance(uice, (float, int)):
+        def u_ice_func(depth):
+            return uice
+    else:
+        u_ice_func = interp1d(uice[:, 0], uice[:, 1], fill_value='extrapolate')
 
     # calculate travel time of air wave
     tair = ant_sep / uair
@@ -82,7 +99,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         nmodata = self.data.copy()
 
     # Calculate direct ice wave time
-    tice = ant_sep / uice
+    # Use a value just larger than 0.
+    tice = ant_sep / u_ice_func(1.0e-8)
 
     # Calculate sample location for time=0 when radar pulse is transmitted
     #  (Note: trig is the air wave arrival)
@@ -141,7 +159,17 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - nair) * self.dt,
                                  self.dt) * 1.0e6
-    self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+
+    self.nmo_depth = np.zeros_like(self.travel_time)
+    self.nmo_depth[0] = self.travel_time[0] / 2. * u_ice_func(0) * 1.0e-6
+    for i in range(1, len(self.travel_time)):
+        # we are going to be slightly lazy here, and guess at the middle depth of the packet to get the velocity
+        middle_depth_guess = self.nmo_depth[i - 1] + (self.travel_time[i] - self.travel_time[i - 1]) / 4. * u_ice_func(self.nmo_depth[i]) * 1.0e-6
+        self.nmo_depth[i] = self.nmo_depth[i - 1] + (self.travel_time[i] - self.travel_time[i - 1]) / 2. * u_ice_func(middle_depth_guess) * 1.0e-6
+
+    # sanity check...
+    if isinstance(uice, (float, int)):
+        assert np.allclose(self.nmo_depth, self.travel_time / 2. * uice * 1.0e-6)
 
     self.data = nmodata
 
