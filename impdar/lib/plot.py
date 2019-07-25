@@ -142,7 +142,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     if y_range is None:
         y_range = (0, -1)
     if y_range[-1] == -1:
-        y_range = (y_range[0], dat.snum)
+        y_range = (y_range[0], dat.data.shape[0])
 
     lims = np.percentile(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])], (10, 90))
 
@@ -179,6 +179,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         ax.set_xlabel('Distance (km)')
 
     if hasattr(dat.flags, 'elev') and dat.flags.elev:
+        print(dat.data[:, x_range[0]:x_range[-1]])
+        print(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])
         im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
     else:
         im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
