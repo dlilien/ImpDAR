@@ -7,7 +7,7 @@ Load a MCoRDS data that was downloaded as a .mat file from the CReSIS ftp client
 
 Author:
 Benjamin Hills
-benjaminhhills@gmail.com
+bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 

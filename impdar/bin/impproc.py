@@ -74,6 +74,7 @@ def _get_args():
     parser_nmo.add_argument('ant_sep', type=float, help='Antenna separation')
     parser_nmo.add_argument('--uice', type=float, default=1.69e8, help='Speed of light in ice in m/s (default 1.69e8)')
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
+    parser_nmo.add_argument('--rho_profile', type=str, help='Filename for a depth density profile to correct wave velocity.')
     add_def_args(parser_nmo)
 
     # Reinterpolate GPS

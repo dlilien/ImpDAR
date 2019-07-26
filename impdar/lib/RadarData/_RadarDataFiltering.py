@@ -13,7 +13,6 @@ from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilte
 from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
-
 def adaptivehfilt(self, *args, **kwargs):
     """Adaptively filter to reduce noise in upper layers
 

@@ -15,7 +15,7 @@ Options are:
 
 Author:
 Benjamin Hills
-benjaminhhills@gmail.com
+bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 

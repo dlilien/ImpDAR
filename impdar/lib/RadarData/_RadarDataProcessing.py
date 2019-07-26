@@ -12,6 +12,7 @@ Define processing steps for Radar Data. These are all instance methods.
 
 import numpy as np
 from scipy.interpolate import interp1d
+from ..permittivity_models import *
 # from ._RadarData import RadarData
 
 
@@ -44,7 +45,7 @@ def reverse(self):
         print('Profile direction reversed')
         self.flags.reverse = True
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -59,6 +60,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8
     uair: float, optional
         Speed of light in air. Default 3.0e8
+    rho_profile: str,optional
+        Filename for a csv file with density profile (depths in first column and densities in second)
     """
     # Conversion of StO nmodeep v2.4
     #   Modifications:
@@ -73,6 +76,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
 
     # calculate travel time of air wave
     tair = ant_sep / uair
+    # Calculate direct ice wave time
+    tice = ant_sep / uice
 
     if np.round(tair / self.dt) > self.trig:
         self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
@@ -80,9 +85,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         self.snum = nmodata.shape[0]
     else:
         nmodata = self.data.copy()
-
-    # Calculate direct ice wave time
-    tice = ant_sep / uice
 
     # Calculate sample location for time=0 when radar pulse is transmitted
     #  (Note: trig is the air wave arrival)
@@ -141,7 +143,16 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - nair) * self.dt,
                                  self.dt) * 1.0e6
-    self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+    if rho_profile == None:
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+    else:
+        try:
+            rho_profile_data = np.genfromtxt(rho_profile,delimiter=',')
+            profile_depth = rho_profile_data[:,0]
+            profile_rho = rho_profile_data[:,1]
+            traveltime_to_depth(self,profile_depth,profile_rho)
+        except:
+            TypeError('Cannot load the depth-density profile')
 
     self.data = nmodata
 
@@ -151,6 +162,42 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     except (IndexError, TypeError):
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
+
+def traveltime_to_depth(self,profile_depth,profile_rho,c=300e6,permittivity_model=firn_permittivity):
+    """
+    Convert travel_time to depth based on density profile
+
+    This is implemented within the nmo processing function
+    It defines nmo_depth, the moveout-corrected depth, in the case of a variable velocity
+
+    Parameters
+    ----------
+    profile_depth: array
+        input depths for measured densities
+    profile_rho: array
+        input densities to match depth locations above
+    c: float, optional
+        speed of light in vacuum
+    permittivity_model: function
+        specific permittivity model to use
+    """
+     # get the input velocity-depth profile
+    eps = np.real(permittivity_model(profile_rho))
+    profile_u = c/np.sqrt(eps)
+    # iterate over time, moving down according to the velocity at each step
+    z = 0.
+    self.nmo_depth = np.nan*np.ones_like(self.travel_time)
+    for i,t in enumerate(self.travel_time):
+        if t<0.:
+            continue
+        elif t<self.dt*1e6:
+            step_u = profile_u[0]
+            z += t/2. * step_u * 1e-6
+            self.nmo_depth[i] = z
+        else:
+            step_u = profile_u[np.argmin(abs(profile_depth-z))]
+            z += self.dt/2. * step_u
+            self.nmo_depth[i] = z
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     """Crop the radar data in the vertical. We can take off the top or bottom.

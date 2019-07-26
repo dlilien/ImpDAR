@@ -7,7 +7,7 @@ Load h5 files and convert to the .mat ImpDAR file
 
 Author:
 Benjamin Hills
-benjaminhhills@gmail.com
+bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 
