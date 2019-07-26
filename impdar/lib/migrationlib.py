@@ -68,19 +68,17 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwa
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
     max_travel_time = np.max(tt_sec)
-
     # Cache the depths
-    zs = vel * tt_sec
+    zs = vel * tt_sec/2.
     zs2 = zs**2.
 
     # Loop through all traces
-    print('Migrating trace number:', end='')
+    print('Migrating trace number:')
     for xi in range(dat.tnum):
-        print('{:d}, '.format(xi), end='')
+        print('{:d}'.format(xi),end=', ',flush=True)
         # get the trace distance
         x = dat.dist[xi]
         dists2 = (dat.dist - x)**2.
-
         # Loop through all samples
         for ti in range(dat.snum):
             # get the radial distances between input point and output point
@@ -158,12 +156,12 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
-    print('Interpolating:',end='')
+    print('Interpolating:')
     # for all temporal frequencies
     for zj in range(dat.snum//2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
-            print(int(ws[zj]/1e6/2/np.pi),'MHz, ',end='')
+            print(int(ws[zj]/1e6/2/np.pi),'MHz',end=', ',flush=True)
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -461,13 +459,13 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     if not hasattr(vmig,"__len__"):
         print('Constant velocity %s m/usec'%(vmig/1e6))
         # iterate through all frequencies
-        print('Frequency: ',end='')
+        print('Frequency: ')
         for iw in range(len(ws)):
             w = ws[iw]
             if w == 0.0:
                 w = 1e-10/dat.dt
             if iw%100 == 0:
-                print(int(w/1e6/(2.*np.pi)),'MHz',', ',end='')
+                print(int(w/1e6/(2.*np.pi)),'MHz',end=', ',flush=True)
             # remove frequencies outside of the domain
             vkx2 = (vmig*kx/2.)**2.
             ik = np.argwhere(vkx2 < w**2.)
@@ -498,7 +496,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
         for itau in range(dat.snum):
             tau = dat.travel_time[itau]/1e6
             if itau%100 == 0:
-                print('Time %.2e, ' %(tau),end='')
+                print('Time %.2e' %(tau),end=', ',flush=True)
             # iterate through all frequencies
             for iw in range(len(ws)):
                 w = ws[iw]

@@ -99,7 +99,7 @@ Data Example
 
 With ``impproc migrate``, you can perform a number of processing steps in a single line. We are starting with data in crossprofile.mat.
 
-.. image:: crossprofile.png
+.. image:: NEGIS_unmigrated.png
 
 This profile does not have anything above the first return; often we would have started recording earlier and have some samples that we would want to delete off the top to start. There is a lot of variability in the overall return power in different traces (resulting from the data collection, not from sub-surface variability). There is also a lot of noise. To vertically bandpass the data between 200 and 600 MHz, adaptively horizontally filter, stack 3 traces, and do a normal moveout correction with no transmit-receive separation only requires running
 
@@ -107,4 +107,4 @@ This profile does not have anything above the first return; often we would have 
 
 and then the output is saved in crossprofile_proc.mat.
 
-.. image:: crossprofile.png
+.. image:: NEGIS_migrated.png
