@@ -61,7 +61,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwa
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data, dat.travel_time / 1.e6, axis=0)
+    gradD = np.gradient(dat.data, dat.travel_time / 1.0e6, axis=0)
     # Create an empty array to fill with migrated data
     migdata = np.zeros_like(dat.data)
 
@@ -107,7 +107,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwa
     return dat
 
 
-def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=100,*args,**kwargs):
     """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
@@ -337,7 +337,7 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,*a
     return dat
 
 
-def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,nz=1,dz=1,*args,**kwargs):
+def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=100,nz=1,dz=1,*args,**kwargs):
     """
 
     Migration through Seis Unix. For now only three options:
