@@ -107,7 +107,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False,*args,**kwa
     return dat
 
 
-def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=100,*args,**kwargs):
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000,*args,**kwargs):
     """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
