@@ -41,6 +41,20 @@ def reverse(self):
         self.flags.reverse = True
 
 
+def constant_sample_depth_spacing(self):
+    # First, we make a new array of depths
+    if self.nmo_depth is None:
+        raise AttributeError('Call nmo first...')
+    if np.all(np.diff(self.nmo_depth) == self.nmo_depths[1] - self.nmo_depths[0]):
+        print('No constant sampling when you already have constant sampling...')
+        return
+
+    depths = np.arange(self.nmo_depths[0], self.nmo_depths[-1], len(self.nmo_depths))
+    self.data = interp1d(self.nmo_depth, self.data.transpose())(depths).transpose()
+    self.travel_time = interp1d(self.nmo_depth, self.travel_time)(depths)
+    self.nmo_depth = depths
+
+
 def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     """Normal move-out correction.
 
