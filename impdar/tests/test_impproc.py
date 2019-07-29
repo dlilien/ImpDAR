@@ -99,7 +99,7 @@ class TestMain(unittest.TestCase):
             p.save.assert_called_with('dummy/small_data_agc.mat')
 
     def test_help(self):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(BaseException):
             impproc.sys.argv = ['dummy']
             impproc.main()
 
@@ -392,7 +392,7 @@ class TestInputs(unittest.TestCase):
         self.assertTrue(migrate_patch.called)
 
         # mtype tests
-        for mtype in ['stolt', 'kirch', 'phsh', 'tk', 'su']:
+        for mtype in ['stolt', 'kirch', 'phsh', 'tk', 'sustolt', 'sumigtk', 'sumigffd']:
             impproc.sys.argv = ['dummy', 'migrate', '--mtype', mtype, 'dummy.mat']
             impproc.main()
             aca, kwca = migrate_patch.call_args
@@ -400,17 +400,6 @@ class TestInputs(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             impproc.sys.argv = ['dummy', 'migrate', '--mtype', 'bad', 'dummy.mat']
-            impproc.main()
-
-        # sutype tests
-        for sutype in ['sustolt', 'sumigtk', 'sumigffd']:
-            impproc.sys.argv = ['dummy', 'migrate', '--sutype', sutype, 'dummy.mat']
-            impproc.main()
-            aca, kwca = migrate_patch.call_args
-            self.assertEqual(kwca['sutype'], sutype)
-
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--sutype', 'bad', 'dummy.mat']
             impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--nearfield', 'dummy.mat']

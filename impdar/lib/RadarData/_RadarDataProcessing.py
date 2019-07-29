@@ -46,17 +46,17 @@ def constant_sample_depth_spacing(self):
     # First, we make a new array of depths
     if self.nmo_depth is None:
         raise AttributeError('Call nmo first...')
-    if np.all(np.diff(self.nmo_depth) == self.nmo_depths[1] - self.nmo_depths[0]):
+    if np.all(np.diff(self.nmo_depth) == self.nmo_depth[1] - self.nmo_depth[0]):
         print('No constant sampling when you already have constant sampling...')
         return
 
-    depths = np.arange(self.nmo_depths[0], self.nmo_depths[-1], len(self.nmo_depths))
+    depths = np.linspace(np.min(self.nmo_depth[0], 0), self.nmo_depth[-1], len(self.nmo_depth))
     self.data = interp1d(self.nmo_depth, self.data.transpose())(depths).transpose()
     self.travel_time = interp1d(self.nmo_depth, self.travel_time)(depths)
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -73,6 +73,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         Speed of light in air. Default 3.0e8
     rho_profile: str,optional
         Filename for a csv file with density profile (depths in first column and densities in second)
+        Units should be meters for depth, kgs per meter cubed for density.
         Note that using a variable uice will break the linear scaling between depth and time,
         so we are forced to choose whether the y-axis is linear in speed or time.
         I chose time, since this eases calculations like migration.
@@ -165,6 +166,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - nair) * self.dt,
                                  self.dt) * 1.0e6
+    self.data = nmodata
+
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
     else:
@@ -172,11 +175,11 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         try:
             profile_depth = rho_profile_data[:, 0]
             profile_rho = rho_profile_data[:, 1]
-            traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
         except IndexError:
-            IndexError('Cannot load the depth-density profile')
-
-    self.data = nmodata
+            raise IndexError('Cannot load the depth-density profile')
+        traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
+        if const_sample:
+            constant_sample_depth_spacing(self)
 
     try:
         self.flags.nmo[0] = 1
@@ -209,16 +212,16 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     profile_u = c / np.sqrt(eps)
     # iterate over time, moving down according to the velocity at each step
     z = 0.
-    self.nmo_depth = np.nan * np.ones_like(self.travel_time)
+    self.nmo_depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
     for i, t in enumerate(self.travel_time):
         if t < 0.:
             continue
         elif t < self.dt * 1.0e6:
             step_u = profile_u[0]
-            z += t / 2. * step_u * 1e-6
+            z += t / 2. * step_u * 1.0e-6
             self.nmo_depth[i] = z
         else:
-            step_u = profile_u[np.argmin(abs(profile_depth - z))]
+            step_u = profile_u[np.nanargmin(abs(profile_depth - z))]
             z += self.dt / 2. * step_u
             self.nmo_depth[i] = z
 

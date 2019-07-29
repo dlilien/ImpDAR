@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 """
@@ -78,12 +78,8 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     # Loop through all traces
     print('Migrating trace number:')
     for xi in range(dat.tnum):
-<<<<<<< HEAD
         print('{:d}, '.format(xi), end='')
         sys.stdout.flush()
-=======
-        print('{:d}'.format(xi),end=', ',flush=True)
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
         # get the trace distance
         x = dat.dist[xi]
         dists2 = (dat.dist - x)**2.
@@ -169,12 +165,8 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     for zj in range(dat.snum//2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
-<<<<<<< HEAD
             print(int(ws[zj]/1e6/2/np.pi), 'MHz, ', end='')
             sys.stdout.flush()
-=======
-            print(int(ws[zj]/1e6/2/np.pi),'MHz',end=', ',flush=True)
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
         # for all horizontal wavenumbers
         for xi in range(len(kx)):
             kxi = kx[xi]
@@ -357,11 +349,10 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     return dat
 
 
-<<<<<<< HEAD
 def migrationSeisUnix(dat,
+                      mtype='sumigtk',
                       vel=1.69e8,
                       vel_fn=None,
-                      sutype='sumigtk',
                       tmig=0,
                       verbose=1,
                       nxpad=100,
@@ -369,9 +360,6 @@ def migrationSeisUnix(dat,
                       vtaper=1000,
                       nz=None,
                       dz=None):
-=======
-def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=1,nxpad=100,htaper=100,vtaper=1000,nz=1,dz=1,*args,**kwargs):
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
     """
 
     Migration through Seis Unix. For now only three options:
@@ -407,18 +395,12 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
 
     """
 
-<<<<<<< HEAD
-    if sp.Popen(['which', sutype]).wait() != 0:
-        raise FileNotFoundError('Cannot find chosen SeisUnix migration routine,' + sutype + '. Either install or choose a different migration routine.')
+    if sp.Popen(['which', mtype]).wait() != 0:
+        raise FileNotFoundError('Cannot find chosen SeisUnix migration routine,' + mtype + '. Either install or choose a different migration routine.')
 
     # save to seisunix format for migration with SU routines
     out_fn = os.path.splitext(dat.fn)[0] + '.sgy'
     dat.save_as_segy(out_fn)
-=======
-    print('Using SeisUnix migration routine at:')
-    if subprocess.run(['which',mtype]).returncode == 1:
-        raise Exception('Cannot find chosen SeisUnix migration routine,', mtype,'. Either install or choose a different migration routine.')
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
 
     # Get the trace spacing
     if np.mean(dat.trace_int) <= 0:
@@ -436,12 +418,10 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
     segy_name = os.path.splitext(dat.fn)[0]
     bin_fn = os.path.splitext(dat.fn)[0] + '_mig.bin'
 
-
     ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE)
     ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE)
     # Time Wavenumber
-<<<<<<< HEAD
-    if sutype == 'sumigtk':
+    if mtype == 'sumigtk':
         ps3 = sp.Popen(['sumigtk',
                         'tmig={:f}'.format(tmig),
                         'vmig={:f}'.format(vel * 1.e-6),
@@ -452,9 +432,9 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
                        stdout=sp.PIPE,
                        stdin=ps2.stdout)
 
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + sutype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
     # Fourier Finite Difference
-    elif sutype == 'sumigffd':
+    elif mtype == 'sumigffd':
         if vel_fn is None:
             raise ValueError('vel_fn needed for gffd')
         ps3 = sp.Popen(['sumigffd',
@@ -465,9 +445,9 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
                         'dx={:f}'.format(dx)],
                        stdout=sp.PIPE,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + sutype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
     # Stolt
-    elif sutype == 'sustolt':
+    elif mtype == 'sustolt':
         ps3 = sp.Popen(['sustolt',
                         'tmig={:f}'.format(tmig),
                         'vmig={:f}'.format(vel * 1.0e-6),
@@ -479,13 +459,13 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
                         'cdpmax={:d}'.format(dat.tnum)],
                        stdout=sp.PIPE,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + sutype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
     # Stolt
     else:
         ps1.stdout.close()
         ps2.communicate()
 
-        raise ValueError('The SeisUnix migration routine', sutype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+        raise ValueError('The SeisUnix migration routine', mtype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
     ps1.wait()
     ps2.wait()
@@ -505,32 +485,6 @@ def migrationSeisUnix(dat,mtype='sumigtk',vel=1.69e8,vel_fn=None,tmig=0,verbose=
     os.remove('binary')
     os.remove(segy_name + '.sgy')
     return dat
-=======
-    if mtype == 'sumigtk':
-        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigtk tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
-                        ' verbose='+str(verbose)+' nxpad='+str(nxpad)+' ltaper='+str(htaper)+' dxcdp='+str(dx)+\
-                        ' > '+segy_name+'_migtk.sgy'],shell=True)
-        subprocess.run(['sustrip < '+segy_name+'_migtk.sgy > '+segy_name+'_migtk.bin'],shell=True)
-    # Fourier Finite Difference
-    elif mtype == 'sumigffd':
-        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sumigffd vfile='+vel_fn+\
-                        ' nz='+str(nz)+' dz='+str(dz)+' dt='+str(dat.dt*1e-6)+' dx='+str(dx)+\
-                        ' > '+segy_name+'_migffd.sgy'],shell=True)
-        subprocess.run(['sustrip < '+segy_name+'_migffd.sgy > '+segy_name+'_migffd.bin'],shell=True)
-    # Stolt
-    elif mtype == 'sustolt':
-        subprocess.run(['segyread tape='+segy_name+'.sgy | segyclean | sustolt tmig='+str(tmig)+' vmig='+str(vel*1e-6)+\
-                        ' verbose='+str(verbose)+'lstaper='+str(htaper)+' lbtaper='+str(vtaper)+\
-                        ' dxcdp='+str(dx)+' cdpmin='+str(0)+' cdpmax='+str(dat.tnum)+\
-                        ' > '+segy_name+'_stolt.sgy'],shell=True)
-        subprocess.run(['sustrip < '+segy_name+'_stolt.sgy > '+segy_name+'_stolt.bin'],shell=True)
-
-    else:
-         raise ValueError('The SeisUnix migration routine', mtype,
-            'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
-
-    return
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -578,24 +532,17 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     if not hasattr(vmig,"__len__"):
         print('Constant velocity %s m/usec'%(vmig/1e6))
         # iterate through all frequencies
-<<<<<<< HEAD
         print('Frequency: ',end='')
         sys.stdout.flush()
 
-=======
         print('Frequency: ')
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
         for iw in range(len(ws)):
             w = ws[iw]
             if w == 0.0:
                 w = 1e-10/dat.dt
             if iw%100 == 0:
-<<<<<<< HEAD
                 print(int(w/1e6/(2.*np.pi)),'MHz',', ',end='')
                 sys.stdout.flush()
-=======
-                print(int(w/1e6/(2.*np.pi)),'MHz',end=', ',flush=True)
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
             # remove frequencies outside of the domain
             vkx2 = (vmig*kx/2.)**2.
             ik = np.argwhere(vkx2 < w**2.)
@@ -626,12 +573,8 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
         for itau in range(dat.snum):
             tau = dat.travel_time[itau]/1e6
             if itau%100 == 0:
-<<<<<<< HEAD
                 print('Time %.2e, ' %(tau), end='')
                 sys.stdout.flush()
-=======
-                print('Time %.2e' %(tau),end=', ',flush=True)
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
             # iterate through all frequencies
             for iw in range(len(ws)):
                 w = ws[iw]

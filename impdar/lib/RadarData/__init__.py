@@ -113,6 +113,8 @@ class RadarData(object):
             #: The init method of picks needs some basic data to calculate frequencies, etc, so it
             #: is not created until it is needed (maybe after some modifications to the data).
             self.picks = None
+
+            self.data_dtype = None
             return
 
         mat = loadmat(fn_mat)
@@ -134,6 +136,8 @@ class RadarData(object):
                     setattr(self, attr, mat[attr])
             else:
                 setattr(self, attr, None)
+
+        self.data_dtype = self.data.dtype
 
         self.fn = fn_mat
         self.flags = RadarFlags()
@@ -166,6 +170,9 @@ class RadarData(object):
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
+
+        if not hasattr(self, 'data_dtype') or self.data_dtype is None:
+            self.data_dtype = self.data.dtype
         return
 
     @property

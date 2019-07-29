@@ -191,14 +191,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertEqual(self.data.flags.nmo.shape, (2,))
         self.assertTrue(self.data.flags.nmo[0])
 
-    def test_NMO_arrayin(self):
-        # If velocity is 2 all depths
-        self.data.nmo(0., uice=np.array([(-1.0, 2.0), (999.0, 2.0)]), uair=2.0)
-        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
-
-        # much harder if variable, just check no exceptions
-        self.data.nmo(0., uice=np.array([(-1.0, 1.0), (999.0, 2.0)]), uair=2.0)
-
     def test_process_NMO(self):
         # If velocity is 2
         process.process([self.data], nmo=(0., 2.0, 2.0))

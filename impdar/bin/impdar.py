@@ -9,7 +9,7 @@
 
 import sys
 import argparse
-from impdar import load, process, plot, convert
+from impdar.lib import load, process, plot, convert
 
 
 def _get_args():
@@ -20,11 +20,7 @@ def _get_args():
     parser_load.set_defaults(func=load.load_and_exit)
     parser_load.add_argument('filetype', type=str,
                              help='Type of file',
-<<<<<<< HEAD
                              choices=load.FILETYPE_OPTIONS)
-=======
-                             choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords_nc', 'mcords_mat'])
->>>>>>> 56735a271c492d2e866a404867eed2354b8faa1f
     parser_load.add_argument('fns_in', type=str, nargs='+', help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1,
                              help='Receiver channel to load, \

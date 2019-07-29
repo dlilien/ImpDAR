@@ -84,7 +84,7 @@ def _get_args():
     parser_nmo.add_argument('ant_sep', type=float, help='Antenna separation')
     parser_nmo.add_argument('--uice', type=float, default=1.69e8, help='Speed of light in ice in m/s (default 1.69e8)')
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
-    parser_nmo.add_argument('--rho_profile', type=str, help='Filename for a depth density profile to correct wave velocity.')
+    parser_nmo.add_argument('--rho_profile', type=str, default=None, help='Filename for a depth density profile to correct wave velocity.')
     add_def_args(parser_nmo)
 
     # Reinterpolate GPS
@@ -201,8 +201,8 @@ def hcrop(dat, lim=0, left_or_right='left', dimension='tnum', **kwargs):
     dat.hcrop(lim, left_or_right=left_or_right, dimension=dimension)
 
 
-def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, **kwargs):
-    dat.nmo(ant_sep, uice=uice, uair=uair)
+def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, rho_profile=None, **kwargs):
+    dat.nmo(ant_sep, uice=uice, uair=uair, rho_profile=rho_profile)
 
 
 def restack(dat, traces=1, **kwargs):
