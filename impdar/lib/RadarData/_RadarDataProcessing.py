@@ -12,6 +12,7 @@ Define processing steps for Radar Data. These are all instance methods.
 
 import numpy as np
 from scipy.interpolate import interp1d
+from ..permittivity_models import firn_permittivity
 
 
 def reverse(self):
@@ -55,7 +56,7 @@ def constant_sample_depth_spacing(self):
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -68,8 +69,10 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         Antenna separation in meters.
     uice: float or np.ndarray (2 x m), optional
         Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8.
-        This can also be a 2d array to give variable wavespeed with depth (positive down).
-        First column is depths, second column wavespeeds.
+    uair: float, optional
+        Speed of light in air. Default 3.0e8
+    rho_profile: str,optional
+        Filename for a csv file with density profile (depths in first column and densities in second)
         Note that using a variable uice will break the linear scaling between depth and time,
         so we are forced to choose whether the y-axis is linear in speed or time.
         I chose time, since this eases calculations like migration.
@@ -77,8 +80,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         so the depth variations are averaged out.
         You can use the helper function constant_sample_depth_spacing() in order to correct this,
         but you should call that after migration.
-    uair: float, optional
-        Speed of light in air. Default 3.0e8
     """
     # Conversion of StO nmodeep v2.4
     #   Modifications:
@@ -93,14 +94,9 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
 
     # Preliminary handling of the uice
     # We are going to standardize for either type of uice input
-    if isinstance(uice, (float, int)):
-        def u_ice_func(depth):
-            return uice
-    else:
-        u_ice_func = interp1d(uice[:, 0], uice[:, 1], fill_value='extrapolate')
-
-    # calculate travel time of air wave
     tair = ant_sep / uair
+    # Calculate direct ice wave time
+    tice = ant_sep / uice
 
     if np.round(tair / self.dt) > np.mean(self.trig):
         if isinstance(self.trig, (int, float)):
@@ -111,10 +107,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         self.snum = nmodata.shape[0]
     else:
         nmodata = self.data.copy()
-
-    # Calculate direct ice wave time
-    # Use a value just larger than 0.
-    tice = ant_sep / u_ice_func(1.0e-8)
 
     # Calculate sample location for time=0 when radar pulse is transmitted
     #  (Note: trig is the air wave arrival)
@@ -173,17 +165,16 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - nair) * self.dt,
                                  self.dt) * 1.0e6
-
-    self.nmo_depth = np.zeros_like(self.travel_time)
-    self.nmo_depth[0] = self.travel_time[0] / 2. * u_ice_func(0) * 1.0e-6
-    for i in range(1, len(self.travel_time)):
-        # we are going to be slightly lazy here, and guess at the middle depth of the packet to get the velocity
-        middle_depth_guess = self.nmo_depth[i - 1] + (self.travel_time[i] - self.travel_time[i - 1]) / 4. * u_ice_func(self.nmo_depth[i]) * 1.0e-6
-        self.nmo_depth[i] = self.nmo_depth[i - 1] + (self.travel_time[i] - self.travel_time[i - 1]) / 2. * u_ice_func(middle_depth_guess) * 1.0e-6
-
-    # sanity check...
-    if isinstance(uice, (float, int)):
-        assert np.allclose(self.nmo_depth, self.travel_time / 2. * uice * 1.0e-6)
+    if rho_profile is None:
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+    else:
+        rho_profile_data = np.genfromtxt(rho_profile, delimiter=',')
+        try:
+            profile_depth = rho_profile_data[:, 0]
+            profile_rho = rho_profile_data[:, 1]
+            traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
+        except IndexError:
+            IndexError('Cannot load the depth-density profile')
 
     self.data = nmodata
 
@@ -193,6 +184,43 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     except (IndexError, TypeError):
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
+
+
+def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_model=firn_permittivity):
+    """
+    Convert travel_time to depth based on density profile
+
+    This is called from within the nmo processing function
+    It defines nmo_depth, the moveout-corrected depth, in the case of a variable velocity
+
+    Parameters
+    ----------
+    profile_depth: array
+        input depths for measured densities
+    profile_rho: array
+        input densities to match depth locations above
+    c: float, optional
+        speed of light in vacuum
+    permittivity_model: function
+        specific permittivity model to use
+    """
+    # get the input velocity-depth profile
+    eps = np.real(permittivity_model(profile_rho))
+    profile_u = c / np.sqrt(eps)
+    # iterate over time, moving down according to the velocity at each step
+    z = 0.
+    self.nmo_depth = np.nan * np.ones_like(self.travel_time)
+    for i, t in enumerate(self.travel_time):
+        if t < 0.:
+            continue
+        elif t < self.dt * 1.0e6:
+            step_u = profile_u[0]
+            z += t / 2. * step_u * 1e-6
+            self.nmo_depth[i] = z
+        else:
+            step_u = profile_u[np.argmin(abs(profile_depth - z))]
+            z += self.dt / 2. * step_u
+            self.nmo_depth[i] = z
 
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):

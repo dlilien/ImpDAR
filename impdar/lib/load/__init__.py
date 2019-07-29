@@ -10,13 +10,13 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_segy
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_mcords_mat, load_segy
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc']
 
 
 def load(filetype, fns_in, channel=1):
@@ -32,7 +32,9 @@ def load(filetype, fns_in, channel=1):
                         'gprMax' (synthetics)
                         'gecko' (St Olaf Radar)
                         'segy' (SEG Y)
-                        'mcords' (mcords netcdf)
+                        'mcords_nc' (MCoRDS netcdf)
+                        'mcords_mat' (MCoRDS matlab format)
+                        'mat' (StODeep matlab format)
     fns: list
         List of files to load
     channel: Receiver channel that the data were recorded on
@@ -67,11 +69,13 @@ def load(filetype, fns_in, channel=1):
             raise ImportError('Failed to import segyio, cannot read segy')
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
-    elif filetype == 'mcords':
+    elif filetype == 'mcords_nc':
         if load_mcords_nc.NC:
             dat = [load_mcords_nc.load_mcords_nc(fn) for fn in fns_in]
         else:
             raise ImportError('You need netCDF4 in order to read the MCoRDS files')
+    elif filetype == 'mcords_mat':
+        dat = [load_mcords_mat.load_mcords_mat(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
@@ -89,7 +93,8 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
                         'gprMax' (synthetics)
                         'gecko' (St Olaf Radar)
                         'segy' (SEG Y)
-                        'mcords' (MCoRDS netcdf)
+                        'mcords_nc' (MCoRDS netcdf)
+                        'mcords_mat' (MCoRDS matlab format)
                         'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
