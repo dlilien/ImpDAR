@@ -84,6 +84,7 @@ def _get_args():
     parser_nmo.add_argument('ant_sep', type=float, help='Antenna separation')
     parser_nmo.add_argument('--uice', type=float, default=1.69e8, help='Speed of light in ice in m/s (default 1.69e8)')
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
+    parser_nmo.add_argument('--rho_profile', type=str, help='Filename for a depth density profile to correct wave velocity.')
     add_def_args(parser_nmo)
 
     # Reinterpolate GPS
@@ -97,7 +98,7 @@ def _get_args():
 
     # Migration
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
-    parser_mig.add_argument('--mtype', type=str, default='stolt', choices=['stolt', 'kirch', 'phsh', 'tk', 'su'], help='Migration routines.')
+    parser_mig.add_argument('--mtype', type=str, default='phsh', choices=['stolt', 'kirch', 'phsh', 'tk', 'sumigtk', 'sustolt', 'sumigffd'], help='Migration routines.')
     parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
     parser_mig.add_argument('--vel_fn', type=str, default=None, help='Filename for inupt velocity array. Column 1: velocities, Column 2: z locations, Column 3: x locations (optional)')
     parser_mig.add_argument('--nearfield', action='store_true', help='Boolean for nearfield operator in Kirchhoff migration.')
@@ -106,7 +107,6 @@ def _get_args():
     parser_mig.add_argument('--nxpad', type=int, default=100, help='Number of traces to pad with zeros for FFT')
     parser_mig.add_argument('--tmig', type=int, default=0, help='Times for velocity profile')
     parser_mig.add_argument('--verbose', type=int, default=1, help='Print output from SeisUnix migration')
-    parser_mig.add_argument('--sutype', type=str, default='sumigtk', choices=['sustolt', 'sumigtk', 'sumigffd'], help='Migration command for SeisUnix')
     add_def_args(parser_mig)
 
     return parser

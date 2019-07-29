@@ -407,7 +407,7 @@ def vertical_band_pass(self,
     self.flags.bpass[2] = high
 
 
-def migrate(self, mtype='stolt', sutype='sumigtk', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
+def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
     """Migrate the data.
 
     This is a wrapper around all the migration routines in migration_routines.py.
@@ -427,13 +427,10 @@ def migrate(self, mtype='stolt', sutype='sumigtk', vtaper=10, htaper=10, tmig=0,
     elif mtype == 'tk':
         migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, sutype=sutype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
+        migrationlib.migrationSeisUnix(self, sutype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 
     # change migration flag
-    if mtype == 'su':
-        mflag = sutype
-    else:
-        mflag = mtype
+    mflag = mtype
     self.flags.mig = mflag
