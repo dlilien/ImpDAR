@@ -57,11 +57,15 @@ The output is in 'crossprofile_bandpassed_ahfilt_restacked_nmo.mat'. The plot lo
 
 .. image:: crossprofile_bandpassed_ahfilt_restacked_nmo.png
 
-For some datasets, diffraction hyperbolae distort the image, moving much energy away from the true location of the reflecting surface. In these cases, migration is an optional processing step which moves the energy back to its appropriate position in the image. 
+If the permittivity is not constant (for example in the case of variable snow/firn density), we want to make that correction here as well. Optionally, pass a .csv filename as a string to the nmo filter (i.e. rho_profile='__filename__.csv'). The file should have two columns, depth and density. ImpDAR has a couple of options for permittivity models, with the default being the DECOMP mixing model for firn permittivity (Wilhelms, 2005). As an example, here is a measured density profile with modeled permittivity and velocity profiles,
 
-``impproc migrate crossprofile_bandpassed_ahfilt_restacked_nmo.mat``
+.. image:: density_permittivity_velocity.png
 
-The output is in 'crossprofile_bandpassed_ahfilt_restacked_nmo_migrated.mat'. As you can see, the migration algorithm does not do much for this particular profile. This is because the reflecting surface is close to specular. For a more thorough review of the migration routines implemented in ImpDAR, see the next page on migration. 
+ImpDAR then takes the modeled velocities and updates the depth profile,
+
+.. image:: time_depth.png
+
+For some datasets, diffraction hyperbolae distort the image, moving much energy away from the true location of the reflecting surface. In these cases, migration is an optional processing step which moves the energy back to its appropriate position in the image. For a more thorough review of the migration routines implemented in ImpDAR, see the next example page on migration. 
 
 GUI
 ---

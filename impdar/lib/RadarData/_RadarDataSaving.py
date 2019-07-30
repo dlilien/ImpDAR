@@ -78,7 +78,6 @@ def save_as_segy(self, fn):
     if not SEGY:
         raise ImportError('segyio failed to import, cannot save as segy')
 
-    print(self.dt, self.dt * 1.0e12)
     segyio.tools.from_array2D(fn, self.data.transpose(), dt=self.dt * 1.0e12)
 
 

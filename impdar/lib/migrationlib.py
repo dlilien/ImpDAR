@@ -64,7 +64,7 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data, dat.travel_time / 1.e6, axis=0)
+    gradD = np.gradient(dat.data, dat.travel_time / 1.0e6, axis=0)
     # Create an empty array to fill with migrated data
     migdata = np.zeros_like(dat.data)
 
