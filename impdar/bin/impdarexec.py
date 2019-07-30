@@ -92,7 +92,7 @@ def _get_args():
     parser_convert.add_argument('fns_in', type=str, nargs='+', help='File(s) to convert')
     parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
     parser_convert.add_argument('-in_fmt', type=str, default=None,
-                                choices=['mat', 'gssi', 'pe', 'gprMax', 'gecko', 'segy', 'mcords_nc', 'mcords_mat'],
+                                choices=load.FILETYPE_OPTIONS,
                                 help='Input format type. If none, guess from extension')
     parser_convert.add_argument('-t_srs', type=int, default=4326,
                                 help='Target spatial reference system (only used if out_fmt==shp). \

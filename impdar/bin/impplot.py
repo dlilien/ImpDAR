@@ -8,8 +8,10 @@
 #
 # Legacy header: Created: B. Welch, modified by S. Harris, J. Olson, and B. Youngblood.
 
+import sys
 import argparse
-from impdar import plot
+from impdar.lib import plot
+from impdar.lib.load import FILETYPE_OPTIONS
 
 
 def _get_args():
@@ -44,7 +46,7 @@ def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
 
     parser.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
-    parser.add_argument('-ftype', type=str, default='png', help='Save file with this extension (default png)')
+    parser.add_argument('--o_fmt', type=str, default='png', help='Save file with this extension (default png)')
     parser.add_argument('-dpi', type=int, default=300, help='Save file with this resolution (default 300)')
 
     if xd:
@@ -53,28 +55,27 @@ def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
         parser.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
 
     if other_ftypes:
-        parser.add_argument('-pe', action='store_true', help='Inputs are pulse ekko files')
-        parser.add_argument('-gssi', action='store_true', help='Inputs are gssi files')
-        parser.add_argument('-gprMax', action='store_true', help='Inputs are gprMax files')
-        parser.add_argument('-gecko', action='store_true', help='Inputs are gecko files')
-        parser.add_argument('-segy', action='store_true', help='Inputs are segy files')
+        parser.add_argument('--in_fmt', type=str,
+                            help='Type of file',
+                            default='mat',
+                            choices=FILETYPE_OPTIONS)
 
 
-def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, ftype='png', dpi=300, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=ftype, dpi=dpi, gssi=gssi, pe=pe, gprMax=gprMax, gecko=gecko, segy=segy)
+def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
 
 
-def plot_power(fns=None, layer=None, s=False, o=None, ftype='png', dpi=300, **kwargs):
-    plot.plot(fns, power=layer, s=s, o=o, ftype=ftype, dpi=dpi)
+def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, power=layer, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
 
 
-def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None, ftype='png', dpi=300, gssi=False, pe=False, gprMax=False, gecko=False, segy=False, **kwargs):
-    plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=ftype, dpi=dpi, gssi=gssi, pe=pe, gprMax=gprMax, gecko=gecko, segy=segy)
+def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
 
 
 def main():
     parser = _get_args()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
         return
