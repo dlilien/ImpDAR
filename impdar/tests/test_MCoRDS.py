@@ -21,7 +21,6 @@ class TestMCoRDS(unittest.TestCase):
     @unittest.skipIf(not load_mcords_nc.NC, 'No netcdf on this version')
     def test_loadnc(self):
         dat = load_mcords_nc.load_mcords_nc(os.path.join(THIS_DIR, 'input_data', 'zeros_mcords.nc'))
-        self.assertTrue(dat.dt == 0.)
 
     @unittest.skipIf(load_mcords_nc.NC, 'NETCDF on this version')
     def test_loadnc_failure(self):

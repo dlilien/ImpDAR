@@ -11,7 +11,11 @@ Test the machinery of imppick.
 """
 import sys
 import unittest
-from impdar.bin import imppick
+try:
+    from impdar.bin import imppick
+    QT = True
+except ImportError:
+    QT = False
 
 if sys.version_info[0] >= 3:
     from unittest.mock import patch, MagicMock
@@ -22,6 +26,7 @@ else:
 class TestMain(unittest.TestCase):
 
     # mock so that we have no real gui
+    @unittest.skipIf(not QT, 'No Qt')
     @patch('impdar.bin.imppick.QtWidgets.QApplication')
     @patch('impdar.bin.imppick.pickgui.InteractivePicker')
     def test_badinput(self, pick_patch, qapppatch):
@@ -45,6 +50,7 @@ class TestMain(unittest.TestCase):
         with self.assertRaises(BaseException):
             imppick.main()
 
+    @unittest.skipIf(not QT, 'No Qt')
     @patch('impdar.bin.imppick.QtWidgets.QApplication')
     @patch('impdar.bin.imppick.pickgui.InteractivePicker')
     @patch('impdar.bin.imppick.load.load')
@@ -59,6 +65,7 @@ class TestMain(unittest.TestCase):
         self.assertTrue(pick_patch.called)
         pick_patch.assert_called_with(load_patch.return_value[0], xdat='tnum', ydat='twtt')
 
+    @unittest.skipIf(not QT, 'No Qt')
     @patch('impdar.bin.imppick.QtWidgets.QApplication')
     @patch('impdar.bin.imppick.pickgui.InteractivePicker')
     @patch('impdar.bin.imppick.load.load')
@@ -73,6 +80,7 @@ class TestMain(unittest.TestCase):
         self.assertTrue(pick_patch.called)
         pick_patch.assert_called_with(load_patch.return_value[0], xdat='tnum', ydat='depth')
 
+    @unittest.skipIf(not QT, 'No Qt')
     @patch('impdar.bin.imppick.QtWidgets.QApplication')
     @patch('impdar.bin.imppick.pickgui.InteractivePicker')
     @patch('impdar.bin.imppick.load.load')

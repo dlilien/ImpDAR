@@ -16,8 +16,8 @@ Mar 12 2019
 
 import os
 import unittest
-import numpy as np
 import subprocess as sp
+import numpy as np
 
 from impdar.lib import migrationlib
 from impdar.lib.load import load_segy
@@ -25,7 +25,7 @@ from impdar.lib.NoInitRadarData import NoInitRadarData
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(THIS_DIR, 'Migration_tests')
-out_prefix = 'rectangle'
+OUT_PREFIX = 'rectangle'
 # in_file = out_prefix+'_gprMax_Bscan.h5'
 
 
@@ -98,6 +98,10 @@ class TestMigration(unittest.TestCase):
     def test_Kirchhoff(self):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationKirchhoff(data)
+
+    def test_TimeWavenumber(self):
+        data = NoInitRadarData(big=True)
+        data = migrationlib.migrationTimeWavenumber(data)
 
     def test_PhaseShiftConstant(self):
         data = NoInitRadarData(big=True)

@@ -172,6 +172,10 @@ class RadarData(object):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
+        if (self.data.shape != (self.snum, self.tnum)) and (self.elev is None):
+            print(self.data.shape, (self.snum, self.tnum))
+            raise ImpdarError('The data shape does not match the snum and tnum values!!!')
+
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
         return
