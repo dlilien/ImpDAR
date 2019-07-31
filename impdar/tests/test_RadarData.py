@@ -244,6 +244,36 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(self.data.flags.interp[0])
         self.assertEqual(self.data.flags.interp[1], space)
 
+    def test_constant_sample_depth_spacing(self):
+        # first check that it fails if we are not set up
+        self.data.nmo_depth = None
+        with self.assertRaises(AttributeError):
+            self.data.constant_sample_depth_spacing()
+
+        # Spoof variable nmo depths
+        self.data.nmo_depth = np.hstack((np.arange(self.data.snum // 2),
+                                         self.data.snum // 2 + 2. * np.arange(self.data.snum // 2)))
+        self.data.constant_sample_depth_spacing()
+        self.assertTrue(np.allclose(np.diff(self.data.nmo_depth), np.ones((self.data.snum - 1,)) * np.diff(self.data.nmo_depth)[0]))
+
+        # So now if we call again, it should do nothing and return 1
+        rv = self.data.constant_sample_depth_spacing()
+        self.assertEqual(1, rv)
+
+    def test_traveltime_to_depth(self):
+        # We are not constant
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.arange(10) + 1) * 91.7)
+        self.assertFalse(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
+
+        # We are constant
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.ones((10,)) * 91.7))
+        self.assertTrue(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
+
+        # we have negative travel times
+        self.data.travel_time = self.data.travel_time - 0.01
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.arange(10) + 1) * 91.7)
+        self.assertFalse(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
+
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))

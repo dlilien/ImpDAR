@@ -46,9 +46,9 @@ def constant_sample_depth_spacing(self):
     # First, we make a new array of depths
     if self.nmo_depth is None:
         raise AttributeError('Call nmo first...')
-    if np.all(np.diff(self.nmo_depth) == self.nmo_depth[1] - self.nmo_depth[0]):
+    if np.allclose(np.diff(self.nmo_depth), np.ones((self.snum - 1,)) * (self.nmo_depth[1] - self.nmo_depth[0])):
         print('No constant sampling when you already have constant sampling...')
-        return
+        return 1
 
     depths = np.linspace(np.min(self.nmo_depth[0], 0), self.nmo_depth[-1], len(self.nmo_depth))
     self.data = interp1d(self.nmo_depth, self.data.transpose())(depths).transpose()
@@ -177,7 +177,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
             profile_rho = rho_profile_data[:, 1]
         except IndexError:
             raise IndexError('Cannot load the depth-density profile')
-        traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
+        self.nmo_depth = traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
         if const_sample:
             constant_sample_depth_spacing(self)
 
@@ -194,7 +194,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     Convert travel_time to depth based on density profile
 
     This is called from within the nmo processing function
-    It defines nmo_depth, the moveout-corrected depth, in the case of a variable velocity
+    It returns the depth for the moveout-corrected depth, in the case of a variable velocity
 
     Parameters
     ----------
@@ -206,24 +206,29 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
         speed of light in vacuum
     permittivity_model: function
         specific permittivity model to use
+
+    Returns
+    -------
+    depth: np.ndarray (self.snum x 1)
     """
     # get the input velocity-depth profile
     eps = np.real(permittivity_model(profile_rho))
     profile_u = c / np.sqrt(eps)
     # iterate over time, moving down according to the velocity at each step
     z = 0.
-    self.nmo_depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
+    depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
     for i, t in enumerate(self.travel_time):
         if t < 0.:
             continue
         elif t < self.dt * 1.0e6:
             step_u = profile_u[0]
             z += t / 2. * step_u * 1.0e-6
-            self.nmo_depth[i] = z
+            depth[i] = z
         else:
             step_u = profile_u[np.nanargmin(abs(profile_depth - z))]
             z += self.dt / 2. * step_u
-            self.nmo_depth[i] = z
+            depth[i] = z
+    return depth
 
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):

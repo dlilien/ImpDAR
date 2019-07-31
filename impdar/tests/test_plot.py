@@ -47,7 +47,6 @@ def Any(cls):
 
 
 class TestPlot(unittest.TestCase):
-    
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotPLOTARGS(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
@@ -90,8 +89,6 @@ class TestPlot(unittest.TestCase):
 
 
     def test_plotBADINPUT(self):
-        with self.assertRaises(ValueError):
-            plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], filetype='pe')
         with self.assertRaises(ValueError):
             plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], tr=0, power=1)
 
