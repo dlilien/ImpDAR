@@ -120,6 +120,8 @@ class RadarData(object):
 
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
+            if attr not in mat:
+                raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
             if mat[attr].shape == (1, 1):
                 setattr(self, attr, mat[attr][0][0])
             elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:

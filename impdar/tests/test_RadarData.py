@@ -24,6 +24,10 @@ class TestRadarDataLoading(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
 
+    def test_badread(self):
+        with self.assertRaises(KeyError):
+            data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_matlab.mat'))
+
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))

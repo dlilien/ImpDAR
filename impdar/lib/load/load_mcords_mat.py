@@ -20,6 +20,7 @@ import numpy as np
 from ..RadarData import RadarData
 from scipy.io import loadmat
 
+
 def load_mcords_mat(fn_mat):
     """Load MCoRDS data in .mat format downloaded from the CReSIS ftp client
 
@@ -31,6 +32,11 @@ def load_mcords_mat(fn_mat):
     mcords_data = RadarData(None)
 
     mat = loadmat(fn_mat)
+    if ('Data' not in mat) or ('Longitude' not in mat):
+        if ('data' in mat) and ('long' in mat):
+            raise KeyError('It appears that this mat file is ImpDAR/StoDeep, not MCoRDS')
+        else:
+            raise KeyError('ImpDAR cannot read this type of mat file--it does not appear to be MCoRDS')
     mcords_data.data = 10.*np.log10(np.squeeze(mat['Data']))
     mcords_data.long = np.squeeze(mat['Longitude'])
     mcords_data.lat = np.squeeze(mat['Latitude'])
@@ -52,4 +58,3 @@ def load_mcords_mat(fn_mat):
     mcords_data.trig_level = 0.
     mcords_data.check_attrs()
     return mcords_data
-
