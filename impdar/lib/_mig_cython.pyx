@@ -6,8 +6,8 @@ np.import_array()
 import numpy as np
 
 # cdefine the signature of our c function
-# cdef extern from "mig_cython.h":
-#    void mig_cython (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield)
+cdef extern from "mig_cython.h":
+    void mig_cython (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield)
 
 # create the wrapper code, with numpy type annotations
 def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
@@ -23,7 +23,6 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                           float max_travel_time,
                           bint nearfield
                           ):
-    """
     mig_cython(<double*> np.PyArray_DATA(data),
                <double*> np.PyArray_DATA(migdata),
                tnum,
@@ -37,7 +36,7 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                max_travel_time,
                nearfield
                )
-               """
+    """
             # Loop through all traces
 
     cdef int xi
@@ -77,3 +76,4 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                 integral += np.nansum(Dhyp * costheta / rs**2.)
             # sum the integrals and output
             migdata[ti, xi] = 1. / (2. * np.pi) * integral
+            """

@@ -16,8 +16,42 @@
 void mig_cython (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield){
     int i;
     int j;
-    j = 0;
-    for(i=0;i<snum;i++){
-        migdata[i] = cos(data[i]);
+    int k;
+    int l;
+    double min;
+    double m;
+    double dist2[tnum];
+    double rs[snum];
+    double costheta;
+    double integral;
+    int Didx;
+    double gradDhyp;
+    for(j=0;j<tnum;j++){
+        for(i=0;i<snum;i++){
+            dist2[i] = pow(dist[i] - dist[j], 2.);
+        }
+        for(i=0;i<snum;i++){
+            for(k=0;k<snum;k++){
+                rs[k] = sqrt(dist2[k] + zs2[j]);
+            }
+            integral = 0.0;
+            for(k=0;k<tnum;k++){
+                costheta = zs[j] / rs[k];
+                min = 1.0e6;
+                for(l=0;l<snum;l++){
+                    m = tt_sec[l] - 2. * rs[l] / vel;
+                    if(m < min){
+                        min = m;
+                        Didx = l;
+                    }
+                }
+                gradDhyp = gradD[Didx * snum + k];
+                if(2. * rs[k] / vel > max_travel_time){
+                    gradDhyp=0.;
+                }
+                integral += gradDhyp * costheta / vel;
+            }
+            migdata[j * snum + i] = integral;
+        }
     }
 }
