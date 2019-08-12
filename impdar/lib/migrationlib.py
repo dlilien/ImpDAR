@@ -33,8 +33,41 @@ import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 
+try:
+    from .mig_cython import migrationKirchoffLoop
+except ImportError:
+    def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
+        # Loop through all traces
+        print('Migrating trace number:')
+        for xi in range(tnum):
+            print('{:d}, '.format(xi), end='')
+            sys.stdout.flush()
+            # get the trace distance
+            x = dist[xi]
+            dists2 = (dist - x)**2.
+            # Loop through all samples
+            for ti in range(snum):
+                # get the radial distances between input point and output point
+                rs = np.sqrt(dists2 + zs2[ti])
+                # find the cosine of the angle of the tangent line, correct for obliquity factor
+                with np.errstate(invalid='ignore'):
+                    costheta = zs[ti] / rs
+                # get the exact indices from the array (closest to rs)
+                Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
+                # integrate the farfield term
+                gradDhyp = gradD[Didx, np.arange(len(Didx))]
+                gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+                integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
+                # integrate the nearfield term
+                if nearfield:
+                    Dhyp = data[Didx, np.arange(len(Didx))]
+                    Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+                    integral += np.nansum(Dhyp * costheta / rs**2.)
+                # sum the integrals and output
+                migdata[ti, xi] = 1. / (2. * np.pi) * integral
 
-def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
+
+def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     """Kirchhoff Migration (Berkhout 1980; Schneider 1978; Berryhill 1979)
 
     This migration method uses an integral solution to the scalar wave equation Yilmaz (2001) eqn 4.5.
@@ -66,43 +99,16 @@ def migrationKirchhoff(dat, vel=1.69e8, vel_fn=None, nearfield=False):
     # Calculate the time derivative of the input data
     gradD = np.gradient(dat.data, dat.travel_time / 1.0e6, axis=0)
     # Create an empty array to fill with migrated data
-    migdata = np.zeros_like(dat.data)
+    migdata = np.zeros_like(dat.data, dtype=np.float64)
 
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
     max_travel_time = np.max(tt_sec)
     # Cache the depths
-    zs = vel * tt_sec/2.
+    zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    # Loop through all traces
-    print('Migrating trace number:')
-    for xi in range(dat.tnum):
-        print('{:d}, '.format(xi), end='')
-        sys.stdout.flush()
-        # get the trace distance
-        x = dat.dist[xi]
-        dists2 = (dat.dist - x)**2.
-        # Loop through all samples
-        for ti in range(dat.snum):
-            # get the radial distances between input point and output point
-            rs = np.sqrt(dists2 + zs2[ti])
-            # find the cosine of the angle of the tangent line, correct for obliquity factor
-            with np.errstate(invalid='ignore'):
-                costheta = zs[ti] / rs
-            # get the exact indices from the array (closest to rs)
-            Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
-            # integrate the farfield term
-            gradDhyp = gradD[Didx, np.arange(len(Didx))]
-            gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
-            integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
-            # integrate the nearfield term
-            if nearfield:
-                Dhyp = dat.data[Didx, np.arange(len(Didx))]
-                Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
-                integral += np.nansum(Dhyp * costheta / rs**2.)
-            # sum the integrals and output
-            migdata[ti, xi] = 1. / (2. * np.pi) * integral
+    migrationKirchoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
     dat.data = migdata.copy()
     # print the total time
     print('')

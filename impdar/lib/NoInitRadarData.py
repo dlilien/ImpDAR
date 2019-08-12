@@ -26,7 +26,7 @@ class NoInitRadarData(RadarData):
             self.data = np.array([[2, 2], [1, 1]])
             self.travel_time = 0.001 * np.arange(self.data.shape[0]) + 0.001
         else:
-            self.data = np.zeros((10, 20))
+            self.data = np.zeros((1000, 200))
             self.travel_time = np.arange(self.data.shape[0])
 
         self.tnum = self.data.shape[1]
