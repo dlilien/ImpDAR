@@ -10,6 +10,7 @@
 
 
 #include <math.h>
+#include <stdio.h>
 
 /*  Compute the cosine of each element in in_array, storing the result in
  *  out_array. */
@@ -27,19 +28,23 @@ void mig_cython (double * data, double * migdata, int tnum, int snum, double * d
     int Didx;
     double gradDhyp;
     for(j=0;j<tnum;j++){
-        for(i=0;i<snum;i++){
+        for(i=0;i<tnum;i++){
             dist2[i] = pow(dist[i] - dist[j], 2.);
         }
         for(i=0;i<snum;i++){
             for(k=0;k<snum;k++){
                 rs[k] = sqrt(dist2[k] + zs2[j]);
             }
+            printf("rs is calculated at iter: %d\n", i);
             integral = 0.0;
             for(k=0;k<tnum;k++){
+                printf("Inside iter: %d\n", k);
                 costheta = zs[j] / rs[k];
                 min = 1.0e6;
                 for(l=0;l<snum;l++){
+                    printf("Inside iter: %d\n", l);
                     m = tt_sec[l] - 2. * rs[l] / vel;
+                    printf("%f %f %d\n", m, min, Didx);
                     if(m < min){
                         min = m;
                         Didx = l;
@@ -50,6 +55,7 @@ void mig_cython (double * data, double * migdata, int tnum, int snum, double * d
                     gradDhyp=0.;
                 }
                 integral += gradDhyp * costheta / vel;
+                printf("Finished inside loop\n");
             }
             migdata[j * snum + i] = integral;
         }
