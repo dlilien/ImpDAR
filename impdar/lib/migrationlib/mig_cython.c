@@ -12,7 +12,7 @@
 #include <math.h>
 #include <stdio.h>
 
-/*  Compute migrate data into migdata */
+/*  Migrate data into migdata */
 void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield, double * dist2, double * rs){
     int i;
     int j;

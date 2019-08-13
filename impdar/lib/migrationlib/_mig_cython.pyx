@@ -48,7 +48,7 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                    vel,
                    <double*> np.PyArray_DATA(gradD),
                    max_travel_time,
-                   nearfield
+                   nearfield,
                    <double*> np.PyArray_DATA(dummy_dist2),
                    <double*> np.PyArray_DATA(dummy_rs),
                    )

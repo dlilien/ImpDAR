@@ -20,7 +20,6 @@ except ImportError:
 # For now, you have to set this manually to rebuild the c sources
 CYTHON = False
 
-
 if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main',
                        'impproc=impdar.bin.impproc:main',
