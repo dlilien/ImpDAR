@@ -83,7 +83,7 @@ class TestMain(unittest.TestCase):
         impproc.main()
         for p in rd_patch:
             self.assertTrue(p.save.called)
-            p.save.assert_called_with('dummy/small_data_agc.mat')
+            p.save.assert_called_with(os.path.join('dummy', 'small_data_agc.mat'))
 
     @patch('impdar.bin.impproc.agc')
     @patch('impdar.bin.impproc.load')
@@ -96,7 +96,7 @@ class TestMain(unittest.TestCase):
         impproc.main()
         for p in rd_patch:
             self.assertTrue(p.save.called)
-            p.save.assert_called_with('dummy/small_data_agc.mat')
+            p.save.assert_called_with(os.path.join('dummy', 'small_data_agc.mat'))
 
     def test_help(self):
         with self.assertRaises(BaseException):
