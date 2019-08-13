@@ -9,6 +9,6 @@
 #define MIG_CYTHON_H
 #include <stdbool.h> 
 
-void mig_cython (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield);
+void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield);
 
 #endif /* !MIG_CYTHON_H */

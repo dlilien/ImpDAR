@@ -20,6 +20,7 @@ import subprocess as sp
 import numpy as np
 
 from impdar.lib import migrationlib
+from impdar.lib.migrationlib import mig_python
 from impdar.lib.load import load_segy
 from impdar.lib.NoInitRadarData import NoInitRadarData
 
@@ -35,35 +36,35 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
 
         # should pass, i.e. nothing happens
-        migrationlib._check_data_shape(data)
+        mig_python._check_data_shape(data)
 
         # make it fail
         data.data = np.ones((1, 1))
         with self.assertRaises(ValueError):
-            migrationlib._check_data_shape(data)
+            mig_python._check_data_shape(data)
 
     def test_getVelocityProfile(self):
         data = NoInitRadarData(big=True)
-        self.assertEqual(1.68e8, migrationlib.getVelocityProfile(data, 1.68e8))
+        self.assertEqual(1.68e8, mig_python.getVelocityProfile(data, 1.68e8))
 
         # need reasonable input here for 2d. Needs a different travel time.
         data.travel_time = data.travel_time / 10.
-        migrationlib.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt')))
+        mig_python.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt')))
 
         # this should still work since we are close
         data.travel_time = data.travel_time / 10.
         twod = np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
         twod = twod * 0.0045 + 1.0e-7 * twod[1]
-        migrationlib.getVelocityProfile(data, twod)
+        mig_python.getVelocityProfile(data, twod)
 
         # need reasonable input here for 3d
         data = NoInitRadarData(big=True)
-        migrationlib.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
+        mig_python.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
 
         # Bad distance with good 3d grid
         data.dist = None
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
+            mig_python.getVelocityProfile(data, np.genfromtxt(os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt')))
         data = NoInitRadarData(big=True)
 
         # this should fail on bad z

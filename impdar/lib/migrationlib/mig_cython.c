@@ -12,9 +12,8 @@
 #include <math.h>
 #include <stdio.h>
 
-/*  Compute the cosine of each element in in_array, storing the result in
- *  out_array. */
-void mig_cython (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield){
+/*  Compute migrate data into migdata */
+void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield){
     int i;
     int j;
     int k;
@@ -27,7 +26,10 @@ void mig_cython (double * data, double * migdata, int tnum, int snum, double * d
     double integral;
     int Didx;
     double gradDhyp;
+    setbuf(stdout, NULL);
+    printf("Iter: ");
     for(j=0;j<tnum;j++){
+        printf("%d,", j);
         for(i=0;i<tnum;i++){
             dist2[i] = pow(dist[i] - dist[j], 2.);
         }
@@ -35,16 +37,12 @@ void mig_cython (double * data, double * migdata, int tnum, int snum, double * d
             for(k=0;k<snum;k++){
                 rs[k] = sqrt(dist2[k] + zs2[j]);
             }
-            printf("rs is calculated at iter: %d\n", i);
             integral = 0.0;
             for(k=0;k<tnum;k++){
-                printf("Inside iter: %d\n", k);
                 costheta = zs[j] / rs[k];
                 min = 1.0e6;
                 for(l=0;l<snum;l++){
-                    printf("Inside iter: %d\n", l);
-                    m = tt_sec[l] - 2. * rs[l] / vel;
-                    printf("%f %f %d\n", m, min, Didx);
+                    m = fabs(tt_sec[l] - 2. * rs[l] / vel);
                     if(m < min){
                         min = m;
                         Didx = l;
@@ -55,9 +53,9 @@ void mig_cython (double * data, double * migdata, int tnum, int snum, double * d
                     gradDhyp=0.;
                 }
                 integral += gradDhyp * costheta / vel;
-                printf("Finished inside loop\n");
             }
             migdata[j * snum + i] = integral;
         }
     }
+    printf("\n");
 }

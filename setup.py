@@ -21,8 +21,8 @@ except:
 
 if __name__ == '__main__':
     if CYTHON:
-        ext_modules = [Extension("impdar.lib.mig_cython",
-                                 sources=["impdar/lib/_mig_cython.pyx", "impdar/lib/mig_cython.c"],
+        ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
+                                 sources=["impdar/lib/migrationlib/_mig_cython.pyx", "impdar/lib/migrationlib/mig_cython.c"],
                                  include_dirs=[np.get_include()])]
         cmdclass = {'build_ext': build_ext}
     else:
@@ -41,5 +41,5 @@ if __name__ == '__main__':
                      entry_points={'console_scripts': console_scripts},
                      ext_modules=ext_modules,
                      install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0', 'h5py'],
-                     packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui', 'impdar.lib.load', 'impdar.lib.RadarData'],
+                     packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui', 'impdar.lib.load', 'impdar.lib.RadarData', 'impdar.lib.migrationlib'],
                      test_suite='nose.collector')

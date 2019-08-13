@@ -25,46 +25,42 @@ Mar 12 2019
 
 from __future__ import print_function
 import sys
-import os
-import subprocess as sp
 
 import numpy as np
 import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 
-try:
-    from .mig_cython import migrationKirchoffLoop
-except ImportError:
-    def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
-        # Loop through all traces
-        print('Migrating trace number:')
-        for xi in range(tnum):
-            print('{:d}, '.format(xi), end='')
-            sys.stdout.flush()
-            # get the trace distance
-            x = dist[xi]
-            dists2 = (dist - x)**2.
-            # Loop through all samples
-            for ti in range(snum):
-                # get the radial distances between input point and output point
-                rs = np.sqrt(dists2 + zs2[ti])
-                # find the cosine of the angle of the tangent line, correct for obliquity factor
-                with np.errstate(invalid='ignore'):
-                    costheta = zs[ti] / rs
-                # get the exact indices from the array (closest to rs)
-                Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
-                # integrate the farfield term
-                gradDhyp = gradD[Didx, np.arange(len(Didx))]
-                gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
-                integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
-                # integrate the nearfield term
-                if nearfield:
-                    Dhyp = data[Didx, np.arange(len(Didx))]
-                    Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
-                    integral += np.nansum(Dhyp * costheta / rs**2.)
-                # sum the integrals and output
-                migdata[ti, xi] = 1. / (2. * np.pi) * integral
+
+def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
+    # Loop through all traces
+    print('Migrating trace number:')
+    for xi in range(tnum):
+        print('{:d}, '.format(xi), end='')
+        sys.stdout.flush()
+        # get the trace distance
+        x = dist[xi]
+        dists2 = (dist - x)**2.
+        # Loop through all samples
+        for ti in range(snum):
+            # get the radial distances between input point and output point
+            rs = np.sqrt(dists2 + zs2[ti])
+            # find the cosine of the angle of the tangent line, correct for obliquity factor
+            with np.errstate(invalid='ignore'):
+                costheta = zs[ti] / rs
+            # get the exact indices from the array (closest to rs)
+            Didx = np.argmin(np.abs(np.atleast_2d(tt_sec).transpose() - 2. * rs / vel), axis=0)
+            # integrate the farfield term
+            gradDhyp = gradD[Didx, np.arange(len(Didx))]
+            gradDhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+            integral = np.nansum(gradDhyp * costheta / vel)  # TODO: Yilmaz eqn 4.5 has an extra r in this weight factor???
+            # integrate the nearfield term
+            if nearfield:
+                Dhyp = data[Didx, np.arange(len(Didx))]
+                Dhyp[2. * rs / vel > max_travel_time] = 0.    # zero points that are outside of the domain
+                integral += np.nansum(Dhyp * costheta / rs**2.)
+            # sum the integrals and output
+            migdata[ti, xi] = 1. / (2. * np.pi) * integral
 
 
 def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
@@ -354,151 +350,9 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
           %(dat.tnum,dat.snum,time.time()-start))
     return dat
 
-
-def migrationSeisUnix(dat,
-                      mtype='sumigtk',
-                      vel=1.69e8,
-                      vel_fn=None,
-                      tmig=0,
-                      verbose=1,
-                      nxpad=100,
-                      htaper=100,
-                      vtaper=1000,
-                      nz=None,
-                      dz=None):
-    """
-
-    Migration through Seis Unix. For now only three options:
-    ---------
-    1) sumigtk - Migration via T-K domain method for common-midpoint stacked data
-    2) sugffd - Fourier finite difference migration for zero-offset data. This method is a hybrid
-                migration which combines the advantages of phase shift and finite difference migrations.
-    3) sustolt - Stolt migration for stacked data or common-offset gathers
-
-
-    Parameters
-    ---------
-    dat: data as a class in the ImpDAR format
-    vel: wave velocity, default is for ice
-    vfile=         name of file containing velocities
-    dx:  distance between successive
-    fmax=Nyquist            maximum frequency
-    tmig=0.0                times corresponding to interval velocities in vmig
-    nxpad=0                 number of cdps to pad with zeros before FFT
-    ltaper=0                length of linear taper for left and right edges
-    verbose=0               =1 for diagnostic print
-    dt=from header(dt) or  .004    time sampling interval
-    ft=0.0                 first time sample
-    ntau=nt(from data)     number of migrated time samples
-    dtau=dt(from header)   migrated time sampling interval
-    ftau=ft                first migrated time sample
-    Q=1e6                  quality factor
-    ceil=1e6               gain ceiling beyond which migration ceases
-
-    Output
-    ---------
-    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
-
-    """
-
-    if sp.Popen(['which', mtype]).wait() != 0:
-        raise FileNotFoundError('Cannot find chosen SeisUnix migration routine,' + mtype + '. Either install or choose a different migration routine.')
-
-    # save to seisunix format for migration with SU routines
-    out_fn = os.path.splitext(dat.fn)[0] + '.sgy'
-    dat.save_as_segy(out_fn)
-
-    # Get the trace spacing
-    if np.mean(dat.trace_int) <= 0:
-        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
-        trace_int = np.gradient(dat.dist)
-    else:
-        trace_int = dat.trace_int
-    dx = np.mean(trace_int)
-    if nz is None:
-        nz = dat.snum
-    if dz is None:
-        dz = 169 * dat.travel_time[-1] / 2 / dat.snum
-
-    # Do the migration through the command line
-    segy_name = os.path.splitext(dat.fn)[0]
-    bin_fn = os.path.splitext(dat.fn)[0] + '_mig.bin'
-
-    ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE)
-    ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE)
-    # Time Wavenumber
-    if mtype == 'sumigtk':
-        ps3 = sp.Popen(['sumigtk',
-                        'tmig={:f}'.format(tmig),
-                        'vmig={:f}'.format(vel * 1.e-6),
-                        'verbose=' + str(verbose),
-                        'nxpad={:d}'.format(int(nxpad)),
-                        'ltaper={:d}'.format(htaper),
-                        'dxcdp={:f}'.format(dx)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
-
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Fourier Finite Difference
-    elif mtype == 'sumigffd':
-        if vel_fn is None:
-            raise ValueError('vel_fn needed for gffd')
-        ps3 = sp.Popen(['sumigffd',
-                        'vfile=' + vel_fn,
-                        'nz={:d}'.format(nz),
-                        'dz={:f}'.format(dz),
-                        'dt={:f}'.format(dat.dt * 1.0e-6),
-                        'dx={:f}'.format(dx)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Stolt
-    elif mtype == 'sustolt':
-        ps3 = sp.Popen(['sustolt',
-                        'tmig={:f}'.format(tmig),
-                        'vmig={:f}'.format(vel * 1.0e-6),
-                        'verbose=' + str(verbose),
-                        'lstaper={:d}'.format(htaper),
-                        'lbtaper={:d}'.format(vtaper),
-                        'dxcdp={:f}'.format(dx),
-                        'cdpmin=0',
-                        'cdpmax={:d}'.format(dat.tnum)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Stolt
-    else:
-        ps1.stdout.close()
-        ps2.communicate()
-
-        raise ValueError('The SeisUnix migration routine', mtype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
-
-    ps1.wait()
-    ps2.wait()
-    ps3.wait()
-    with open(bin_fn, 'wb') as fout:
-        fout.write(ps4.communicate()[0])
-    with open(bin_fn, 'rb') as fid:
-        data_flat = np.fromfile(fid, np.float32)
-    ps1.stdout.close()
-    ps2.stdout.close()
-    ps3.stdout.close()
-    ps4.stdout.close()
-
-    dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
-    os.remove(bin_fn)
-    os.remove('header')
-    os.remove('binary')
-    os.remove(segy_name + '.sgy')
-    return dat
-
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Supporting functions
+# -----------------------------------------------------------------------------
 
 def phaseShift(dat, vmig, vels_in, kx, ws, FK):
     """
