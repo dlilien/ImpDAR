@@ -52,8 +52,9 @@ install:
   # We need to install numpy, scipy and matplotlib through conda
   - "conda create -c anaconda -q -n test-environment python=%PYTHON_VERSION% numpy scipy matplotlib nose pyqt msvc_runtime"
   - "pip install segyio"
-  - pip install wheel twine six pytest
   - activate test-environment
+  - pip install mock
+  - pip install wheel twine six pytest
   # give me a remote-login option to debug
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
