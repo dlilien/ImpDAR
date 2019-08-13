@@ -137,10 +137,6 @@ def load_gssi(fn_dzt, *args, **kwargs):
     # spm = struct.unpack('<f', lines[14:18])[0]
     # mpm = struct.unpack('<f', lines[18:22])[0]
     # position = struct.unpack('<f', lines[22:26])[0]
-    print(lines)
-    print(type(lines))
-    print(len(lines))
-    print(lines[26:30])
     dzt_data.range = struct.unpack('<f', lines[26:30])[0]
 
     # npass = struct.unpack('<h', lines[30:32])[0]

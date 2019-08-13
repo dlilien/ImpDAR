@@ -59,6 +59,7 @@ if __name__ == '__main__':
                                    'impdar.lib.migrationlib'],
                          test_suite='nose.collector')
     except SystemExit:
+        print('Failed to compile c-sources. Using pure python version')
         setuptools.setup(name='impdar',
                          version='0.5a',
                          description='Scripts for impulse radar',

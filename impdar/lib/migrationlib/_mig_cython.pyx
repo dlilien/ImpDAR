@@ -17,7 +17,7 @@ import time
 # cdefine the signature of our c function
 # Need this so that the function is recognized
 cdef extern from "mig_cython.h":
-    void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield)
+    void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield, double * dist2, double * rs)
 
 
 
@@ -32,7 +32,9 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                           float vel,
                           np.ndarray[double, ndim=2, mode="c"] gradD not None,
                           float max_travel_time,
-                          bint nearfield
+                          bint nearfield,
+                          np.ndarray[double, ndim=1, mode="c"] dummy_dist2 not None,
+                          np.ndarray[double, ndim=1, mode="c"] dummy_rs not None,
                           ):
     """I am not sure if this wrapper is needed, but I think it gives us type checking so I'm leaving it"""
     mig_kirch_loop(<double*> np.PyArray_DATA(data),
@@ -47,6 +49,8 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                    <double*> np.PyArray_DATA(gradD),
                    max_travel_time,
                    nearfield
+                   <double*> np.PyArray_DATA(dummy_dist2),
+                   <double*> np.PyArray_DATA(dummy_rs),
                    )
 
 
@@ -91,7 +95,21 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    migrationKirchoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
+    migrationKirchoffLoop(dat.data.astype(np.float64),
+                          migdata,
+                          dat.tnum,
+                          dat.snum,
+                          dat.dist.astype(np.float64),
+                          zs.astype(np.float64),
+                          zs2.astype(np.float64),
+                          tt_sec.astype(np.float64),
+                          vel,
+                          gradD.astype(np.float64),
+                          max_travel_time,
+                          nearfield,
+                          np.zeros((dat.tnum,), dtype=np.float64),
+                          np.zeros((dat.snum,), dtype=np.float64)
+                          )
     dat.data = migdata.copy()
     # print the total time
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
