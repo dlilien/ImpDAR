@@ -71,26 +71,26 @@ class TestMigration(unittest.TestCase):
         twod_vel = 1.68e8 * np.ones((10, 2))
         twod_vel[:, 1] = 0.
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, twod_vel)
+            mig_python.getVelocityProfile(data, twod_vel)
 
         # Use some bad x values
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((10, 3)))
+            mig_python.getVelocityProfile(data, 1.68e8 * np.ones((10, 3)))
         # bad z values
         threed_vel = 1.68e8 * np.ones((10, 3))
         threed_vel[:, -1] = np.arange(10) * 1000.
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, threed_vel)
+            mig_python.getVelocityProfile(data, threed_vel)
 
         # Make sure we reject bad input shapes
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((8,)))
+            mig_python.getVelocityProfile(data, 1.68e8 * np.ones((8,)))
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((8, 1)))
+            mig_python.getVelocityProfile(data, 1.68e8 * np.ones((8, 1)))
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((1, 2)))
+            mig_python.getVelocityProfile(data, 1.68e8 * np.ones((1, 2)))
         with self.assertRaises(ValueError):
-            migrationlib.getVelocityProfile(data, 1.68e8 * np.ones((8, 4)))
+            mig_python.getVelocityProfile(data, 1.68e8 * np.ones((8, 4)))
 
     def test_Stolt(self):
         data = NoInitRadarData(big=True)
