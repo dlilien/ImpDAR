@@ -17,12 +17,11 @@ import time
 # cdefine the signature of our c function
 # Need this so that the function is recognized
 cdef extern from "mig_cython.h":
-    void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield, double * dist2, double * rs)
+    void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield)
 
 
 
-def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
-                          np.ndarray[double, ndim=2, mode="c"] migdata not None,
+def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] migdata not None,
                           int tnum,
                           int snum,
                           np.ndarray[double, ndim=1, mode="c"] dist not None,
@@ -32,13 +31,10 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                           float vel,
                           np.ndarray[double, ndim=2, mode="c"] gradD not None,
                           float max_travel_time,
-                          bint nearfield,
-                          np.ndarray[double, ndim=1, mode="c"] dummy_dist2 not None,
-                          np.ndarray[double, ndim=1, mode="c"] dummy_rs not None,
+                          bint nearfield
                           ):
     """I am not sure if this wrapper is needed, but I think it gives us type checking so I'm leaving it"""
-    mig_kirch_loop(<double*> np.PyArray_DATA(data),
-                   <double*> np.PyArray_DATA(migdata),
+    mig_kirch_loop(<double*> np.PyArray_DATA(migdata),
                    tnum,
                    snum,
                    <double*> np.PyArray_DATA(dist),
@@ -48,9 +44,7 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] data not None,
                    vel,
                    <double*> np.PyArray_DATA(gradD),
                    max_travel_time,
-                   nearfield,
-                   <double*> np.PyArray_DATA(dummy_dist2),
-                   <double*> np.PyArray_DATA(dummy_rs),
+                   nearfield
                    )
 
 
@@ -84,9 +78,9 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     # start the timer
     start = time.time()
     # Calculate the time derivative of the input data
-    gradD = np.gradient(dat.data, dat.travel_time / 1.0e6, axis=0)
+    gradD = np.gradient(np.ascontiguousarray(dat.data, dtype=np.float64), dat.travel_time / 1.0e6, axis=0)
     # Create an empty array to fill with migrated data
-    migdata = np.zeros_like(dat.data, dtype=np.float64)
+    migdata = np.ascontiguousarray(np.zeros_like(dat.data, dtype=np.float64), dtype=np.float64)
 
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
@@ -95,9 +89,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     # Cache the depths
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
-
-    migrationKirchoffLoop(np.ascontiguousarray(dat.data, dtype=np.float64),
-                          np.ascontiguousarray(migdata, dtype=np.float64),
+    migrationKirchoffLoop(migdata,
                           dat.tnum,
                           dat.snum,
                           np.ascontiguousarray(dat.dist, dtype=np.float64) * 1.0e3,
@@ -107,9 +99,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
                           vel,
                           np.ascontiguousarray(gradD, dtype=np.float64),
                           max_travel_time,
-                          nearfield,
-                          np.ascontiguousarray(np.zeros((dat.tnum,), dtype=np.float64)),
-                          np.ascontiguousarray(np.zeros((dat.tnum,), dtype=np.float64))
+                          nearfield
                           )
     dat.data = migdata.copy()
     # print the total time

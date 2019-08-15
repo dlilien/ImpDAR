@@ -39,7 +39,9 @@ def migrationSeisUnix(dat,
                       htaper=100,
                       vtaper=1000,
                       nz=None,
-                      dz=None):
+                      dz=None,
+                      quiet=False
+                      ):
     """
 
     Migration through Seis Unix. For now only three options:
@@ -98,8 +100,13 @@ def migrationSeisUnix(dat,
     segy_name = os.path.splitext(dat.fn)[0]
     bin_fn = os.path.splitext(dat.fn)[0] + '_mig.bin'
 
-    ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE)
-    ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE)
+    if quiet:
+        stderr = sp.PIPE
+    else:
+        stderr = None
+
+    ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE, stderr=stderr)
+    ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE, stderr=stderr)
     # Time Wavenumber
     if mtype == 'sumigtk':
         ps3 = sp.Popen(['sumigtk',
@@ -110,9 +117,10 @@ def migrationSeisUnix(dat,
                         'ltaper={:d}'.format(htaper),
                         'dxcdp={:f}'.format(dx)],
                        stdout=sp.PIPE,
+                       stderr=stderr,
                        stdin=ps2.stdout)
 
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE, stderr=stderr)
     # Fourier Finite Difference
     elif mtype == 'sumigffd':
         if vel_fn is None:
@@ -124,8 +132,9 @@ def migrationSeisUnix(dat,
                         'dt={:f}'.format(dat.dt * 1.0e-6),
                         'dx={:f}'.format(dx)],
                        stdout=sp.PIPE,
+                       stderr=stderr,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE, stderr=stderr)
     # Stolt
     elif mtype == 'sustolt':
         ps3 = sp.Popen(['sustolt',
@@ -138,8 +147,9 @@ def migrationSeisUnix(dat,
                         'cdpmin=0',
                         'cdpmax={:d}'.format(dat.tnum)],
                        stdout=sp.PIPE,
+                       stderr=stderr,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stderr=stderr, stdout=sp.PIPE)
     # Stolt
     else:
         ps1.stdout.close()
@@ -154,10 +164,12 @@ def migrationSeisUnix(dat,
         fout.write(ps4.communicate()[0])
     with open(bin_fn, 'rb') as fid:
         data_flat = np.fromfile(fid, np.float32)
-    ps1.stdout.close()
-    ps2.stdout.close()
-    ps3.stdout.close()
-    ps4.stdout.close()
+    for ps in [ps1, ps2, ps3, ps4]:
+        ps.stdout.close()
+        try:
+            ps.stderr.close()
+        except AttributeError:
+            pass
 
     dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
     os.remove(bin_fn)

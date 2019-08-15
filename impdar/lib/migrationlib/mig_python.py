@@ -40,7 +40,7 @@ def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel,
         sys.stdout.flush()
         # get the trace distance
         x = dist[xi]
-        dists2 = (dist - x)**2.
+        dists2 = (dist - x)**2. * 1.0e6
         # Loop through all samples
         for ti in range(snum):
             # get the radial distances between input point and output point
