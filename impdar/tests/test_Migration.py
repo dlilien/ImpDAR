@@ -115,7 +115,7 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
-    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0, 'SeisUnix not found')
+    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix not found')
     def test_sumigtk(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
@@ -123,7 +123,7 @@ class TestMigration(unittest.TestCase):
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sumigtk.mat')
         migrationlib.migrationSeisUnix(data)
 
-    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0, 'SeisUnix not found')
+    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix not found')
     def test_sustolt(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
