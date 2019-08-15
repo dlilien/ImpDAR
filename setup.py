@@ -10,6 +10,7 @@
 Install ImpDAR. Try to compile C sources for fast mig, else default to pure python.
 """
 import setuptools
+import socket
 
 try:
     import numpy as np
@@ -17,8 +18,12 @@ try:
 except ImportError:
     raise ImportError('Numpy is required during build. Install numpy, then retry')
 
-# For now, you have to set this manually to rebuild the c sources
-CYTHON = False
+# For now, this should just run on my computer and I'll distribute the c code
+if socket.gethostname() == 'berens':
+    CYTHON = True
+else:
+    CYTHON = False
+
 
 if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main',
