@@ -23,34 +23,55 @@ void mig_kirch_loop (double * data, double * migdata, int tnum, int snum, double
     double costheta;
     double integral;
     int Didx;
-    double gradDhyp;
+    int lmin_prev;
+    int rmin_prev;
     setbuf(stdout, NULL);
     printf("Iter: ");
+
+    
     for(j=0;j<tnum;j++){
         printf("%d,", j);
-        for(i=0;i<tnum;i++){
-            dist2[i] = pow(dist[i] - dist[j], 2.);
-        }
         for(i=0;i<snum;i++){
-            for(k=0;k<snum;k++){
-                rs[k] = sqrt(dist2[k] + zs2[j]);
-            }
             integral = 0.0;
-            for(k=0;k<tnum;k++){
+            rmin_prev = i;
+            lmin_prev = i;
+            /* Do left and right separately so we know when to break */
+            for(k=j + 1;k<tnum;k++){
+                rs[k] = sqrt(pow(dist[k] - dist[j], 2.) + zs2[j]);
+                if(2. * rs[k] / vel > max_travel_time){
+                     break;
+                }
                 costheta = zs[j] / rs[k];
                 min = 1.0e6;
-                for(l=0;l<snum;l++){
+                /* this should not be smaller than the previous rmin? */
+                for(l=rmin_prev;l<snum;l++){
                     m = fabs(tt_sec[l] - 2. * rs[l] / vel);
                     if(m < min){
                         min = m;
                         Didx = l;
                     }
                 }
-                gradDhyp = gradD[Didx * snum + k];
+                rmin_prev = l;
+                integral += gradD[k * snum + Didx] * costheta / vel;
+            }
+
+            for(k=j;k>=0;k--){
+                rs[k] = sqrt(pow(dist[k] - dist[j], 2.) + zs2[j]);
                 if(2. * rs[k] / vel > max_travel_time){
-                    gradDhyp=0.;
+                     break;
                 }
-                integral += gradDhyp * costheta / vel;
+                costheta = zs[j] / rs[k];
+                min = 1.0e6;
+                /* this should not be smaller than the previous lmin? */
+                for(l=lmin_prev;l<snum;l++){
+                    m = fabs(tt_sec[l] - 2. * rs[l] / vel);
+                    if(m < min){
+                        min = m;
+                        Didx = l;
+                    }
+                }
+                lmin_prev = l;
+                integral += gradD[k * snum + Didx] * costheta / vel;
             }
             migdata[j * snum + i] = integral;
         }

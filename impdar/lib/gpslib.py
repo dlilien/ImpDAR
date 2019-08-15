@@ -182,7 +182,7 @@ class RadarGPS(nmea_info):
         self.get_dist()
 
 
-def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False):
+def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False, guess_offset=True):
     """Use new, better GPS data for lat, lon, and elevation
 
     The interpolation in this function is done using the time since the radar has accurate timing from its GPS. The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist). I've dropped that dependency.
@@ -206,17 +206,36 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
         Desirable for small offsets with the GPS, but dangerous since you can totally screw up
         the geolocation and not get an error.
         USE WITH CAUTION.
+    guess_offset: bool, optional
+        If true, ImpDAR will attempt to find the offset between the GPS and Radar times using the cross-correlation between
+        the x coordinates in the two datasets. If the guess at the offset is nonzero, we look at 1000 offsets within 10% of
+        the offset. Else we look at +/- 0.001 days
     """
     if extrapolate:
         fill_value = 'extrapolate'
     else:
         fill_value = np.NaN
-    int_lat = interp1d(decday, lat, kind='linear', fill_value=fill_value)
-    int_long = interp1d(decday, lon, kind='linear', fill_value=fill_value)
-    int_elev = interp1d(decday, elev, kind='linear', fill_value=fill_value)
+
     if type(dats) not in [list, tuple]:
         dats = [dats]
+
+    offsets = [offset for i in dats]
+    if guess_offset:
+        print('CC search')
+        for i in range(5):
+            for j, dat in enumerate(dats):
+                if offsets[j] != 0.0:
+                    search_vals = np.linspace(-0.1 * abs(offsets[j]), 0.1 * abs(offsets[j]), 1001)
+                else:
+                    search_vals = np.linspace(-0.1, 0.1, 5001)
+                cc_coeffs = [np.corrcoef(interp1d(decday + offsets[j] + inc_offset, lat, kind='linear', fill_value=fill_value)(dat.decday), dat.lat)[0, 1] + np.corrcoef(interp1d(decday + offsets[j] + inc_offset, lon, kind='linear', fill_value=fill_value)(dat.decday), dat.long)[0, 1] for inc_offset in search_vals]
+                offsets[j] += search_vals[np.argmax(cc_coeffs)]
+                print('Maximum correlation at offset: {:f}'.format(offsets[j]))
+
     for dat in dats:
+        int_lat = interp1d(decday + offsets[j], lat, kind='linear', fill_value=fill_value)
+        int_long = interp1d(decday + offsets[j], lon, kind='linear', fill_value=fill_value)
+        int_elev = interp1d(decday + offsets[j], elev, kind='linear', fill_value=fill_value)
         dat.lat = int_lat(dat.decday)
         dat.long = int_long(dat.decday)
         dat.elev = int_elev(dat.decday)
@@ -230,7 +249,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
             dat.dist = gpsdat.dist
 
 
-def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False):
+def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False, guess_offset=False):
     """Use a matlab file with gps info to redo radar GPS
 
     Parameters
@@ -252,10 +271,10 @@ def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False):
     for val in ['lat', 'long', 'elev', 'decday']:
         if val not in mat:
             raise ValueError('{:s} needs to be contained in matlab input file'.format(val))
-    kinematic_gps_control(dats, mat['lat'].flatten(), mat['long'].flatten(), mat['elev'].flatten(), mat['decday'].flatten(), offset=offset, extrapolate=extrapolate)
+    kinematic_gps_control(dats, mat['lat'].flatten(), mat['long'].flatten(), mat['elev'].flatten(), mat['decday'].flatten(), offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
 
 
-def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extrapolate=False, **genfromtxt_flags):
+def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extrapolate=False, guess_offset=False, **genfromtxt_flags):
     """Use a csv gps file to redo the GPS on radar data.
 
     The csv is read using numpy.genfromtxt, which supports a number of options. One, 'names', is set explicitly by the argument 'names' to this function: you can change the value of that string to True to read column names from the first post-header line in the file. You can also manually change the column names by giving a different comma-separated string. The names must contain 'decday', 'long', 'lat', and 'elev'.
@@ -280,15 +299,15 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extr
     Any additional kwargs are passed to numpy.genfromtxt
     """
     data = np.genfromtxt(csv_fn, names=names, **genfromtxt_flags)
-    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset, extrapolate=extrapolate)
+    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
 
 
-def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, extrapolate=False, **kwargs):
+def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, extrapolate=False, guess_offset=False, **kwargs):
     """Do kinematic GPS control then interpolate the data to constant spacing
 
     Parameters
     ----------
-    spacing: float
+    spacing: float, optional
         Target distance spacing in meters
     fn: str, optional
         If this is None, no control. Otherwise, this should be a mat or csv file with lat, long, elev, and decday fields
@@ -308,10 +327,11 @@ def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2
     """
     if fn is not None:
         if fn_type == 'mat' or ((fn_type is None) and (fn[-4:] == '.mat')):
-            kinematic_gps_mat(dats, fn, offset=offset, extrapolate=extrapolate)
+            kinematic_gps_mat(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
         elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
-            kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, **genfromtxt_kwargs)
+            kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset, **genfromtxt_kwargs)
         else:
             raise ValueError('fn_type must be mat or csv')
-    for dat in dats:
-        dat.constant_space(spacing, min_movement=min_movement)
+    if spacing is not None:
+        for dat in dats:
+            dat.constant_space(spacing, min_movement=min_movement)

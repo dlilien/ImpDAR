@@ -91,24 +91,25 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     # Try to cache some variables that we need lots
     tt_sec = dat.travel_time / 1.0e6
     max_travel_time = np.max(tt_sec)
+
     # Cache the depths
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    migrationKirchoffLoop(dat.data.astype(np.float64),
-                          migdata,
+    migrationKirchoffLoop(np.ascontiguousarray(dat.data, dtype=np.float64),
+                          np.ascontiguousarray(migdata, dtype=np.float64),
                           dat.tnum,
                           dat.snum,
-                          dat.dist.astype(np.float64),
-                          zs.astype(np.float64),
-                          zs2.astype(np.float64),
-                          tt_sec.astype(np.float64),
+                          np.ascontiguousarray(dat.dist, dtype=np.float64) * 1.0e3,
+                          np.ascontiguousarray(zs, dtype=np.float64),
+                          np.ascontiguousarray(zs2, dtype=np.float64),
+                          np.ascontiguousarray(tt_sec, dtype=np.float64),
                           vel,
-                          gradD.astype(np.float64),
+                          np.ascontiguousarray(gradD, dtype=np.float64),
                           max_travel_time,
                           nearfield,
-                          np.zeros((dat.tnum,), dtype=np.float64),
-                          np.zeros((dat.snum,), dtype=np.float64)
+                          np.ascontiguousarray(np.zeros((dat.tnum,), dtype=np.float64)),
+                          np.ascontiguousarray(np.zeros((dat.tnum,), dtype=np.float64))
                           )
     dat.data = migdata.copy()
     # print the total time

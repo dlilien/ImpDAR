@@ -178,7 +178,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         return im, xd, yd, x_range, lims
 
 
-def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
+def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyle='solid'):
     """Plot power vs depth or twtt in a trace
 
     Parameters
@@ -232,7 +232,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
         ax.set_ylabel('Depth (m)')
 
     for j in range(*tr):
-        ax.plot(dat.data[:, j], yd)
+        ax.plot(dat.data[:, j], yd, linewidth=linewidth, linestyle=linestyle)
 
     if lims[0] < 0 and lims[1] > 0:
         ax.set_xlim(lims[0], -lims[0])

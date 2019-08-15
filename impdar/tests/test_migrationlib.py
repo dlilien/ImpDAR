@@ -21,6 +21,11 @@ import numpy as np
 
 from impdar.lib import migrationlib
 from impdar.lib.migrationlib import mig_python
+try:
+    from impdar.lib.migrationlib import mig_cython
+    CYTHON = True
+except ImportError:
+    CYTHON = False
 from impdar.lib.load import load_segy
 from impdar.lib.NoInitRadarData import NoInitRadarData
 
@@ -98,7 +103,7 @@ class TestMigration(unittest.TestCase):
 
     def test_Kirchhoff(self):
         data = NoInitRadarData(big=True)
-        data = migrationlib.migrationKirchhoff(data)
+        data = mig_python.migrationKirchhoff(data)
 
     def test_TimeWavenumber(self):
         data = NoInitRadarData(big=True)
@@ -159,6 +164,24 @@ class TestMigration(unittest.TestCase):
         for suff in ['PhaseShiftLateral', 'PhaseShiftConstant', 'PhaseShiftVariable', 'Kirchoff', 'Stolt', 'sumigtk', 'sustolt']:
             if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat')):
                 os.remove(os.path.join(THIS_DIR, 'input_data', 'rectangle_' + suff + '.mat'))
+
+
+class TestCythonMig(unittest.TestCase):
+
+    @unittest.skipIf(not CYTHON, 'No compiled mig library here')
+    def test_Kirchoff_cython(self):
+        data = NoInitRadarData(big=True)
+        data = mig_cython.migrationKirchhoff(data)
+
+    @unittest.skipIf(not CYTHON, 'No compiled mig library here')
+    def test_compKirchoff_cython(self):
+        data = NoInitRadarData(big=True)
+        pdata = NoInitRadarData(big=True)
+
+        data = mig_cython.migrationKirchhoff(data)
+        pdata = mig_python.migrationKirchhoff(pdata)
+        data.data[np.isnan(data.data)] = 0.
+        self.assertTrue(np.allclose(data.data, pdata.data))
 
 
 if __name__ == '__main__':
