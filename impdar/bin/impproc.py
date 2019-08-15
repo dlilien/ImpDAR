@@ -96,6 +96,13 @@ def _get_args():
     parser_interp.add_argument('--extrapolate', action='store_true', help='Extrapolate GPS data beyond bounds')
     add_def_args(parser_interp)
 
+    # GPS
+    parser_geolocate = add_procparser(subparsers, 'geolocate', 'GPS control', geolocate, defname='geolocate')
+    parser_geolocate.add_argument('gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat. Default is None--use associated (presumably non-precision) GPS')
+    parser_geolocate.add_argument('--extrapolate', action='store_true', help='Extrapolate GPS data beyond bounds')
+    parser_geolocate.add_argument('--guess', action='store_true', help='Guess at offset')
+    add_def_args(parser_geolocate)
+
     # Migration
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
     parser_mig.add_argument('--mtype', type=str, default='phsh', choices=['stolt', 'kirch', 'phsh', 'tk', 'sumigtk', 'sustolt', 'sumigffd'], help='Migration routines.')
@@ -219,6 +226,10 @@ def agc(dat, window=50, scale_factor=50, **kwargs):
 
 def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False, **kwargs):
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove, extrapolate=extrapolate)
+
+
+def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
+    interpdeep(dats, spacing=None, fn=gps_fn, extrapolate=extrapolate, guess_offset=guess)
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0, verbose=0, vel_fn=None, nxpad=1, nearfield=False, **kwargs):

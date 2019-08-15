@@ -276,6 +276,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
+            self.trig = self.trig - ind
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
@@ -458,7 +459,7 @@ def agc(self, window=50, scaling_factor=50):
     self.flags.agc = True
 
 
-def constant_space(self, spacing, min_movement=1.0e-2):
+def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     """Restack the radar data to a constant spacing.
 
     This method uses the GPS information (i.e. the distance, x, y, lat, and lon),
@@ -483,18 +484,34 @@ def constant_space(self, spacing, min_movement=1.0e-2):
     min_movement: float, optional
         Minimum trace spacing. If there is not this much separation, toss the next shot.
         Set high to keep everything. Default 1.0e-2.
+    show_nomove: bool, optional
+        If True, make a plot shading the areas where we think there is no movement.
+        This can be really helpful for diagnosing what is wrong if you have lingering stationary traces.
     """
     # eliminate an interpolation error by masking out little movement
     good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
-    new_dists = np.arange(np.min(self.dist[good_vals]),
-                          np.max(self.dist[good_vals]),
+
+    # Correct the distances to reduce noise
+    for i in range(len(self.dist)):
+        if not good_vals[i]:
+            self.dist[i:] = self.dist[i:] - (self.dist[i] - self.dist[i - 1])
+    temp_dist = self.dist[good_vals]
+
+    if show_nomove:
+        from .. import plot
+        fig, ax = plot.plot_radargram(self)
+        ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
+        plot.plt.show()
+
+    new_dists = np.arange(0,
+                          np.max(temp_dist),
                           step=spacing / 1000.0)
-    self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
+    self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
     for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
         setattr(self,
                 attr,
-                interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
+                interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -517,7 +534,7 @@ def elev_correct(self, v_avg=1.69e8):
     the data, otherwise the noise a handheld GPS will make the results look pretty bad.
 
     Be aware that this is not a precise conversion if your nmo correction had antenna
-    separation, or if you used adepth-variable velocity structure. This is because we have
+    separation, or if you used a depth-variable velocity structure. This is because we have
     a single vector describing depths in the data array, so only one value for each depth
     step.
 
