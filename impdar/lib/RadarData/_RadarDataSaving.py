@@ -39,6 +39,7 @@ def save(self, fn):
         Filename. Should have a .mat extension
     """
     mat = {}
+
     for attr in self.attrs_guaranteed:
         if getattr(self, attr) is not None:
             mat[attr] = getattr(self, attr)
@@ -55,6 +56,21 @@ def save(self, fn):
     else:
         # We want the structure available to prevent read errors from corrupt files
         mat['flags'] = RadarFlags().to_matlab()
+    # Make sure not to expand the size of the data due to type conversion
+    if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
+        # Be carefuly of obliterating NaNs
+        # We will use singles instead of ints for this guess
+        if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
+            print('Warning: new file is float16 rather than ', self.data_dtype, ' since we now have NaNs')
+            mat['data'] = mat['data'].astype(np.float16)
+        elif (self.data_dtype in [np.int32]) and np.any(np.isnan(mat['data'])):
+            print('Warning: new file is float32 rather than ', self.data_dtype, ' since we now have NaNs')
+            mat['data'] = mat['data'].astype(np.float32)
+        elif (self.data_dtype in [np.int64]) and np.any(np.isnan(mat['data'])):
+            print('Warning: new file is float64 rather than ', self.data_dtype, ' since we now have NaNs')
+            mat['data'] = mat['data'].astype(np.float64)
+        else:
+            mat['data'] = mat['data'].astype(self.data_dtype)
     savemat(fn, mat)
 
 
@@ -62,7 +78,6 @@ def save_as_segy(self, fn):
     if not SEGY:
         raise ImportError('segyio failed to import, cannot save as segy')
 
-    print(self.dt, self.dt * 1.0e12)
     segyio.tools.from_array2D(fn, self.data.transpose(), dt=self.dt * 1.0e12)
 
 

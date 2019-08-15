@@ -8,15 +8,6 @@ environment:
       MINICONDA: C:\Miniconda
       PYTHON_VERSION: 2.7
 
-    # Python 3.4 -- this errors out with a bad checksum on QT (6/28/18). I don't want to deal with that
-    #- PYTHON: "C:\\Python34"
-    #  MINICONDA: C:\Miniconda3
-    #  PYTHON_VERSION: 3.4
-    #- PYTHON: "C:\\Python34-x64"
-    #  DISTUTILS_USE_SDK: "1"
-    #  MINICONDA: C:\Miniconda3
-    #  PYTHON_VERSION: 3.4
-
     # Python 3.5
     - PYTHON: "C:\\Python35"
       MINICONDA: C:\Miniconda35
@@ -40,15 +31,21 @@ environment:
     - PYTHON: "C:\\Python37-x64"
       MINICONDA: C:\Miniconda37
       PYTHON_VERSION: 3.7
+    #
+  PYPI_PASSWORD:
+    secure: G9v/9wFi36a/e93v1QiONiuQCxqQ9adFqUiFMdM/3W4=
 
 install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda install -c anaconda msvc_runtime
   # We need to install numpy, scipy and matplotlib through conda
-  - "conda create -q -n test-environment python=%PYTHON_VERSION% msvc_runtime numpy scipy matplotlib nose pyqt"
+  - "conda create -c anaconda -q -n test-environment python=%PYTHON_VERSION% numpy scipy matplotlib nose pyqt msvc_runtime"
   - "pip install segyio"
   - activate test-environment
+  - pip install mock
+  - pip install wheel twine six pytest
   # give me a remote-login option to debug
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
@@ -62,8 +59,24 @@ after_test:
 
 artifacts:
   - path: dist\*
+    name: pypiartifacts
 
-#on_success:
-#  You can use this step to upload your artifacts to a public website.
-#  See Appveyor's documentation for more details. Or you can simply
-#  access your wheels from the Appveyor "artifacts" tab for your build.
+deploy_script:
+  - echo "Starting Artifact Deployment"
+  # populate pypirc file for twine
+  - echo [distutils]                                  > %USERPROFILE%\\.pypirc
+  - echo index-servers =                             >> %USERPROFILE%\\.pypirc
+  - echo     pypi                                    >> %USERPROFILE%\\.pypirc
+  - echo [pypi]                                      >> %USERPROFILE%\\.pypirc
+  - echo username=dlilien                            >> %USERPROFILE%\\.pypirc
+  - echo password=%PYPI_PASSWORD%                    >> %USERPROFILE%\\.pypirc
+
+  # upload to pypi for windows
+  - set PATH=%BK_PATH%
+  - set HOME=%USERPROFILE%
+  - ps: If ($env:APPVEYOR_REPO_TAG -eq "true" -And $env:APPVEYOR_REPO_BRANCH -eq "master") { Invoke-Expression "twine upload --skip-existing dist/*.whl" 2>$null } Else { write-output "Not on a tag on master, won't deploy to pypi"}
+  - echo "Finished Artifact Deployment"
+notifications:
+  - provider: Webhook
+    url: https://webhooks.gitter.im/e/3a0242522a806d39ba2b
+    method: POST

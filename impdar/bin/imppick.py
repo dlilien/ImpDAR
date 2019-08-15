@@ -14,15 +14,16 @@ import sys
 import argparse
 from PyQt5 import QtWidgets
 
+from matplotlib import rc
+
 from impdar.gui import pickgui
 
-from impdar.lib import load
+from impdar.lib import load, Picks
 
-from matplotlib import rc
-rc('text', usetex=False) 
+rc('text', usetex=False)
 
 
-def pick(radardata, guard_save=True, xd=False, yd=False):
+def pick(radardata, xd=False, yd=False):
     if xd:
         x = 'dist'
     else:
@@ -33,7 +34,7 @@ def pick(radardata, guard_save=True, xd=False, yd=False):
         y = 'twtt'
 
     if not hasattr(radardata, 'picks') or radardata.picks is None:
-        radardata.picks = RadarData.Picks(radardata)
+        radardata.picks = Picks.Picks(radardata)
 
     app = QtWidgets.QApplication(sys.argv)
     ip = pickgui.InteractivePicker(radardata, xdat=x, ydat=y)
@@ -43,9 +44,9 @@ def pick(radardata, guard_save=True, xd=False, yd=False):
 
 def main():
     parser = _get_args()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     radardata = load.load('mat', [args.fn])[0]
-    ip = pick(radardata, guard_save=True, xd=args.xd, yd=args.yd)
+    pick(radardata, xd=args.xd, yd=args.yd)
 
 
 def _get_args():

@@ -9,13 +9,15 @@
 """
 Make an executable for single actions of impulse radar processing.
 
-All functionality probably overlaps with impdar, but the call is much cleaner. You get a lot more flexibility on things like keyword arguments. However, you are limited to one processing step.
+All functionality probably overlaps with impdar, but the call is much cleaner.
+You get a lot more flexibility on things like keyword arguments.
+However, you are limited to one processing step.
 """
-
+import sys
 import os.path
 import argparse
 
-from impdar.lib.load import load
+from impdar.lib.load import load, FILETYPE_OPTIONS
 from impdar.lib.process import concat
 from impdar.lib.gpslib import interp as interpdeep
 
@@ -52,7 +54,7 @@ def _get_args():
     parser_rgain.add_argument('-slope', type=float, default=0.1, help='Slope of the linear range gain. Default 0.1')
     add_def_args(parser_rgain)
 
-    # Range gain
+    # Automatic range gain
     parser_agc = add_procparser(subparsers, 'agc', 'Add an automatic gain', agc, defname='agc')
     parser_agc.add_argument('-window', type=int, default=50, help='Number of samples to average')
     add_def_args(parser_agc)
@@ -70,11 +72,19 @@ def _get_args():
     parser_crop.add_argument('lim', type=float, help='The cutoff value')
     add_def_args(parser_crop)
 
+    # Crop in the horizontal
+    parser_hcrop = add_procparser(subparsers, 'hcrop', 'Crop the data in the horizontal', hcrop, defname='hcropped')
+    parser_hcrop.add_argument('left_or_right', choices=['left', 'right'], help='Remove from the left or right')
+    parser_hcrop.add_argument('dimension', choices=['tnum', 'dist'], help='Set the bound in terms of tnum (trace number, 1 indexed) or dist (distance in km)')
+    parser_hcrop.add_argument('lim', type=float, help='The cutoff value')
+    add_def_args(parser_hcrop)
+
     # Normal move-out
     parser_nmo = add_procparser(subparsers, 'nmo', 'Normal move-out correction', nmo, defname='nmo')
     parser_nmo.add_argument('ant_sep', type=float, help='Antenna separation')
     parser_nmo.add_argument('--uice', type=float, default=1.69e8, help='Speed of light in ice in m/s (default 1.69e8)')
     parser_nmo.add_argument('--uair', type=float, default=3.0e8, help='Speed of light in air in m/s (default 3.0e8)')
+    parser_nmo.add_argument('--rho_profile', type=str, default=None, help='Filename for a depth density profile to correct wave velocity.')
     add_def_args(parser_nmo)
 
     # Reinterpolate GPS
@@ -86,9 +96,16 @@ def _get_args():
     parser_interp.add_argument('--extrapolate', action='store_true', help='Extrapolate GPS data beyond bounds')
     add_def_args(parser_interp)
 
+    # GPS
+    parser_geolocate = add_procparser(subparsers, 'geolocate', 'GPS control', geolocate, defname='geolocate')
+    parser_geolocate.add_argument('gps_fn', type=str, help='CSV or mat file containing the GPS information. .csv and .txt files are assumed to be csv, .mat are mat. Default is None--use associated (presumably non-precision) GPS')
+    parser_geolocate.add_argument('--extrapolate', action='store_true', help='Extrapolate GPS data beyond bounds')
+    parser_geolocate.add_argument('--guess', action='store_true', help='Guess at offset')
+    add_def_args(parser_geolocate)
+
     # Migration
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
-    parser_mig.add_argument('--mtype', type=str, default='stolt', choices=['stolt', 'kirch', 'phsh', 'tk', 'su'], help='Migration routines.')
+    parser_mig.add_argument('--mtype', type=str, default='phsh', choices=['stolt', 'kirch', 'phsh', 'tk', 'sumigtk', 'sustolt', 'sumigffd'], help='Migration routines.')
     parser_mig.add_argument('--vel', type=float, default=1.69e8, help='Speed of light in dielectric medium m/s (default is for ice, 1.69e8)')
     parser_mig.add_argument('--vel_fn', type=str, default=None, help='Filename for inupt velocity array. Column 1: velocities, Column 2: z locations, Column 3: x locations (optional)')
     parser_mig.add_argument('--nearfield', action='store_true', help='Boolean for nearfield operator in Kirchhoff migration.')
@@ -97,7 +114,6 @@ def _get_args():
     parser_mig.add_argument('--nxpad', type=int, default=100, help='Number of traces to pad with zeros for FFT')
     parser_mig.add_argument('--tmig', type=int, default=0, help='Times for velocity profile')
     parser_mig.add_argument('--verbose', type=int, default=1, help='Print output from SeisUnix migration')
-    parser_mig.add_argument('--sutype', type=str, default='sumigtk', choices=['sustolt', 'sumigtk', 'sumigffd'], help='Migration command for SeisUnix')
     add_def_args(parser_mig)
 
     return parser
@@ -123,15 +139,14 @@ def add_def_args(parser):
     parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
     parser.add_argument('--ftype', type=str, default='mat',
                         help='Type of file to load (default ImpDAR mat)',
-                        choices=['gssi', 'pe', 'gprMax', 'gecko', 'mat', 'segy', 'mcords'])
+                        choices=FILETYPE_OPTIONS)
 
 
 def main():
     parser = _get_args()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
-        return
 
     radar_data = load(args.ftype, args.fns)
 
@@ -141,7 +156,6 @@ def main():
         args.fns = [bn + '.mat']
     elif args.name == 'interp':
         interp(radar_data, **vars(args))
-
     else:
         for dat in radar_data:
             args.func(dat, **vars(args))
@@ -190,8 +204,12 @@ def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
     dat.crop(lim, top_or_bottom=top_or_bottom, dimension=dimension)
 
 
-def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, **kwargs):
-    dat.nmo(ant_sep, uice=uice, uair=uair)
+def hcrop(dat, lim=0, left_or_right='left', dimension='tnum', **kwargs):
+    dat.hcrop(lim, left_or_right=left_or_right, dimension=dimension)
+
+
+def nmo(dat, ant_sep=0.0, uice=1.69e8, uair=3.0e8, rho_profile=None, **kwargs):
+    dat.nmo(ant_sep, uice=uice, uair=uair, rho_profile=rho_profile)
 
 
 def restack(dat, traces=1, **kwargs):
@@ -210,8 +228,12 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False,
     interpdeep(dats, spacing, fn=gps_fn, offset=offset, min_movement=minmove, extrapolate=extrapolate)
 
 
-def mig(dat, mtype='stolt', vel=1.69e8, **kwargs):
-    dat.migrate(mtype, vel=vel, **kwargs)
+def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
+    interpdeep(dats, spacing=None, fn=gps_fn, extrapolate=extrapolate, guess_offset=guess)
+
+
+def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0, verbose=0, vel_fn=None, nxpad=1, nearfield=False, **kwargs):
+    dat.migrate(mtype, vel=vel, vtaper=vtaper, htaper=htaper, tmig=tmig, verbose=verbose, vel_fn=vel_fn, nxpad=nxpad, nearfield=nearfield)
 
 
 if __name__ == '__main__':

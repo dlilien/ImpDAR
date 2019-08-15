@@ -24,6 +24,10 @@ class TestRadarDataLoading(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
 
+    def test_badread(self):
+        with self.assertRaises(KeyError):
+            data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_matlab.mat'))
+
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
@@ -121,6 +125,50 @@ class TestRadarDataMethods(unittest.TestCase):
         process.process([self.data], crop=(6, 'top', 'snum'))
         self.assertTrue(self.data.data.shape == (11, 40))
 
+    def test_HCropTnum(self):
+        self.data.hcrop(2, 'left', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 39))
+        self.data.hcrop(15, 'right', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 14))
+        # Make sure we can ditch the last one
+        self.data.hcrop(14, 'right', dimension='tnum')
+        self.assertTrue(self.data.data.shape == (20, 13))
+
+    def test_HCropInputErrors(self):
+        with self.assertRaises(ValueError):
+            self.data.hcrop(2, 'left', dimension='dummy')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(2, 'dummy', dimension='tnum')
+
+    def test_HCropBoundsErrors(self):
+        # There are lots of bad inputs for tnum
+        with self.assertRaises(ValueError):
+            self.data.hcrop(44, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-44, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(0, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(1, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-1, 'right', dimension='tnum')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(41, 'right', dimension='tnum')
+
+        # Fewer ways to screw up distance
+        with self.assertRaises(ValueError):
+            self.data.hcrop(1.6, 'right', dimension='dist')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(0, 'right', dimension='dist')
+        with self.assertRaises(ValueError):
+            self.data.hcrop(-1, 'right', dimension='dist')
+
+    def test_HCropDist(self):
+        self.data.hcrop(0.01, 'left', dimension='dist')
+        self.assertTrue(self.data.data.shape == (20, 39))
+        self.data.hcrop(1.4, 'right', dimension='dist')
+        self.assertTrue(self.data.data.shape == (20, 38))
+
     def test_agc(self):
         self.data.agc()
         self.assertTrue(self.data.flags.agc)
@@ -199,6 +247,36 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(self.data.flags.interp.shape == (2,))
         self.assertTrue(self.data.flags.interp[0])
         self.assertEqual(self.data.flags.interp[1], space)
+
+    def test_constant_sample_depth_spacing(self):
+        # first check that it fails if we are not set up
+        self.data.nmo_depth = None
+        with self.assertRaises(AttributeError):
+            self.data.constant_sample_depth_spacing()
+
+        # Spoof variable nmo depths
+        self.data.nmo_depth = np.hstack((np.arange(self.data.snum // 2),
+                                         self.data.snum // 2 + 2. * np.arange(self.data.snum // 2)))
+        self.data.constant_sample_depth_spacing()
+        self.assertTrue(np.allclose(np.diff(self.data.nmo_depth), np.ones((self.data.snum - 1,)) * np.diff(self.data.nmo_depth)[0]))
+
+        # So now if we call again, it should do nothing and return 1
+        rv = self.data.constant_sample_depth_spacing()
+        self.assertEqual(1, rv)
+
+    def test_traveltime_to_depth(self):
+        # We are not constant
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.arange(10) + 1) * 91.7)
+        self.assertFalse(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
+
+        # We are constant
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.ones((10,)) * 91.7))
+        self.assertTrue(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
+
+        # we have negative travel times
+        self.data.travel_time = self.data.travel_time - 0.01
+        depths = self.data.traveltime_to_depth(np.arange(10) - 1., (np.arange(10) + 1) * 91.7)
+        self.assertFalse(np.allclose(np.diff(depths), np.ones((len(depths) - 1,)) * (depths[1] - depths[0])))
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):

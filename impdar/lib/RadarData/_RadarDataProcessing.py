@@ -12,6 +12,7 @@ Define processing steps for Radar Data. These are all instance methods.
 
 import numpy as np
 from scipy.interpolate import interp1d
+from ..permittivity_models import firn_permittivity
 
 
 def reverse(self):
@@ -41,7 +42,21 @@ def reverse(self):
         self.flags.reverse = True
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
+def constant_sample_depth_spacing(self):
+    # First, we make a new array of depths
+    if self.nmo_depth is None:
+        raise AttributeError('Call nmo first...')
+    if np.allclose(np.diff(self.nmo_depth), np.ones((self.snum - 1,)) * (self.nmo_depth[1] - self.nmo_depth[0])):
+        print('No constant sampling when you already have constant sampling...')
+        return 1
+
+    depths = np.linspace(np.min(self.nmo_depth[0], 0), self.nmo_depth[-1], len(self.nmo_depth))
+    self.data = interp1d(self.nmo_depth, self.data.transpose())(depths).transpose()
+    self.travel_time = interp1d(self.nmo_depth, self.travel_time)(depths)
+    self.nmo_depth = depths
+
+
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -52,10 +67,20 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     ----------
     ant_sep: float
         Antenna separation in meters.
-    uice: float, optional
-        Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8
+    uice: float or np.ndarray (2 x m), optional
+        Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8.
     uair: float, optional
         Speed of light in air. Default 3.0e8
+    rho_profile: str,optional
+        Filename for a csv file with density profile (depths in first column and densities in second)
+        Units should be meters for depth, kgs per meter cubed for density.
+        Note that using a variable uice will break the linear scaling between depth and time,
+        so we are forced to choose whether the y-axis is linear in speed or time.
+        I chose time, since this eases calculations like migration.
+        For plotting vs. depth, however, the functions just use the bounds,
+        so the depth variations are averaged out.
+        You can use the helper function constant_sample_depth_spacing() in order to correct this,
+        but you should call that after migration.
     """
     # Conversion of StO nmodeep v2.4
     #   Modifications:
@@ -68,8 +93,11 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     #       6) Converted flag variables to structure, and updated function I/O
     #       - J. Werner, 7/10/08
 
-    # calculate travel time of air wave
+    # Preliminary handling of the uice
+    # We are going to standardize for either type of uice input
     tair = ant_sep / uair
+    # Calculate direct ice wave time
+    tice = ant_sep / uice
 
     if np.round(tair / self.dt) > np.mean(self.trig):
         if isinstance(self.trig, (int, float)):
@@ -80,9 +108,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
         self.snum = nmodata.shape[0]
     else:
         nmodata = self.data.copy()
-
-    # Calculate direct ice wave time
-    tice = ant_sep / uice
 
     # Calculate sample location for time=0 when radar pulse is transmitted
     #  (Note: trig is the air wave arrival)
@@ -141,9 +166,20 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - nair) * self.dt,
                                  self.dt) * 1.0e6
-    self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
-
     self.data = nmodata
+
+    if rho_profile is None:
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
+    else:
+        rho_profile_data = np.genfromtxt(rho_profile, delimiter=',')
+        try:
+            profile_depth = rho_profile_data[:, 0]
+            profile_rho = rho_profile_data[:, 1]
+        except IndexError:
+            raise IndexError('Cannot load the depth-density profile')
+        self.nmo_depth = traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
+        if const_sample:
+            constant_sample_depth_spacing(self)
 
     try:
         self.flags.nmo[0] = 1
@@ -151,6 +187,48 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8):
     except (IndexError, TypeError):
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
+
+
+def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_model=firn_permittivity):
+    """
+    Convert travel_time to depth based on density profile
+
+    This is called from within the nmo processing function
+    It returns the depth for the moveout-corrected depth, in the case of a variable velocity
+
+    Parameters
+    ----------
+    profile_depth: array
+        input depths for measured densities
+    profile_rho: array
+        input densities to match depth locations above
+    c: float, optional
+        speed of light in vacuum
+    permittivity_model: function
+        specific permittivity model to use
+
+    Returns
+    -------
+    depth: np.ndarray (self.snum x 1)
+    """
+    # get the input velocity-depth profile
+    eps = np.real(permittivity_model(profile_rho))
+    profile_u = c / np.sqrt(eps)
+    # iterate over time, moving down according to the velocity at each step
+    z = 0.
+    depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
+    for i, t in enumerate(self.travel_time):
+        if t < 0.:
+            continue
+        elif t < self.dt * 1.0e6:
+            step_u = profile_u[0]
+            z += t / 2. * step_u * 1.0e-6
+            depth[i] = z
+        else:
+            step_u = profile_u[np.nanargmin(abs(profile_depth - z))]
+            z += self.dt / 2. * step_u
+            depth[i] = z
+    return depth
 
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
@@ -198,6 +276,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
+            self.trig = self.trig - ind
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
@@ -226,6 +305,67 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     self.flags.crop[1] = self.flags.crop[1] + lims[0]
     print('Vertical samples reduced to subset [{:d}:{:d}] of original'.format(
         int(self.flags.crop[1]), int(self.flags.crop[2])))
+
+
+def hcrop(self, lim, left_or_right='left', dimension='tnum'):
+    """Crop the radar data in the horizontal. We can take off the left or right.
+
+    This will affect all trace-wise variables:
+    data, lat, long, dist, x_coord, y_coord, elev, trace_num, trace_int, tnum,
+    decday, pressure, and trig.
+
+    Parameters
+    ----------
+    lim: float (int if dimension=='snum')
+        The value at which to crop.
+    top_or_bottom: str, optional
+        Crop off the left (lim is the first remaining trace/dist) or the right
+        (lim is the first trace deleted).
+        Default is left
+    dimension: str, optional
+        Evaluate in terms of trace_num (tnum) or distance (dist).
+        Note that trace_num is 1-indexed.
+        This defines the units for left_or_right.
+        Default is tnum.
+    """
+    if left_or_right not in ['left', 'right']:
+        raise ValueError('left_or_right must be left or right, not {:s}'.format(left_or_right))
+    if dimension not in ['tnum', 'dist']:
+        raise ValueError('Dimension must be in ["tnum", "dist"]')
+
+    if dimension == 'dist':
+        if lim > np.max(self.dist):
+            raise ValueError('lim is larger than largest distance')
+        if lim <= 0:
+            raise ValueError('Distance should be strictly positive')
+        ind = np.min(np.argwhere(self.dist >= lim))
+    else:
+        if int(lim) in (0, 1):
+            raise ValueError('lim should be at least two to preserve some data')
+        if lim > self.tnum:
+            raise ValueError('lim should be less than tnum+1 {:d} in order to do anything'.format(self.tnum + 1))
+        if lim == -1 or lim < -self.tnum:
+            raise ValueError('If negative, lim should be in [-self.tnum; -1)')
+        ind = int(lim) - 1
+
+    if left_or_right == 'left':
+        lims = [ind, self.data.shape[1]]
+    else:
+        lims = [0, ind]
+
+    # Most variable just need subsetting
+    self.data = self.data[:, lims[0]:lims[1]]
+    for var in ['lat', 'long', 'pressure', 'trace_int', 'trig', 'elev', 'x_coord', 'y_coord', 'decday']:
+        # some of these are optional, and trig may be set to a float rather than an array
+        if getattr(self, var) is not None and isinstance(getattr(self, var), np.ndarray):
+            setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
+
+    # More complex modifications for these two
+    self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
+    self.travel_time = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
+
+    # Finally tnum
+    self.tnum = self.data.shape[1]
 
 
 def restack(self, traces):
@@ -257,14 +397,15 @@ def restack(self, traces):
                          'y_coord',
                          'elev',
                          'decday']
-    oned_newdata = {key: np.zeros((tnum, )) for key in oned_restack_vars}
+    oned_newdata = {key: np.zeros((tnum, )) if getattr(self, key) is not None else None for key in oned_restack_vars}
     for j in range(tnum):
         stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],
                               axis=1)
         trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
         for var, val in oned_newdata.items():
-            val[j] = np.mean(getattr(self, var)[j * traces:
-                                                min((j + 1) * traces, self.data.shape[1])])
+            if val is not None:
+                val[j] = np.mean(getattr(self, var)[j * traces:
+                                                    min((j + 1) * traces, self.data.shape[1])])
     self.tnum = tnum
     self.data = stack
     self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -318,7 +459,7 @@ def agc(self, window=50, scaling_factor=50):
     self.flags.agc = True
 
 
-def constant_space(self, spacing, min_movement=1.0e-2):
+def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     """Restack the radar data to a constant spacing.
 
     This method uses the GPS information (i.e. the distance, x, y, lat, and lon),
@@ -343,18 +484,34 @@ def constant_space(self, spacing, min_movement=1.0e-2):
     min_movement: float, optional
         Minimum trace spacing. If there is not this much separation, toss the next shot.
         Set high to keep everything. Default 1.0e-2.
+    show_nomove: bool, optional
+        If True, make a plot shading the areas where we think there is no movement.
+        This can be really helpful for diagnosing what is wrong if you have lingering stationary traces.
     """
     # eliminate an interpolation error by masking out little movement
     good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
-    new_dists = np.arange(np.min(self.dist[good_vals]),
-                          np.max(self.dist[good_vals]),
+
+    # Correct the distances to reduce noise
+    for i in range(len(self.dist)):
+        if not good_vals[i]:
+            self.dist[i:] = self.dist[i:] - (self.dist[i] - self.dist[i - 1])
+    temp_dist = self.dist[good_vals]
+
+    if show_nomove:
+        from .. import plot
+        fig, ax = plot.plot_radargram(self)
+        ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
+        plot.plt.show()
+
+    new_dists = np.arange(np.min(temp_dist),
+                          np.max(temp_dist),
                           step=spacing / 1000.0)
-    self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
+    self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
     for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
         setattr(self,
                 attr,
-                interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
+                interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -377,7 +534,7 @@ def elev_correct(self, v_avg=1.69e8):
     the data, otherwise the noise a handheld GPS will make the results look pretty bad.
 
     Be aware that this is not a precise conversion if your nmo correction had antenna
-    separation, or if you used adepth-variable velocity structure. This is because we have
+    separation, or if you used a depth-variable velocity structure. This is because we have
     a single vector describing depths in the data array, so only one value for each depth
     step.
 

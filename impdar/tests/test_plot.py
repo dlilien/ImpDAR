@@ -47,7 +47,6 @@ def Any(cls):
 
 
 class TestPlot(unittest.TestCase):
-    
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotPLOTARGS(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
@@ -80,17 +79,16 @@ class TestPlot(unittest.TestCase):
 
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADGSSI(self, mock_plot_rad):
-        plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], gssi=True)
+        plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], filetype='gssi')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None)
 
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADPE(self, mock_plot_rad):
-        plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], pe=True)
+        plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None)
 
+
     def test_plotBADINPUT(self):
-        with self.assertRaises(ValueError):
-            plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], gssi=True, pe=True)
         with self.assertRaises(ValueError):
             plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], tr=0, power=1)
 

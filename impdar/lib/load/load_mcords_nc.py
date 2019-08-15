@@ -46,7 +46,7 @@ def load_mcords_nc(fn_nc):
     mcords_data.travel_time = dst.variables['fasttime'][:]
     mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6
     size = dst.variables['amplitude'].matlab_size
-    mcords_data.snum, mcords_data.tnum = int(size[0]), int(size[1])
+    mcords_data.tnum, mcords_data.snum = int(size[0]), int(size[1])
     mcords_data.trace_num = np.arange(mcords_data.tnum) + 1
 
     mcords_data.chan = 0

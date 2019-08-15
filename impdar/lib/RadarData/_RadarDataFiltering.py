@@ -49,19 +49,19 @@ def adaptivehfilt(self, *args, **kwargs):
     print('Adaptive filtering')
     # Create average trace for first (rough) scan of data
     avg_trace = np.mean(self.data, axis=1)
-    hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
+    # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
+    hfiltdata_mass = self.data.copy()
 
     # Preallocate array
     avg_trace_scale = np.zeros_like(self.travel_time)
 
     # create a piecewise scaling function (insures that the filter only affects
     # the top layers of data)
-    mask = self.travel_time <= 1.25
-    avg_trace_scale[mask] = -0.1 * (
-        self.travel_time[mask] - 0.25) * (self.travel_time[mask] - 0.25) + 1
-    avg_trace_scale[~mask] = np.exp(
-        -30. * ((self.travel_time[~mask] - 0.25) - 0.9) * (
-            (self.travel_time[~mask] - 0.25) - 0.9))
+    mask = self.travel_time <= 0.3 * np.max(self.travel_time)
+    mtt = np.max(self.travel_time)
+    transition = 0.1 * mtt
+    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (self.travel_time[mask] - transition) / mtt ** 2. + 1
+    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (((self.travel_time[~mask] - transition) - 0.2 * mtt) * ((self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
 
     # preallocate array
     hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
@@ -84,7 +84,8 @@ def adaptivehfilt(self, *args, **kwargs):
                                       ).flatten() * avg_trace_scale.flatten()
 
         # subtract the average trace off the data trace
-        hfiltdata_scan_low[:, i] = hfiltdata_mass[:, i] - avg_trace_scan_low
+        # hfiltdata_scan_low[:, i] = hfiltdata_mass[:, i] - avg_trace_scan_low
+        hfiltdata_scan_low[:, i] = self.data[:, i] - avg_trace_scan_low
 
     self.data = hfiltdata_scan_low.astype(self.data.dtype)
     print('Adaptive filtering complete')
@@ -407,7 +408,7 @@ def vertical_band_pass(self,
     self.flags.bpass[2] = high
 
 
-def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
+def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
     """Migrate the data.
 
     This is a wrapper around all the migration routines in migration_routines.py.
@@ -419,21 +420,18 @@ def migrate(self, mtype='stolt', sutype='sumigtk', **kwargs):
         Default: stolt
     """
     if mtype == 'kirch':
-        migrationlib.migrationKirchhoff(self, **kwargs)
+        migrationlib.migrationKirchhoff(self, vel=vel, nearfield=nearfield)
     elif mtype == 'stolt':
-        migrationlib.migrationStolt(self, **kwargs)
+        migrationlib.migrationStolt(self, vel=vel, htaper=htaper, vtaper=vtaper)
     elif mtype == 'phsh':
-        migrationlib.migrationPhaseShift(self, **kwargs)
+        migrationlib.migrationPhaseShift(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'tk':
-        migrationlib.migrationTimeWavenumber(self, **kwargs)
+        migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, sutype=sutype, **kwargs)
+        migrationlib.migrationSeisUnix(self, sutype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 
     # change migration flag
-    if mtype == 'su':
-        mflag = sutype
-    else:
-        mflag = mtype
+    mflag = mtype
     self.flags.mig = mflag

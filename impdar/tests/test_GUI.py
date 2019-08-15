@@ -158,7 +158,7 @@ class TestInteractivePicker(unittest.TestCase):
         ip = InteractivePicker(data)
         ip._mode_update()
         ip._mode_update()
-    
+
     def test_edit_lines_click_existingline(self):
         # First, plain left click
         # event has x and y data
