@@ -21,6 +21,7 @@ import subprocess as sp
 
 from impdar.lib import migrationlib
 from impdar.lib.NoInitRadarData import NoInitRadarData
+from impdar.lib.load import load_segy
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(THIS_DIR, 'Migration_tests')
