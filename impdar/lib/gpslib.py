@@ -232,7 +232,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
                 offsets[j] += search_vals[np.argmax(cc_coeffs)]
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
 
-    for dat in dats:
+    for j, dat in enumerate(dats):
         int_lat = interp1d(decday + offsets[j], lat, kind='linear', fill_value=fill_value)
         int_long = interp1d(decday + offsets[j], lon, kind='linear', fill_value=fill_value)
         int_elev = interp1d(decday + offsets[j], elev, kind='linear', fill_value=fill_value)

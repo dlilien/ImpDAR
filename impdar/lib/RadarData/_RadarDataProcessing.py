@@ -503,7 +503,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
         ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
         plot.plt.show()
 
-    new_dists = np.arange(0,
+    new_dists = np.arange(np.min(temp_dist),
                           np.max(temp_dist),
                           step=spacing / 1000.0)
     self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
