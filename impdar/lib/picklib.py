@@ -130,7 +130,7 @@ def packet_pick(trace, pickparams, midpoint):
     else:
         # I can't seem to hit this line in tests. Might be due to offset between matlab and python
         bpeak = int(np.argmin(powerpacket[cpeak:] * pickparams.pol)) + cpeak
-    power = np.sum(powerpacket[tpeak:bpeak] ** 2. / (bpeak - tpeak + 1))
+    power = np.sum(powerpacket[tpeak:bpeak + 1] ** 2.) / (bpeak - tpeak + 1)
 
     return [tpeak + topsnum, cpeak + topsnum, bpeak + topsnum, np.nan, power]
 
