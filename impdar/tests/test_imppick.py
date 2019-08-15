@@ -31,24 +31,34 @@ class TestMain(unittest.TestCase):
     @patch('impdar.bin.imppick.pickgui.InteractivePicker')
     def test_badinput(self, pick_patch, qapppatch):
         imppick.sys.argv = ['dummy']
-        with self.assertRaises(BaseException):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                imppick.main()
 
         imppick.sys.argv = ['dummy', '-xd']
-        with self.assertRaises(BaseException):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                imppick.main()
 
         imppick.sys.argv = ['dummy', '-yd']
-        with self.assertRaises(BaseException):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                imppick.main()
 
         imppick.sys.argv = ['dummy', '-xd', '-yd']
-        with self.assertRaises(BaseException):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                imppick.main()
 
         imppick.sys.argv = ['dummy', 'fn', 'fn2']
-        with self.assertRaises(BaseException):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                imppick.main()
 
     @unittest.skipIf(not QT, 'No Qt')
     @patch('impdar.bin.imppick.QtWidgets.QApplication')
@@ -58,8 +68,10 @@ class TestMain(unittest.TestCase):
         load_patch.return_value = [MagicMock()]
         imppick.sys.argv = ['dummy', 'fn']
         # this is supposed to exit when finished
-        with self.assertRaises(SystemExit):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                imppick.main()
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)
@@ -73,8 +85,10 @@ class TestMain(unittest.TestCase):
         load_patch.return_value = [MagicMock()]
         imppick.sys.argv = ['dummy', 'fn', '-yd']
         # this is supposed to exit when finished
-        with self.assertRaises(SystemExit):
-            imppick.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                imppick.main()
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)
@@ -88,8 +102,11 @@ class TestMain(unittest.TestCase):
         load_patch.return_value = [MagicMock()]
         imppick.sys.argv = ['dummy', 'fn', '-xd']
         # this is supposed to exit when finished
-        with self.assertRaises(SystemExit):
-            imppick.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                imppick.main()
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)

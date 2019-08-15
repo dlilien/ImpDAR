@@ -13,7 +13,6 @@ Earth and Space Sciences
 Mar 12 2019
 
 """
-
 import os
 import unittest
 import subprocess as sp
@@ -28,6 +27,7 @@ except ImportError:
     CYTHON = False
 from impdar.lib.load import load_segy
 from impdar.lib.NoInitRadarData import NoInitRadarData
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(THIS_DIR, 'Migration_tests')
@@ -132,7 +132,7 @@ class TestMigration(unittest.TestCase):
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sumigtk.mat')
-        migrationlib.migrationSeisUnix(data)
+        migrationlib.migrationSeisUnix(data, quiet=True)
 
     @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix or segy not found')
     def test_sustolt(self):
@@ -140,7 +140,7 @@ class TestMigration(unittest.TestCase):
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
-        migrationlib.migrationSeisUnix(data)
+        migrationlib.migrationSeisUnix(data, quiet=True)
 
     @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or load_segy.SEGY, 'Test of edge case')
     def test_sustolt_nosegy(self):
