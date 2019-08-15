@@ -17,7 +17,7 @@ import time
 # cdefine the signature of our c function
 # Need this so that the function is recognized
 cdef extern from "mig_cython.h":
-    void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bint nearfield)
+    void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, int nearfield)
 
 
 
@@ -44,7 +44,7 @@ def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] migdata not None,
                    vel,
                    <double*> np.PyArray_DATA(gradD),
                    max_travel_time,
-                   nearfield
+                   int(nearfield)
                    )
 
 

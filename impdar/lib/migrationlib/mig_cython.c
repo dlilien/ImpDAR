@@ -6,13 +6,12 @@
  */
 
 #include "mig_cython.h"
-#include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h> 
 
 /*  Migrate data into migdata */
-void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, bool nearfield){
+void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, int nearfield){
     int i, j, k, l;
     double min, m;
     double costheta;
@@ -52,10 +51,6 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
                 }
 
                 costheta = zs[i] / rs;
-                if (isnan(costheta)){
-                    costheta = 0.;
-                }
-
                 min = 1.0e6;
                 /* The new min should not be smaller than the previous rmin
                 * since otherwise the hyperbola would be inverted (smiles) */
@@ -76,7 +71,7 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
                      break;
                 }
                 costheta = zs[i] / rs;
-                if (isnan(costheta)){
+                if (rs <= 1.0e8){
                     costheta = 0.;
                 }
                 min = 1.0e6;

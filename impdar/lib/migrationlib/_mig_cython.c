@@ -2114,7 +2114,7 @@ static PyObject *__pyx_pf_6impdar_3lib_12migrationlib_10mig_cython_migrationKirc
  *                    tnum,
  *                    snum,
  */
-  mig_kirch_loop(((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_migdata))), __pyx_v_tnum, __pyx_v_snum, ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_dist))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_zs))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_zs2))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_tt_sec))), __pyx_v_vel, ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_gradD))), __pyx_v_max_travel_time, __pyx_v_nearfield);
+  mig_kirch_loop(((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_migdata))), __pyx_v_tnum, __pyx_v_snum, ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_dist))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_zs))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_zs2))), ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_tt_sec))), __pyx_v_vel, ((double *)PyArray_DATA(((PyArrayObject *)__pyx_v_gradD))), __pyx_v_max_travel_time, ((int)__pyx_v_nearfield));
 
   /* "impdar/lib/migrationlib/_mig_cython.pyx":24
  * 
