@@ -140,47 +140,43 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
 
     # --- Do the move-out correction --- #
 
-    # create an empty vector
-    t_adj = np.zeros((self.snum, ))
-    t_adj[np.imag(t_adj) != 0] = 0
     # copy the data to a new array
     nmodata = self.data.copy()
 
     for i,t in enumerate(pulse_time):
-        if rho_profile is None:
-            u_rms = u_ice
-        else:
-            # RMS velocity used for correction
-            d = minimize(optimize_moveout_depth,t*1e-6*u_ice/2.,args=(t*1e-6,ant_sep,d_interp,u_interp),tol=1e-8)['x'][0]
-            u_rms = np.sqrt(np.mean(u_interp[np.argwhere(d_interp<d)]**2.))
-
-        # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
-        tsep_ice = ant_sep / u_rms
-        # calculate legs of travel path triangle (in one-way travel time)
-        t_hyp = pulse_time / 2.
-        # calculate the vertical one-way travel time
-        if t_hyp < tsep_ice:
+        # no adjustment for the early times
+        if t < tsep_air:
             n_adj = 0
         else:
-            t_adj = (np.sqrt((t_hyp**2.) - ((tsep_ice / 2.)**2.)))
-            # convert the vertical travel time adjustment to indices
-            n_adj = np.round(pulse_time / self.dt - t_adj*2. / self.dt).astype(int)
-
-        # Correct the data by shifting the samples earlier in time by "nadj"
-        nmodata[i - n_adj, :] = nmodata[i, :]
+            if rho_profile is None:
+                u_rms = u_ice
+            else:
+                # get RMS velocity used for correction
+                d = minimize(optimize_moveout_depth,.5*t*u_ice,args=(t,ant_sep,d_interp,u_interp),
+                             tol=1e-8,bounds=((0,0.5*t*u_air),))['x'][0]
+                u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
+            # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
+            tsep_ice = ant_sep / u_rms
+            # calculate legs of travel path triangle (in one-way travel time)
+            t_hyp = t / 2.
+            if t_hyp < tsep_ice/2.:
+                n_adj = 0
+            else:
+                # calculate the vertical one-way travel time
+                t_adj = (np.sqrt((t_hyp**2.) - ((tsep_ice / 2.)**2.)))
+                # convert the vertical travel time adjustment to number of indices to move
+                n_adj = np.round(t/self.dt - t_adj*2. / self.dt).astype(int)
+            # Correct the data by shifting the samples earlier in time by "nadj"
+            nmodata[i - n_adj, :] = nmodata[i, :]
 
 
     # --- Cleanup --- #
-
-    # Define the new trigger location value based on the nmo-adjustment calculations above:
-    self.trig = np.round(tsep_ice/2./self.dt).astype(int)
 
     # Calculate the new variables for the y-axis after NMO is complete
     self.travel_time = np.arange((-self.trig) * self.dt,
                                  (nmodata.shape[0] - n_air) * self.dt,
                                  self.dt) * 1.0e6
     self.data = nmodata
-
     # time to depth conversion
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * u_ice * 1.0e-6
@@ -188,7 +184,7 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
         traveltime_to_depth(self, profile_depth, profile_rho, c=u_air, permittivity_model=permittivity_model)
         if const_sample:
             constant_sample_depth_spacing(self)
-
+    # Set flags
     try:
         self.flags.nmo[0] = 1
         self.flags.nmo[1] = ant_sep
@@ -197,65 +193,31 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
         self.flags.nmo[1] = ant_sep
 
 
-
-
-
-    """
-
-        # Since we're stretching the data near the ice surface,
-        # we need to interpolate samples in the gaps.
-        # B. Welch June 2003
-        # I cannot trigger this conditional this with a test. D. Lilien 4/2019
-        if (j - np.round(n_adj[j])) - ((j - 1) - np.round(n_adj[j - 1])) > 1 and j != n_ice:
-            interper = interp1d(np.array([((j - 1) - int(round(n_adj[j - 1]))),
-                                          (j - int(round(n_adj[j])))]),
-                                nmodata[[((j - 1) - int(round(n_adj[j - 1]))),
-                                         (j - int(round(n_adj[j])))], :].transpose())
-            nmodata[((j - 1) - int(round(n_adj[j - 1]))):
-                    (j - int(round(n_adj[j]))), :] = interper(
-                        np.arange(((j - 1) - int(round(n_adj[j - 1]))),
-                                  (j - int(round(n_adj[j]))))).transpose()
-
-
-
-
-    # Reset the trigger location
-    if np.round(tsep_air / self.dt) > np.mean(self.trig):
-        if isinstance(self.trig, (int, float)):
-            self.trig = int(np.round(1.1 * np.round(tsep_air / self.dt)))
-        else:
-            self.trig = int(np.mean(np.round(1.1 * np.round(tsep_air / self.dt))))
-        nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
-        self.snum = nmodata.shape[0]
-    else:
-        nmodata = self.data.copy()
-
-
-
-
-    # --- Convert the two-way-travel-time to an adjusted time --- #
-
-        # calculate sample location for direct ice wave arrival
-        # switched from rounding whole right side to just rounding (tice/dt)
-        #    -L. Smith, 6/16/03
-        n_ice = int(n_air + np.round(tsep_ice / self.dt))
-
-
-    pulse_time[n_ice] = tsep_ice
-
-    """
-
-
-
-
 def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
     """
+    For depth optimization in the nmo filter
+
+    In the case of variable velocity, we need to iterate on the depth
+    and rms velocity within this function until it converges.
+
+    Parameters
+    ----------
+    d_in: float
+        initial guess at the depth
+    t: float
+        time
+    ant_sep: float
+        antennae separation
+    profile_depth: array
+        depths corresponding to input velocity profile
+    profile_u: array
+        velocity
     """
     args = np.argwhere(profile_depth<d_in)
     vels = profile_u[args][:,0]
     u_rms = np.sqrt(np.mean(vels**2.))
-    alpha=np.arctan(ant_sep/d_in)
-    return abs(t/2.*u_rms*np.cos(alpha)-d_in)
+    return abs(np.sqrt((t/2.*u_rms)**2.-ant_sep**2.)-d_in)
+
 
 def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_model=firn_permittivity):
     """
