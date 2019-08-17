@@ -100,28 +100,13 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
     #       - J. Werner, 7/10/08
 
 
-    # --- Adjust the time vector to be pulse time instead of receiver time --- #
-
     # need to crop out the pretrigger before doing the move-out
     if self.trig > 0:
         raise ValueError('Crop out the pretrigger before doing the nmo correction.')
 
-    # Time separation for wave travelling through air
-    tsep_air = ant_sep / u_air
-
-    # Calculate sample location for time=0 when radar pulse is transmitted
-    #  (Note: trig is the air wave arrival)
-    # Switched from rounding whole right side to just rounding (tair/dt)
-    #    -L. Smith, 6/16/03
-    n_air = int(np.round(tsep_air / self.dt))
-
-    # calculate new time vector where t=0 is the emitted pulse
-    pulse_time = np.arange(-self.dt*n_air, (self.snum - n_air) * self.dt, self.dt)
-
 
     # --- Load the velocity profile --- #
 
-    # Calculate direct ice wave time for each depth (varies with wave speed in ice)
     if rho_profile is not None:
         try:
             # load the density profile
@@ -140,50 +125,40 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
 
     # --- Do the move-out correction --- #
 
-    # copy the data to a new array
-    nmodata = self.data.copy()
+    # empty array to fill with new times
+    nmotime = np.zeros((len(self.travel_time)))
+    # time for antenna separation
+    tsep_air = 1e6*(ant_sep / u_air)
+    # time since pulse
+    pulse_time = self.travel_time+tsep_air
 
     for i,t in enumerate(pulse_time):
-        # no adjustment for the early times
-        if t < tsep_air:
-            n_adj = 0
+        if rho_profile is None:
+            u_rms = u_ice
         else:
-            if rho_profile is None:
-                u_rms = u_ice
-            else:
-                # get RMS velocity used for correction
-                d = minimize(optimize_moveout_depth,.5*t*u_ice,args=(t,ant_sep,d_interp,u_interp),
-                             tol=1e-8,bounds=((0,0.5*t*u_air),))['x'][0]
-                u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
-            # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
-            tsep_ice = ant_sep / u_rms
-            # calculate legs of travel path triangle (in one-way travel time)
-            t_hyp = t / 2.
-            if t_hyp < tsep_ice/2.:
-                n_adj = 0
-            else:
-                # calculate the vertical one-way travel time
-                t_adj = (np.sqrt((t_hyp**2.) - ((tsep_ice / 2.)**2.)))
-                # convert the vertical travel time adjustment to number of indices to move
-                n_adj = np.round(t/self.dt - t_adj*2. / self.dt).astype(int)
-            # Correct the data by shifting the samples earlier in time by "nadj"
-            nmodata[i - n_adj, :] = nmodata[i, :]
+            # get RMS velocity used for correction
+            d = minimize(optimize_moveout_depth,.5*t*u_ice,args=(t,ant_sep,d_interp,u_interp),
+                         tol=1e-8,bounds=((0,0.5*t*u_air),))['x'][0]
+            u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
+        # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
+        tsep_ice = 1e6*(ant_sep / u_rms)
+        # hypoteneuse
+        t_hyp = t
+        # calculate the vertical two-way travel time
+        nmotime[i] = np.sqrt(t_hyp**2. - tsep_ice**2.)
 
 
     # --- Cleanup --- #
 
-    # Calculate the new variables for the y-axis after NMO is complete
-    self.travel_time = np.arange((-self.trig) * self.dt,
-                                 (nmodata.shape[0] - n_air) * self.dt,
-                                 self.dt) * 1.0e6
-    self.data = nmodata
+    # save the updated time vector
+    self.travel_time = nmotime.copy()
     # time to depth conversion
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * u_ice * 1.0e-6
     else:
         traveltime_to_depth(self, profile_depth, profile_rho, c=u_air, permittivity_model=permittivity_model)
-        if const_sample:
-            constant_sample_depth_spacing(self)
+    if const_sample:
+        constant_sample_depth_spacing(self)
     # Set flags
     try:
         self.flags.nmo[0] = 1
