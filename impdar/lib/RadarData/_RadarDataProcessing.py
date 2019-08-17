@@ -12,8 +12,8 @@ Define processing steps for Radar Data. These are all instance methods.
 
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.optimize import minimize
 from ..permittivity_models import firn_permittivity
-
 
 def reverse(self):
     """Reverse radar data
@@ -63,6 +63,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     This potentially affects data and snum.
     It also defines nmo_depth, the moveout-corrected depth
 
+    Updated to accomodate vertical velocity profile. B Hills 8/2019
+
     Parameters
     ----------
     ant_sep: float
@@ -81,6 +83,10 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         so the depth variations are averaged out.
         You can use the helper function constant_sample_depth_spacing() in order to correct this,
         but you should call that after migration.
+    permittivity_model: fun, optional
+        density to permittivity model from the literature
+    const_sample: bool, optional
+        interpolate to constant sample spacing after the nmo correction
     """
     # Conversion of StO nmodeep v2.4
     #   Modifications:
@@ -93,90 +99,106 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     #       6) Converted flag variables to structure, and updated function I/O
     #       - J. Werner, 7/10/08
 
-    # Preliminary handling of the uice
-    # We are going to standardize for either type of uice input
-    tair = ant_sep / uair
-    # Calculate direct ice wave time
-    tice = ant_sep / uice
 
-    if np.round(tair / self.dt) > np.mean(self.trig):
-        if isinstance(self.trig, (int, float)):
-            self.trig = int(np.round(1.1 * np.round(tair / self.dt)))
-        else:
-            self.trig = int(np.mean(np.round(1.1 * np.round(tair / self.dt))))
-        nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
-        self.snum = nmodata.shape[0]
-    else:
-        nmodata = self.data.copy()
+    # --- Adjust the time vector to be pulse time instead of receiver time --- #
+
+    # need to crop out the pretrigger before doing the move-out
+    if self.trig > 0:
+        raise ValueError('Crop out the pretrigger before doing the nmo correction.')
+
+    # Time separation for wave travelling through air
+    tsep_air = ant_sep / uair
 
     # Calculate sample location for time=0 when radar pulse is transmitted
     #  (Note: trig is the air wave arrival)
     # Switched from rounding whole right side to just rounding (tair/dt)
     #    -L. Smith, 6/16/03
-    nair = int(np.mean((self.trig) - np.round(tair / self.dt)))
+    n_air = int(np.round(tsep_air / self.dt))
 
-    # calculate sample location for direct ice wave arrival
-    # switched from rounding whole right side to just rounding (tice/dt)
-    #    -L. Smith, 6/16/03
-    nice = int(nair + np.round(tice / self.dt))
-
-    # calculate vector of recorded travel times starting at time=0
     # calculate new time vector where t=0 is the emitted pulse
-    pulse_time = np.arange(-self.dt * (nair), (self.snum - nair) * self.dt, self.dt)
-    pulse_time[nice] = tice
+    pulse_time = np.arange(-self.dt*n_air, (self.snum - n_air) * self.dt, self.dt)
+
+
+    # --- Load the velocity profile --- #
+
+    # Calculate direct ice wave time for each depth (varies with wave speed in ice)
+    if rho_profile is None:
+        u = uice*np.ones((self.snum))
+    else:
+        try:
+            # load the density profile
+            rho_profile_data = np.genfromtxt(rho_profile, delimiter=',')
+            profile_depth = rho_profile_data[:, 0]
+            profile_rho = rho_profile_data[:, 1]
+        except IndexError:
+            raise IndexError('Cannot load the depth-density profile')
+        # Density to velocity
+        eps = np.real(permittivity_model(profile_rho))
+        profile_u = uair / np.sqrt(eps)
+        # Interpolate velocity profile onto constant depth spacing
+        d_interpolate = np.linspace(np.min(profile_depth, 0), max(profile_depth), self.snum)
+        u_depth_profile = np.array([d_interpolate,interp1d(profile_depth, profile_u)(d_interpolate)])
+
+
+
+
+
+
 
     # create an empty vector
-    tadj = np.zeros((self.snum, ))
+    t_adj = np.zeros((self.snum, ))
+    t_adj[np.imag(t_adj) != 0] = 0
+
+    # RMS velocity used for correction
+    u_rms = np.empty_like(self.travel_time)
+    for i,t in enumerate(self.travel_time):
+        d = minimize(optimize_moveout_depth,t*1e-6*uice/2.,args=(t*1e-6,ant_sep,d_interp,u_interp),tol=1e-8)['x'][0]
+        args = np.argwhere(d_interp<d)
+        u_rms[i] = np.sqrt(np.mean(u_interp[args]**2.))
+    # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
+    tsep_ice = ant_sep / u_rms
 
     # calculate legs of travel path triangle (in one-way travel time)
-    hyp = pulse_time[nice:self.snum] / 2.
-
+    t_hyp = pulse_time[n_ice:self.snum] / 2.
     # calculate the vertical one-way travel time
-    tadj[nice:self.snum] = (np.sqrt((hyp**2.) - ((tice / 2.)**2.)))
-    tadj[np.imag(tadj) != 0] = 0
+    t_adj[n_ice:self.snum] = (np.sqrt((hyp**2.) - ((tsep_ice / 2.)**2.)))
 
-    # convert the vertical one-way travel time to vector indices
-    nadj = np.zeros((self.snum, ))
-    nadj[nice:self.snum] = pulse_time[nice: self.snum] / self.dt - \
-        tadj[nice: self.snum] * 2. / self.dt
 
     # loop through samples for all traces in profile
-    for j in range(nice, self.snum):
+    for j in range(n_ice, self.snum):
         # Correct the data by shifting the samples earlier in time by "nadj"
-        nmodata[j - np.round(nadj[j]).astype(int), :] = nmodata[np.round(j).astype(int), :]
+        nmodata[j - np.round(n_adj[j]).astype(int), :] = nmodata[np.round(j).astype(int), :]
 
         # Since we're stretching the data near the ice surface,
         # we need to interpolate samples in the gaps.
         # B. Welch June 2003
         # I cannot trigger this conditional this with a test. D. Lilien 4/2019
-        if (j - np.round(nadj[j])) - ((j - 1) - np.round(nadj[j - 1])) > 1 and j != nice:
-            interper = interp1d(np.array([((j - 1) - int(round(nadj[j - 1]))),
-                                          (j - int(round(nadj[j])))]),
-                                nmodata[[((j - 1) - int(round(nadj[j - 1]))),
-                                         (j - int(round(nadj[j])))], :].transpose())
-            nmodata[((j - 1) - int(round(nadj[j - 1]))):
-                    (j - int(round(nadj[j]))), :] = interper(
-                        np.arange(((j - 1) - int(round(nadj[j - 1]))),
-                                  (j - int(round(nadj[j]))))).transpose()
+        if (j - np.round(n_adj[j])) - ((j - 1) - np.round(n_adj[j - 1])) > 1 and j != n_ice:
+            interper = interp1d(np.array([((j - 1) - int(round(n_adj[j - 1]))),
+                                          (j - int(round(n_adj[j])))]),
+                                nmodata[[((j - 1) - int(round(n_adj[j - 1]))),
+                                         (j - int(round(n_adj[j])))], :].transpose())
+            nmodata[((j - 1) - int(round(n_adj[j - 1]))):
+                    (j - int(round(n_adj[j]))), :] = interper(
+                        np.arange(((j - 1) - int(round(n_adj[j - 1]))),
+                                  (j - int(round(n_adj[j]))))).transpose()
 
-    # Define the new pre-trigger value based on the nmo-adjustment calculations above:
-    self.trig = nice - np.round(nadj[nice])
+
+    # --- Cleanup --- #
+
+    # Define the new trigger location value based on the nmo-adjustment calculations above:
+    self.trig = n_ice - np.round(n_adj[n_ice])
 
     # Calculate the new variables for the y-axis after NMO is complete
     self.travel_time = np.arange((-self.trig) * self.dt,
-                                 (nmodata.shape[0] - nair) * self.dt,
+                                 (nmodata.shape[0] - n_air) * self.dt,
                                  self.dt) * 1.0e6
     self.data = nmodata
 
+    # time to depth conversion
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
     else:
-        rho_profile_data = np.genfromtxt(rho_profile, delimiter=',')
-        try:
-            profile_depth = rho_profile_data[:, 0]
-            profile_rho = rho_profile_data[:, 1]
-        except IndexError:
-            raise IndexError('Cannot load the depth-density profile')
         traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
         if const_sample:
             constant_sample_depth_spacing(self)
@@ -188,6 +210,54 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
 
+
+
+
+
+    """
+
+    # Reset the trigger location
+    if np.round(tsep_air / self.dt) > np.mean(self.trig):
+        if isinstance(self.trig, (int, float)):
+            self.trig = int(np.round(1.1 * np.round(tsep_air / self.dt)))
+        else:
+            self.trig = int(np.mean(np.round(1.1 * np.round(tsep_air / self.dt))))
+        nmodata = np.vstack((np.zeros((self.trig, self.data.shape[1])), self.data))
+        self.snum = nmodata.shape[0]
+    else:
+        nmodata = self.data.copy()
+
+
+
+
+    # --- Convert the two-way-travel-time to an adjusted time --- #
+
+    # calculate sample location for direct ice wave arrival
+    # switched from rounding whole right side to just rounding (tice/dt)
+    #    -L. Smith, 6/16/03
+    n_ice = int(n_air + np.round(tsep_ice / self.dt))
+
+    # convert the vertical one-way travel time to vector indices
+    n_adj = np.zeros((self.snum, ))
+    n_adj[n_ice:self.snum] = pulse_time[n_ice: self.snum] / self.dt - \
+        t_adj[n_ice: self.snum] * 2. / self.dt
+
+
+    pulse_time[n_ice] = tsep_ice
+
+    """
+
+
+
+
+def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
+    """
+    """
+    args = np.argwhere(profile_depth<d_in)
+    vels = profile_u[args][:,0]
+    u_rms = np.sqrt(np.mean(vels**2.))
+    alpha=np.arctan(ant_sep/d_in)
+    return abs(t/2.*u_rms*np.cos(alpha)-d_in)
 
 def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_model=firn_permittivity):
     """
@@ -205,7 +275,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     c: float, optional
         speed of light in vacuum
     permittivity_model: function
-        specific permittivity model to use
+        specific density-to-permittivity model to use
     """
     # get the input velocity-depth profile
     eps = np.real(permittivity_model(profile_rho))
@@ -224,7 +294,6 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
             step_u = profile_u[np.nanargmin(abs(profile_depth - z))]
             z += self.dt / 2. * step_u
             self.nmo_depth[i] = z
-
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     """Crop the radar data in the vertical. We can take off the top or bottom.
@@ -265,6 +334,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
             ind = int(self.trig)
         else:
             ind = self.trig.astype(int)
+        self.trig = 0
     else:
         ind = int(lim)
 
