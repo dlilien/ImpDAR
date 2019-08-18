@@ -127,12 +127,8 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
 
     # empty array to fill with new times
     nmotime = np.zeros((len(self.travel_time)))
-    # time for antenna separation
-    tsep_air = 1e6*(ant_sep / u_air)
-    # time since pulse
-    pulse_time = self.travel_time+tsep_air
 
-    for i,t in enumerate(pulse_time):
+    for i,t in enumerate(self.travel_time):
         if rho_profile is None:
             u_rms = u_ice
         else:
@@ -142,16 +138,16 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
             u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
         # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
         tsep_ice = 1e6*(ant_sep / u_rms)
-        # hypoteneuse
-        t_hyp = t
+        # hypotenuese, adjust to 'transmit time' by adding the separation time
+        thyp = t+tsep_ice
         # calculate the vertical two-way travel time
-        nmotime[i] = np.sqrt(t_hyp**2. - tsep_ice**2.)
+        nmotime[i] = np.sqrt((thyp)**2. - tsep_ice**2.)
 
 
     # --- Cleanup --- #
 
     # save the updated time vector
-    self.travel_time = nmotime.copy()
+    self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * u_ice * 1.0e-6
