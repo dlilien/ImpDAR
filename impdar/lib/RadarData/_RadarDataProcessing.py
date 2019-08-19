@@ -150,7 +150,7 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
     self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
-        self.nmo_depth = self.travel_time / 2. * u_ice * 1.0e-6
+        self.nmo_depth = self.travel_time / 2. * u_ice * 1e-6
     else:
         traveltime_to_depth(self, profile_depth, profile_rho, c=u_air, permittivity_model=permittivity_model)
     if const_sample:
@@ -213,7 +213,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     profile_u = c / np.sqrt(eps)
     # iterate over time, moving down according to the velocity at each step
     z = 0.
-    self.nmo_depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
+    self.nmo_depth = np.zeros_like(self.travel_time)
     for i, t in enumerate(self.travel_time):
         if t < 0.:
             continue
