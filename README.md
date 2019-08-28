@@ -16,16 +16,16 @@ In addition to processing, ImpDAR can also be used for interpreting the radargra
 #### Recommended
 [GDAL](http://gdal.org) is needed to reproject out of WGS84, and thus for proper distance measurement. [PyQt5](https://pypi.org/project/PyQt5/) is needed to run the GUI, which is needed for picking. You can do everything from the command line, and plot the results with matplotlib, without PyQt5. PyQt4 may work, but I haven't tested it. [SegYIO](https://github.com/equinor/segyio/) is needed for SEGY support.
 
-Depending on whether you need migration routines, there may be some external dependencies. ImpDAR is designed to interface with [SeisUnix](http://https://github.com/JohnWStockwellJr/SeisUnix), which contains a number of powerful migration routines. One step less complicated is that some of ImpDAR's migration has implementations in both python and c; for large datasets the python implementation may be prohibitively slow. The compiled wheels on PyPi should give you what you need for Windows without a C compiler, but there are no guarantees that I build every version you might need. There should also be some linux wheels there. Building for MacOS is not automated, so there are no guarantees on what will be available. For both MacOS and linux compilers are readily accessible and so you can avoid needing precompiled wheel. If all else fails, you always have the option of just using the pure python version.
+Depending on whether you need migration routines, there may be some external dependencies. ImpDAR is designed to interface with [SeisUnix](http://https://github.com/JohnWStockwellJr/SeisUnix), which contains a number of powerful migration routines. You need to install SeisUnix yourself and get it on your path. If you are running windows, you need to figure out how to use Cygwin as well. However, the pure python migration routines in ImpDAR can work quite well, so don't let the difficulty of installing these compiled routines stop you from using those.
 
 ## Documentation
 
-Documentation of the various processing steps is [here](https://impdar.readthedocs.io/en/latest/). Examples are gradually being added to the documentation.
+Documentation of the various processing steps is [here](https://impdar.readthedocs.io/en/latest/). There are examples of basic processing and plotting, and a longer example showing migration.
 
 ## Installation
 
-Some explanation of other options is available in the main documentation, but I'll try to keep updating PyPi and so the easiest is `pip install impdar`.
+Easiest is `pip install impdar`. Some explanation of other options is available in the main documentation, but PyPi should be updated with any important changes.
 
 ## Contributing
 
-I only have added support for different radar data types as needed--contributions for readers for other systems, whether commercial or custom, are always welcome.
+I only have added support for different radar data types as needed--contributions for data readers for other systems, whether commercial or custom, are always welcome.
