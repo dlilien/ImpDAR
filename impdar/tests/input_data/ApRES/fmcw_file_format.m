@@ -1,5 +1,5 @@
 
-% fmt = fmcw_file_format(filename)
+%function [fmt] = fmcw_file_format(filename)
 %
 % Determine fmcw file format from burst header using keyword presence
 
