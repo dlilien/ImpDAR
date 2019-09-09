@@ -347,7 +347,9 @@ def load_olaf(fns_olaf, channel=1):
 
     # I don't know if we actually want to do this, but the filenaming scheme is wacky and this
     # will make any logical collection look good
-    # s.sort(key=lambda x: x.Time[0])
+    sort_idx = np.argsort(np.array([(lambda x: x.serialtime)(s) for s in sinfo]))
+    sinfo = [sinfo[i] for i in sort_idx]
+    stacks = [stacks[i] for i in sort_idx]
 
     # Now merge the data into the normal format
     olaf_data.dt = 1. / sinfo[0].samp_freq
