@@ -353,13 +353,12 @@ def load_olaf(fns_olaf, channel=1):
 
     # Now merge the data into the normal format
     olaf_data.dt = 1. / sinfo[0].samp_freq
-    olaf_data.pre_trigger_depth = sinfo[0].pre_trigger_depth
     olaf_data.fns_in = sinfo[0].fn_in
     olaf_data.ant_sep = sinfo[0].antenna_separation
     olaf_data.freq = sinfo[0].nominal_frequency
     olaf_data.travel_time = stacks[0].travel_time * 1.0e6
     olaf_data.trig_level = stacks[0].trigger_level
-    olaf_data.trig = stacks[0].trigger_level  #TODO this is not correct, but works for now
+    olaf_data.trig = sinfo[0].pre_trigger_depth
 
     olaf_data.fnames = [si.fn_in for si in sinfo]
 
