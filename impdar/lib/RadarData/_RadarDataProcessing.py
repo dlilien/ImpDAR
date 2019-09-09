@@ -56,7 +56,7 @@ def constant_sample_depth_spacing(self):
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -117,7 +117,7 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
             raise IndexError('Cannot load the depth-density profile')
         # Density to velocity
         eps = np.real(permittivity_model(profile_rho))
-        profile_u = u_air / np.sqrt(eps)
+        profile_u = uair / np.sqrt(eps)
         # Interpolate velocity profile onto constant depth spacing
         d_interp = np.linspace(np.min(profile_depth, 0), max(profile_depth), self.snum)
         u_interp = interp1d(profile_depth, profile_u)(d_interp)
@@ -130,11 +130,11 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
 
     for i,t in enumerate(self.travel_time):
         if rho_profile is None:
-            u_rms = u_ice
+            u_rms = uice
         else:
             # get RMS velocity used for correction
-            d = minimize(optimize_moveout_depth,.5*t*u_ice,args=(t,ant_sep,d_interp,u_interp),
-                         tol=1e-8,bounds=((0,0.5*t*u_air),))['x'][0]
+            d = minimize(optimize_moveout_depth,.5*t*uice,args=(t,ant_sep,d_interp,u_interp),
+                         tol=1e-8,bounds=((0,0.5*t*uair),))['x'][0]
             u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
         # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
         tsep_ice = 1e6*(ant_sep / u_rms)
@@ -150,9 +150,9 @@ def nmo(self, ant_sep, u_ice=1.69e8, u_air=3.0e8, rho_profile=None, permittivity
     self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
-        self.nmo_depth = self.travel_time / 2. * u_ice * 1e-6
+        self.nmo_depth = self.travel_time / 2. * uice * 1e-6
     else:
-        traveltime_to_depth(self, profile_depth, profile_rho, c=u_air, permittivity_model=permittivity_model)
+        traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
     if const_sample:
         constant_sample_depth_spacing(self)
     # Set flags
