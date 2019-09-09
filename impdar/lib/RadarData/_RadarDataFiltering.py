@@ -426,8 +426,8 @@ def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=
         migrationlib.migrationPhaseShift(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'tk':
         migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
-    elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, sutype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
+    elif mtype[:2] == 'su':
+        migrationlib.migrationSeisUnix(self, mtype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 
