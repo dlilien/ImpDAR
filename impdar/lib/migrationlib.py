@@ -460,7 +460,6 @@ def migrationSeisUnix(dat,
                        stdout=sp.PIPE,
                        stdin=ps2.stdout)
         ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Stolt
     else:
         ps1.stdout.close()
         ps2.communicate()
@@ -469,7 +468,7 @@ def migrationSeisUnix(dat,
 
     ps1.wait()
     ps2.wait()
-    ps3.wait()
+    ps3.communicate()
     with open(bin_fn, 'wb') as fout:
         fout.write(ps4.communicate()[0])
     with open(bin_fn, 'rb') as fid:
