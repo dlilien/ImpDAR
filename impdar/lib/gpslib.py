@@ -313,5 +313,8 @@ def interp(dats, spacing, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2
             kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, **genfromtxt_kwargs)
         else:
             raise ValueError('fn_type must be mat or csv')
+    else:
+        for dat in dats:
+            kinematic_gps_control(dat, dat.lat, dat.long, dat.elev, dat.decday, offset=offset, extrapolate=extrapolate)
     for dat in dats:
         dat.constant_space(spacing, min_movement=min_movement)

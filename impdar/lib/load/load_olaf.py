@@ -120,6 +120,7 @@ class SInfo:
                 trace_record_len = 21552
         else:
             trace_record_len = 21548
+            trace_record_len = 16684 # TODO no idea how to properly define this, asking David
         self.snum = self.pre_trigger_depth + self.post_trigger_depth
         self.tnum = (len(lines) - self.offset) // self.n_channels // trace_record_len
 
