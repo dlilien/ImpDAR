@@ -412,7 +412,7 @@ def migrationSeisUnix(dat,
     if nz is None:
         nz = dat.snum
     if dz is None:
-        dz = 169 * dat.travel_time[-1] / 2 / dat.snum
+        dz = vel/1e6 * dat.travel_time[-1] / 2 / dat.snum
 
     # Do the migration through the command line
     segy_name = os.path.splitext(dat.fn)[0]
@@ -420,63 +420,61 @@ def migrationSeisUnix(dat,
 
     ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE)
     ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE)
-    # Time Wavenumber
-    if mtype == 'sumigtk':
-        ps3 = sp.Popen(['sumigtk',
-                        'tmig={:f}'.format(tmig),
-                        'vmig={:f}'.format(vel * 1.e-6),
-                        'verbose=' + str(verbose),
-                        'nxpad={:d}'.format(int(nxpad)),
-                        'ltaper={:d}'.format(htaper),
-                        'dxcdp={:f}'.format(dx)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
+    with open(segy_name+'_mig.sgy','wb') as fout:
+        # Time Wavenumber
+        if mtype == 'sumigtk':
+            ps3 = sp.Popen(['sumigtk',
+                            'tmig={:f}'.format(tmig),
+                            'vmig={:f}'.format(vel * 1.e-6),
+                            'verbose=' + str(verbose),
+                            'nxpad={:d}'.format(int(nxpad)),
+                            'ltaper={:d}'.format(htaper),
+                            'dxcdp={:f}'.format(dx)],
+                            stdin=ps2.stdout,
+                            stdout=fout)
 
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Fourier Finite Difference
-    elif mtype == 'sumigffd':
-        if vel_fn is None:
-            raise ValueError('vel_fn needed for gffd')
-        ps3 = sp.Popen(['sumigffd',
-                        'vfile=' + vel_fn,
-                        'nz={:d}'.format(nz),
-                        'dz={:f}'.format(dz),
-                        'dt={:f}'.format(dat.dt * 1.0e-6),
-                        'dx={:f}'.format(dx)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    # Stolt
-    elif mtype == 'sustolt':
-        ps3 = sp.Popen(['sustolt',
-                        'tmig={:f}'.format(tmig),
-                        'vmig={:f}'.format(vel * 1.0e-6),
-                        'verbose=' + str(verbose),
-                        'lstaper={:d}'.format(htaper),
-                        'lbtaper={:d}'.format(vtaper),
-                        'dxcdp={:f}'.format(dx),
-                        'cdpmin=0',
-                        'cdpmax={:d}'.format(dat.tnum)],
-                       stdout=sp.PIPE,
-                       stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
-    else:
-        ps1.stdout.close()
-        ps2.communicate()
+            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        # Fourier Finite Difference
+        elif mtype == 'sumigffd':
+            if vel_fn is None:
+                raise ValueError('vel_fn needed for gffd')
+            ps3 = sp.Popen(['sumigffd',
+                            'vfile=' + vel_fn,
+                            'nz={:d}'.format(nz),
+                            'dz={:f}'.format(dz),
+                            'dt={:f}'.format(dat.dt * 1.0e-6),
+                            'dx={:f}'.format(dx)],
+                           stdout=sp.PIPE,
+                           stdin=ps2.stdout)
+            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        # Stolt
+        elif mtype == 'sustolt':
+            ps3 = sp.Popen(['sustolt',
+                            'tmig={:f}'.format(tmig),
+                            'vmig={:f}'.format(vel * 1.0e-6),
+                            'verbose=' + str(verbose),
+                            'lstaper={:d}'.format(htaper),
+                            'lbtaper={:d}'.format(vtaper),
+                            'dxcdp={:f}'.format(dx),
+                            'cdpmin=0',
+                            'cdpmax={:d}'.format(dat.tnum)],
+                           stdout=sp.PIPE,
+                           stdin=ps2.stdout)
+            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+        else:
+            ps1.stdout.close()
+            ps2.communicate()
 
-        raise ValueError('The SeisUnix migration routine', mtype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
+            raise ValueError('The SeisUnix migration routine', mtype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
     ps1.wait()
     ps2.wait()
     ps3.communicate()
-    with open(bin_fn, 'wb') as fout:
-        fout.write(ps4.communicate()[0])
-    with open(bin_fn, 'rb') as fid:
-        data_flat = np.fromfile(fid, np.float32)
     ps1.stdout.close()
     ps2.stdout.close()
-    ps3.stdout.close()
-    ps4.stdout.close()
+    sp.run('sustrip < '+segy_name+'_mig.sgy '+'> '+bin_fn,shell=True)
+    with open(bin_fn, 'rb') as fid:
+        data_flat = np.fromfile(fid, np.float32)
 
     dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
     os.remove(bin_fn)
