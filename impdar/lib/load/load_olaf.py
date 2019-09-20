@@ -120,9 +120,9 @@ class SInfo:
                 trace_record_len = 21552
         else:
             trace_record_len = 21548
-            trace_record_len = 16684 # TODO no idea how to properly define this, asking David
+        # define number of samples and traces to preallocate arrays, can change later
         self.snum = self.pre_trigger_depth + self.post_trigger_depth
-        self.tnum = (len(lines) - self.offset) // self.n_channels // trace_record_len
+        self.tnum = (len(lines) - self.offset) // self.n_channels // (2*self.snum)
 
     def get_trigger_source_string(self):
         """Turn an integer source info into a string"""
@@ -341,8 +341,11 @@ def load_olaf(fns_olaf, channel=1):
 
         # Read trace-by-trace, channel-by-channel
         for n_trc in range(sinfo[i].tnum):
-            for s_j in s_i:
-                s_j.read_trace(lines, sinfo[i], n_trc)
+            try:
+                for s_j in s_i:
+                    s_j.read_trace(lines, sinfo[i], n_trc)
+            except:
+                continue
 
         stacks.append(s_i[channel - 1])
 
