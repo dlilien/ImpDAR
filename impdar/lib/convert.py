@@ -23,8 +23,8 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
     if t_srs == 'wgs84':
         t_srs = 4326
 
-    if out_fmt not in ['shp', 'mat', 'segy']:
-        raise ValueError('Can only convert to shp or mat')
+    if out_fmt not in ['shp', 'mat', 'sgy']:
+        raise ValueError('Can only convert to shp, mat, or sgy')
 
     # Treat this like batch input always
     if not isinstance(fns_in, (tuple, list)):
@@ -53,7 +53,7 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             loaders = [load_gssi.load_gssi for i in fns_in]
         elif in_fmt == 'pe':
             loaders = [load_pulse_ekko.load_pe for i in fns_in]
-        elif in_fmt == 'segy':
+        elif in_fmt == 'sgy':
             if not load_segy.SEGY:
                 raise ImportError('You cannot use segy without segyio installed!')
             loaders = [load_segy.load_segy for i in fns_in]
@@ -73,11 +73,11 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
         for loader, f_i, dat in zip(loaders, fns_in, data):
             fn_out = os.path.splitext(f_i)[0] + '.shp'
             dat.output_shp(fn_out, t_srs=t_srs)
-    elif out_fmt == 'segy':
+    elif out_fmt == 'sgy':
         if not load_segy.SEGY:
             raise ImportError('You cannot use segy without segyio installed!')
         for loader, f_i, dat in zip(loaders, fns_in, data):
-            fn_out = os.path.splitext(f_i)[0] + '.segy'
+            fn_out = os.path.splitext(f_i)[0] + '.sgy'
             dat.save_as_segy(fn_out)
 
 
