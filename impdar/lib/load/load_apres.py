@@ -24,6 +24,8 @@ Sept 23 2019
 """
 
 import numpy as np
+import re
+import datetime
 from ..RadarData import RadarData
 from ..RadarFlags import RadarFlags
 from scipy.io import loadmat
@@ -61,8 +63,8 @@ class apres_parameters:
         self.fsysclk = 1e9
         self.fs = 4e4
 
-    def update_parameters(fn_apres):
-        fid = open(fn,'rb')
+    def update_parameters(self,fn_apres,max_header_len=2000):
+        fid = open(fn_apres,'rb')
         header = str(fid.read(max_header_len))
         fid.close()
         loc1 = [m.start() for m in re.finditer('Reg0', header)]
@@ -80,69 +82,73 @@ class apres_parameters:
                 # continues uninterrupted (regardless of any activity on the DRCTL pin) until the upper limit is reached.
                 # Setting both no-dwell bits invokes a continuous ramping mode of operation;
                 loc3 = header[loc2[k]+2:].find('"')
-                val = header[loc2[k]+2:loc2[k]+loc3]
-                print(int(val, 16))
-                #val = dec2bin(hex2dec(val)); val = fliplr(val);
-                #H.noDwellHigh = str2num(val(18+1));
-                #H.noDwellLow = str2num(val(17+1));
+                val = header[loc2[k]+2:loc2[k]+loc3+2]
+                val = bin(int(val, 16))
+                val = val[::-1]
+                self.noDwellHigh = int(val[18])
+                self.noDwellLow = int(val[17])
 
             #elif case == 'Reg08':
             #    # Phase offset word Register (POW) Address 0x08. 2 Bytes dTheta = 360*POW/2^16.
             #    val = char(reg{1,2}(k));
             #    H.phaseOffsetDeg = hex2dec(val(1:4))*360/2^16;
 
-            elif case == 'Reg0B=':
+            elif case == 'Reg0B':
                 # Digital Ramp Limit Register Address 0x0B
                 # Digital ramp upper limit 32-bit digital ramp upper limit value.
                 # Digital ramp lower limit 32-bit digital ramp lower limit value.
                 loc3 = header[loc2[k]+2:].find('"')
-                val = header[loc2[k]+2:loc2[k]+loc3]
-                self.startFreq = hex2dec(val(9:end))*self.fsysclk/(2**32);
-                self.stopFreq = hex2dec(val(1:8))*self.fsysclk/(2**32);
+                val = header[loc2[k]+2:loc2[k]+loc3+2]
+                self.startFreq = int(val[8:], 16)*self.fsysclk/(2**32)
+                self.stopFreq = int(val[:8], 16)*self.fsysclk/(2**32)
 
-            elif case == 'Reg0C=':
+            elif case == 'Reg0C':
                 # Digital Ramp Step Size Register Address 0x0C
                 # Digital ramp decrement step size 32-bit digital ramp decrement step size value.
                 # Digital ramp increment step size 32-bit digital ramp increment step size value.
                 loc3 = header[loc2[k]+2:].find('"')
-                val = header[loc2[k]+2:loc2[k]+loc3]
-                self.rampUpStep = hex2dec(val(9:end))*self.fsysclk/2^32;
-                self.rampDownStep = hex2dec(val(1:8))*self.fsysclk/2^32;
+                val = header[loc2[k]+2:loc2[k]+loc3+2]
+                self.rampUpStep = int(val[8:], 16)*self.fsysclk/(2**32)
+                self.rampDownStep = int(val[:8], 16)*self.fsysclk/(2**32)
 
-            elif case == 'Reg0D=':
+            elif case == 'Reg0D':
                 # Digital Ramp Rate Register Address 0x0D
                 # Digital ramp negative slope rate 16-bit digital ramp negative slope value that defines the time interval between decrement values.
                 # Digital ramp positive slope rate 16-bit digital ramp positive slope value that defines the time interval between increment values.
                 loc3 = header[loc2[k]+2:].find('"')
-                val = header[loc2[k]+2:loc2[k]+loc3]
-                self.tstepUp = hex2dec(val(5:end))*4/self.fsysclk;
-                self.tstepDown = hex2dec(val(1:4))*4/self.fsysclk;
+                val = header[loc2[k]+2:loc2[k]+loc3+2]
+                self.tstepUp = int(val[4:], 16)*4/self.fsysclk
+                self.tstepDown = int(val[:4], 16)*4/self.fsysclk
 
-        loc = strfind(A,'SamplingFreqMode=');
-        searchCR = strfind(A(loc(1):end),[char(10)]);
-        self.fs = sscanf(A(loc(1)+length(['SamplingFreqMode=']):searchCR(1)+loc(1)),'%d\n');
-        if self.fs == 1         # if self.fs > 70e3:
+        strings = ['SamplingFreqMode=','N_ADC_SAMPLES=']
+        output = np.empty((len(strings))).astype(str)
+        for i,string in enumerate(strings):
+            if string in header:
+                search_start = header.find(string)
+                search_end = header[search_start:].find('\\')
+                output[i] = header[search_start+len(string):search_end+search_start]
+
+        self.fs = output[0]
+        if self.fs == 1:        # if self.fs > 70e3:
             self.fs = 8e4       #     self.fs = 80e3
-        else                    # else
+        else:                   # else
             self.fs = 4e4       #     self.fs = 40e3
 
-        loc = strfind(A,'N_ADC_SAMPLES=')
-        searchCR = strfind(A(loc(1):end),[char(10)])
-        self.Nsamples = sscanf(A(loc(1)+length(['N_ADC_SAMPLES=']):searchCR(1)+loc(1)),'%d\n')
+        self.snum = int(output[1])
 
-        self.nstepsDDS = round(abs((H.stopFreq - H.startFreq)/self.rampUpStep)) # abs as ramp could be down
-        self.chirpLength = self.nstepsDDS * self.tstepUp
+        self.nstepsDDS = round(abs((self.stopFreq - self.startFreq)/self.rampUpStep)) # abs as ramp could be down
+        self.chirpLength = int(self.nstepsDDS * self.tstepUp)
         self.nchirpSamples = round(self.chirpLength * self.fs)
 
         # If number of ADC samples collected is less than required to collect
         # entire chirp, set chirp length to length of series actually collected
-        if self.nchirpSamples > self.Nsamples
-            self.chirpLength = self.Nsamples / self.fs
+        if self.nchirpSamples > self.snum:
+            self.chirpLength = self.snum / self.fs
 
         self.K = 2.*np.pi*(self.rampUpStep/self.tstepUp) # chirp gradient (rad/s/s)
-        if(self.stopFreq > 400e6)
+        if self.stopFreq > 400e6:
             self.rampDir = 'down'
-        else
+        else:
             self.rampDir = 'up'
 
         if self.noDwellHigh and self.noDwellLow:
@@ -166,7 +172,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     """
 
     apres_data = RadarData(None)
-    H = apres_paramaters()
+    H = apres_parameters()
 
     ## Load data and reshape array
     if fn_apres[-4:] == '.mat':
@@ -175,112 +181,103 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
         apres_data.data = apres_mat['data']
     else:
         apres_data.file_format = file_format(fn_apres)
-        apres_data.data = load_burst_rmb(fn_apres, burst, fs, apres_data.file_format)
-
-    """
+        apres_data.data = load_burst_rmb(apres_data, fn_apres, burst, fs, apres_data.file_format)
 
     # Extract just good chirp data from voltage record and rearrange into
     # matrix with one chirp per row
     # note: you can't just use reshape as we are also cropping the 20K samples
     # of sync tone etc which occur after each 40K of chirp.
-    AttSet = apres_data.Attenuator_1 + 1i*apres_data.Attenuator_2; # unique code for attenuator setting
-
+    AttSet = apres_data.attenuator1 + 1j*apres_data.attenuator2 # unique code for attenuator setting
 
     ## Add metadata to structure
 
-
     # Sampling parameters
-    apres_data.filename = filename;
-    if ~ischar(FileFormat)
-        apres_data.SamplesPerChirp = apres_data.Nsamples;
-        apres_data.fs = 4e4; # sampling frequency
-        apres_data.f0 = 2e8; # start frequency
-        #apres_data.fc = 3e8; # start frequency
-        apres_data.K = 2*pi*2e8; # chirp gradient in rad/s/s (200MHz/s)
+    if ischar(apres_data.file_format):
+        apres_data.er = 3.18;
+        apres_data.dt = 1/apres_data.fs;
+        apres_data.ci = 3e8/np.sqrt(apres_data.er);
+        apres_data.lambdac = apres_data.ci/apres_data.fc;
+        # Load each chirp into a row
+
+        apres_data.vif = np.zeros(apres_data.ChirpsInBurst,apres_data.SamplesPerChirp); # preallocate array
+        chirpInterval = 1.6384/(24*3600); # days
+        apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
+        for chirp in range(apres_data.ChirpsInBurst):
+            apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
+            apres_data.chirpNum[chirp,0] = chirp                                                # chirp number in burst
+            apres_data.chirpAtt[chirp,0] = AttSet[1+mod(chirp-1,numel(AttSet))]                 # attenuator setting for chirp
+            apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)      # time of chirp
+    else:
+        apres_data.SamplesPerChirp = apres_data.snum
+        apres_data.fs = 4e4         # sampling frequency
+        apres_data.f0 = 2e8         # start frequency
+        #apres_data.fc = 3e8        # start frequency
+        apres_data.K = 2*np.pi*2e8  # chirp gradient in rad/s/s (200MHz/s)
         #apres_data.f0 = apres_data.f0 + (apres_data.K/(4*pi))/apres_data.fs; # start frequency
-        apres_data.processing = {};
+        apres_data.processing = {}
 
-        H.update_parameters(apres_data.filename, file_fmt);
+        H.update_parameters(fn_apres)
 
-        if FileFormat == 5 || FileFormat == 4
-            apres_data.K = H.K;
-            apres_data.f0 = H.startFreq;
-            apres_data.fs = H.fs;
-            apres_data.f1 = H.startFreq + H.chirpLength * H.K/2/pi;
+        if apres_data.file_format == 5 or apres_data.file_format == 4:
+            apres_data.K = H.K
+            apres_data.f0 = H.startFreq
+            apres_data.fs = H.fs
+            apres_data.f1 = H.startFreq + H.chirpLength * H.K/2/np.pi
             apres_data.SamplesPerChirp = round(H.chirpLength * H.fs);
-            apres_data.T = H.chirpLength;
-            apres_data.B = H.chirpLength * H.K/2/pi;
-            apres_data.fc = H.startFreq + apres_data.B/2;
-            apres_data.dt = 1/H.fs;
-            apres_data.er = 3.18;
-            apres_data.ci = 3e8/sqrt(apres_data.er);
+            apres_data.T = H.chirpLength
+            apres_data.B = H.chirpLength * H.K/2/np.pi
+            apres_data.fc = H.startFreq + apres_data.B/2
+            apres_data.dt = 1./H.fs
+            apres_data.er = 3.18
+            apres_data.ci = 3e8/np.sqrt(apres_data.er);
             apres_data.lambdac = apres_data.ci/apres_data.fc;
             apres_data.Nsamples = H.nchirpSamples;
             # Load each chirp into a row
             apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
 
-            apres_data.vif = zeros(apres_data.ChirpsInBurst,apres_data.SamplesPerChirp); # preallocate array
+            apres_data.vif = np.zeros((apres_data.ChirpsInBurst,apres_data.SamplesPerChirp)) # preallocate array
             chirpInterval = 1.6384/(24*3600); # days
-            for chirp = 1:apres_data.ChirpsInBurst
-                apres_data.vif(chirp,:) = apres_data.v(apres_data.Startind(chirp):apres_data.Endind(chirp));
-                apres_data.chirpNum(chirp,1) = chirp; # chirp number in burst
-                apres_data.chirpAtt(chirp,1) = AttSet(1+mod(chirp-1,numel(AttSet))); # attenuator setting for chirp
-                apres_data.chirpTime(chirp,1) = apres_data.TimeStamp + chirpInterval*(chirp-1); # time of chirp
-            end
-        else
+            for chirp in range(apres_data.ChirpsInBurst):
+                apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
+                apres_data.chirpNum[chirp,0] = chirp                                            # chirp number in burst
+                apres_data.chirpAtt[chirp,0] = AttSet(1+mod(chirp-1,numel(AttSet)))             # attenuator setting for chirp
+                apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)  # time of chirp
+        else:
             apres_data.er = 3.18;
             # Load each chirp into a row
 
-            apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
-            apres_data.vif = zeros(apres_data.ChirpsInBurst,apres_data.SamplesPerChirp); # preallocate array
-            chirpInterval = 1.6384/(24*3600); # days
-            for chirp = 1:apres_data.ChirpsInBurst
-                apres_data.vif(chirp,:) = apres_data.v(apres_data.Startind(chirp):apres_data.Endind(chirp));
-                apres_data.chirpNum(chirp,1) = chirp; # chirp number in burst
-                apres_data.chirpAtt(chirp,1) = AttSet(1+mod(chirp-1,numel(AttSet))); # attenuator setting for chirp
-                apres_data.chirpTime(chirp,1) = apres_data.TimeStamp + chirpInterval*(chirp-1); # time of chirp
-            end
-            apres_data.ChirpsInBurst = size(apres_data.vif,1);
-            apres_data.SamplesPerChirp = size(apres_data.vif,2);
-            apres_data.dt = 1/apres_data.fs; # sample interval (s)
-            apres_data.T = (size(apres_data.vif,2)-1)/apres_data.fs; # period between first and last sample
-            #apres_data.T = size(apres_data.vif,2)/apres_data.fs; # period of sampling (cls test 26 aug 2014)
+            apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1
+            apres_data.vif = np.zeros((apres_data.ChirpsInBurst,apres_data.SamplesPerChirp)) # preallocate array
+            chirpInterval = 1.6384/(24*3600) # days
+
+            for chirp in range(apres_data.ChirpsInBurst):
+                apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
+                apres_data.chirpNum[chirp,0] = chirp                                            # chirp number in burst
+                apres_data.chirpAtt[chirp,0] = AttSet[1+mod(chirp-1,numel(AttSet))]             # attenuator setting for chirp
+                apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)  # time of chirp
+
+            apres_data.ChirpsInBurst = np.shape(apres_data.vif,0)
+            apres_data.SamplesPerChirp = np.shape(apres_data.vif,1)
+            apres_data.dt = 1./apres_data.fs                            # sample interval (s)
+            apres_data.T = (np.shape(apres_data.vif,1)-1)/apres_data.fs     # period between first and last sample
+            #apres_data.T = size(apres_data.vif,1)/apres_data.fs; # period of sampling (cls test 26 aug 2014)
             # - this makes the amplitude of the fft centred at the right range, but phase wrong
 
-            apres_data.f1 = apres_data.f0 + apres_data.T*apres_data.K/(2*pi); # stop frequency
+            apres_data.f1 = apres_data.f0 + apres_data.T*apres_data.K/(2*np.pi) # stop frequency
             #apres_data.f1 = apres_data.f0 + apres_data.dt*(apres_data.SamplesPerChirp-1)*apres_data.K/(2*pi); # stop frequency
 
             #apres_data.B = apres_data.f1-apres_data.f0; # bandwidth (hz)
             #apres_data.B = apres_data.T*(apres_data.K/(2*pi)); # bandwidth (hz)
-            apres_data.B = (size(apres_data.vif,2)/apres_data.fs)*(apres_data.K/(2*pi)); # bandwidth (hz)
+            apres_data.B = (np.shape(apres_data.vif,1)/apres_data.fs)*(apres_data.K/(2*np.pi)) # bandwidth (hz)
 
-            apres_data.fc = mean([apres_data.f0 apres_data.f1]); # Centre frequency
+            apres_data.fc = np.mean([apres_data.f0, apres_data.f1]); # Centre frequency
             #apres_data.fc = apres_data.f0 + apres_data.B/2; # Centre frequency
-            apres_data.ci = 3e8/sqrt(apres_data.er); # velocity in material
+            apres_data.ci = 3e8/np.sqrt(apres_data.er); # velocity in material
             apres_data.lambdac = apres_data.ci/apres_data.fc; # Centre wavelength
 
-        end
-    else
-        apres_data.er = 3.18;
-        apres_data.dt = 1/apres_data.fs;
-        apres_data.ci = 3e8/sqrt(apres_data.er);
-        apres_data.lambdac = apres_data.ci/apres_data.fc;
-        # Load each chirp into a row
-
-        apres_data.vif = zeros(apres_data.ChirpsInBurst,apres_data.SamplesPerChirp); # preallocate array
-        chirpInterval = 1.6384/(24*3600); # days
-        apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
-        for chirp = 1:apres_data.ChirpsInBurst
-            apres_data.vif(chirp,:) = apres_data.v(apres_data.Startind(chirp):apres_data.Endind(chirp));
-            apres_data.chirpNum(chirp,1) = chirp; # chirp number in burst
-            apres_data.chirpAtt(chirp,1) = AttSet(1+mod(chirp-1,numel(AttSet))); # attenuator setting for chirp
-            apres_data.chirpTime(chirp,1) = apres_data.TimeStamp + chirpInterval*(chirp-1); # time of chirp
-        end
-    end
-
     # Create time and frequency stamp for samples
-    apres_data.t = apres_data.dt*(0:size(apres_data.vif,2)-1); # sampling times (rel to first)
-    apres_data.f = apres_data.f0 + apres_data.t.*apres_data.K/(2*pi);
+    apres_data.t = apres_data.dt*(range(np.shape(apres_data.vif,2)-1)); # sampling times (rel to first)
+    apres_data.f = apres_data.f0 + apres_data.t*apres_data.K/(2*np.pi);
 
     # Calibrate
     #ca13 = [1 6]; # 2013
@@ -288,11 +285,9 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     #ca = [1 4];
     #apres_data = fmcw_cal(apres_data,ca13);
 
-    """
-
 # --------------------------------------------------------------------------------------------
 
-def load_burst_rmb(fn,burst,fs,file_format,max_header_len=1500,burst_pointer=0):
+def load_burst_rmb(apres_data,fn_apres,burst,fs,file_format,max_header_len=1500,burst_pointer=0):
     """
     #
     # Read FMCW data file from after Oct 2014 (RMB2b + VAB Iss C, SW Issue >= 101)
@@ -355,7 +350,7 @@ def load_burst_rmb(fn,burst,fs,file_format,max_header_len=1500,burst_pointer=0):
 
         words_per_burst = apres_data.chips_in_burst*apres_data.snum
 
-        if burst_count < burst and burst_pointer <= file_length - max_header_len:
+        if burst_count < burst and burst_pointer <= file_len - max_header_len:
             if apres_data.average != 0:
                 burst_pointer += apres_data.chirps_in_burst*apres_data.snum*4
             else:
@@ -414,10 +409,9 @@ def load_burst_rmb(fn,burst,fs,file_format,max_header_len=1500,burst_pointer=0):
     fid.close()
 
     # Clean temperature record (wrong data type?)
-    bti1 = find(apres_data.Temperature_1>300);
-    if ~isempty(bti1):
-        apres_data.Temperature_1(bti1) = apres_data.Temperature_1(bti1)-512;
-    bti2 = find(apres_data.Temperature_2>300);
-    apres_data.Temperature_2(bti2) = apres_data.Temperature_2(bti2)-512;
+    bti1 = np.argwhere(apres_data.temperature1>300)
+    apres_data.temperature1[bti1] -= 512
+    bti2 = np.argwhere(apres_data.temperature2>300)
+    apres_data.temperature2[bti2] -= 512
 
-
+    return apres_data,data_code
