@@ -54,7 +54,6 @@ class ApresHeader():
         self.chirp_grad = None
         self.nchirp_samples = None
         self.ramp_dir = None
-        self.nchirpsPerPeriod = None
 
     # --------------------------------------------------------------------------------------------
 
@@ -199,8 +198,8 @@ class ApresHeader():
 
         self.snum = int(output[1])
 
-        self.nstepsDDS = round(abs((self.f_stop - self.f0)/self.ramp_up_step)) # abs as ramp could be down
-        self.chirp_length = int(self.nstepsDDS * self.tstep_up)
+        self.nsteps_DDS = round(abs((self.f_stop - self.f0)/self.ramp_up_step)) # abs as ramp could be down
+        self.chirp_length = int(self.nsteps_DDS * self.tstep_up)
         self.nchirp_samples = round(self.chirp_length * self.fs)
 
         # If number of ADC samples collected is less than required to collect
@@ -218,4 +217,23 @@ class ApresHeader():
             self.ramp_dir = 'upDown'
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
+# --------------------------------------------------------------------------------------------
 
+    def to_matlab(self):
+        """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
+        """
+        outmat = {att: getattr(self, att) for att in vars(self)}
+        return outmat
+
+    def from_matlab(self, matlab_struct):
+        """Associate all values from an incoming .mat file (i.e. a dictionary from :func:`scipy.io.loadmat`) with appropriate attributes
+        """
+        for attr, attr_dim in zip(self.attrs, self.attr_dims):
+            setattr(self, attr, matlab_struct[attr][0][0][0])
+            # Use this because matlab inputs may have zeros for flags that
+            # were lazily appended to be arrays, but we preallocate
+            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+                setattr(self, attr, np.zeros((attr_dim, )))
+
+        for attr in self.bool_attrs:
+            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)

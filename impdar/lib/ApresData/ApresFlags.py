@@ -40,29 +40,14 @@ class ApresFlags():
      """
 
     def __init__(self):
-        self.batch = False
-        self.bpass = np.zeros((3,))
-        self.hfilt = np.zeros((2,))
-        self.rgain = False
-        self.agc = False
-        self.restack = False
-        self.reverse = False
-        self.crop = np.zeros((3,))
-        self.nmo = np.zeros((2,))
-        self.interp = np.zeros((2,))
-        self.mig = 'none'
-        self.elev = 0
-        self.elevation = 0
-        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
-        self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
+        self.file_read_code = None
+        self.attrs = ['file_read_code']
+        self.attr_dims = [None]
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
         outmat = {att: getattr(self, att) for att in self.attrs}
-        for attr in self.bool_attrs:
-            outmat[attr] = 1 if outmat[attr] else 0
         return outmat
 
     def from_matlab(self, matlab_struct):
@@ -74,6 +59,3 @@ class ApresFlags():
             # were lazily appended to be arrays, but we preallocate
             if attr_dim is not None and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
-
-        for attr in self.bool_attrs:
-            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)

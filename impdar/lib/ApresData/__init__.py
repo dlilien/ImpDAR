@@ -39,23 +39,27 @@ class ApresData(object):
     attrs_guaranteed = ['data',
                         'decday',
                         'dt',
-                        'lat',
-                        'long',
                         'snum',
                         'cnum',
                         'bnum',
                         'chirp_num',
                         'chirp_att',
                         'chirp_time',
-                        'travel_time']
+                        'travel_time',
+                        'frequencies']
 
     #: Optional attributes that may be None without affecting processing.
     #: These may not have existed in old StoDeep files that we are compatible with,
     #: and they often cannot be set at the initial data load.
     #: If they exist, they all have units of meters.
-    attrs_optional = ['x_coord',
+    attrs_optional = ['lat',
+                      'long',
+                      'x_coord',
                       'y_coord',
-                      'elev']
+                      'elev',
+                      'temperature1',
+                      'temperature2',
+                      'battery_voltage']
 
     # TODO: add imports
     #from ._ApresDataProcessing import

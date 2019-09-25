@@ -13,6 +13,7 @@
 import numpy as np
 from scipy.io import savemat
 from .ApresFlags import ApresFlags
+from .ApresHeader import ApresHeader
 
 def save_apres(self, fn):
     """Save the radar data
@@ -33,11 +34,19 @@ def save_apres(self, fn):
     for attr in self.attrs_optional:
         if hasattr(self, attr) and getattr(self, attr) is not None:
             mat[attr] = getattr(self, attr)
+
     if self.flags is not None:
         mat['flags'] = self.flags.to_matlab()
     else:
         # We want the structure available to prevent read errors from corrupt files
         mat['flags'] = ApresFlags().to_matlab()
+
+    if self.header is not None:
+        mat['header'] = self.header.to_matlab()
+    else:
+        # We want the structure available to prevent read errors from corrupt files
+        mat['header'] = ApresHeader().to_matlab()
+
     # Make sure not to expand the size of the data due to type conversion
     if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
         # Be carefuly of obliterating NaNs
