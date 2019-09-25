@@ -25,7 +25,7 @@ Sept 24 2019
 import datetime
 import numpy as np
 from scipy.io import loadmat
-from ..RadarFlags import RadarFlags
+from .ApresFlags import ApresFlags
 from ..ImpdarError import ImpdarError
 
 class ApresData(object):
@@ -55,8 +55,9 @@ class ApresData(object):
                       'fn',
                       'file_read_code']
 
-    from ._ApresDataProcessing import
-    from ._ApresDataSaving import
+    # TODO: add imports
+    #from ._ApresDataProcessing import
+    #from ._ApresDataSaving import
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
@@ -97,11 +98,12 @@ class ApresData(object):
 
             # Special attributes
             #: impdar.lib.RadarFlags object containing information about the processing steps done.
-            self.flags = RadarFlags()
+            self.flags = ApresFlags()
 
             self.data_dtype = None
             return
 
+        # TODO: add a matlab load
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
             if mat[attr].shape == (1, 1):
@@ -125,12 +127,8 @@ class ApresData(object):
         self.data_dtype = self.data.dtype
 
         self.fn = fn_mat
-        self.flags = RadarFlags()
+        self.flags = ApresFlags()
         self.flags.from_matlab(mat['flags'])
-        if 'picks' not in mat:
-            self.picks = Picks(self)
-        else:
-            self.picks = Picks(self, mat['picks'])
         self.check_attrs()
 
     def check_attrs(self):
@@ -165,3 +163,6 @@ class ApresData(object):
         """A python operable version of the time of acquisition of each trace"""
         return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
                          for dd in self.decday], dtype=np.datetime64)
+
+
+

@@ -27,9 +27,8 @@ Sept 23 2019
 import numpy as np
 import re
 import datetime
-from ..RadarData import RadarData
-from ..RadarFlags import RadarFlags
-from scipy.io import loadmat
+from . import ApresData
+from . import ApresFlags
 
 # --------------------------------------------------------------------------------------------
 
@@ -204,7 +203,7 @@ def file_format(fn_apres,max_header_len=2000):
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointer=0):
+def load_burst_rmb(apres_data,fn_apres,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     """
     Load bursts from the apres acquisition.
     Normally, this should be called from the load_apres function.
@@ -236,13 +235,13 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
     this case)
     """
 
-    apres_data.data_code = 0
+    apres_data.file_read_code = 0
 
     try:
         fid = open(fn_apres,'rb')
     except:
         # Unknown file
-        apres_data.data_code = -1;
+        apres_data.file_read_code = -1;
         TypeError('Cannot read file', fn_apres)
 
     # Get the total length of the file
@@ -280,9 +279,9 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
             apres_data.rx_ant = apres_data.rx_ant[apres_data.rx_ant==1]
 
             if apres_data.average != 0:
-                apres_data.chips_in_burst = 1
+                apres_data.chirps_in_burst = 1
             else:
-                apres_data.chips_in_burst = apres_data.n_subbursts*len(apres_data.tx_ant)*\
+                apres_data.chirps_in_burst = apres_data.n_subbursts*len(apres_data.tx_ant)*\
                                             len(apres_data.rx_ant)*apres_data.n_attenuators
 
             search_string = '*** End Header ***'
@@ -290,10 +289,10 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
             burst_pointer += search_ind + len(search_string)
 
         except:
-            apres_data.data_code = -2
+            apres_data.file_read_code = -2
             apres_data.burst = burst_count
 
-        words_per_burst = apres_data.chips_in_burst*apres_data.snum
+        words_per_burst = apres_data.chirps_in_burst*apres_data.snum
 
         if burst_count < burst and burst_pointer <= file_len - max_header_len:
             if apres_data.average != 0:
@@ -315,7 +314,7 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
             output[i] = header[search_start+len(string):search_end+search_start]
 
     if 'Time stamp' not in header:
-        apres_data.data_code = -4
+        apres_data.file_read_code = -4
     else:
         apres_data.time_stamp = datetime.datetime.strptime(output[0],'%Y-%m-%d %H:%M:%S')
 
@@ -332,13 +331,13 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
             fid.seek(burst_pointer+1)
             apres_data.data = fid.read(words_per_burst)
         else:
-            #apres_data.data = np.fromfile(fid,dtype='uint16',count=words_per_burst)
-            apres_data.data = fid.read(16)
+            apres_data.data = np.fromfile(fid,dtype='uint16',count=words_per_burst)
+            #apres_data.data = fid.read(16)
         if fid.tell()-(burst_pointer-1) < words_per_burst:
-            apres_data.data_code = 2
+            apres_data.file_read_code = 2
 
-        apres_data.data[apres_data.data<0] = apres_data[apres_data.data<0] + 2**16.
-        apres_data.data *= 2.5/2**16.
+        apres_data.data[apres_data.data<0] = apres_data.data[apres_data.data<0] + 2**16.
+        apres_data.data *= int(2.5/2**16.)
 
         if apres_data.average == 2:
             apres_data.data /= (apres_data.n_subbursts*apres_data.n_attenuators)
@@ -349,15 +348,17 @@ def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointe
 
     else:
         apres_data.burst = burst_count -1
-        apres_data.data_code = -4
+        apres_data.file_read_code = -4
 
     fid.close()
 
     # Clean temperature record (wrong data type?)
-    bti1 = np.argwhere(apres_data.temperature1>300)
-    apres_data.temperature1[bti1] -= 512
-    bti2 = np.argwhere(apres_data.temperature2>300)
-    apres_data.temperature2[bti2] -= 512
+    if apres_data.temperature1 > 300:
+        apres_data.temperature1 -= 512
+    if apres_data.temperature2 > 300:
+        apres_data.temperature2 -= 512
+
+    apres_data.data_code = 0
 
     return apres_data
 
@@ -377,17 +378,16 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     # 2014/10/22 KWN - edited to allow for new headers in RMB2 files
     """
 
-    apres_data = RadarData(None)
-    H = apres_parameters()
 
     ## Load data and reshape array
     if fn_apres[-4:] == '.mat':
-        apres_data.file_format = 'mat'
-        apres_mat = loadmat(fn_apres) # note when you load a mat file you get whatever burst was stored in this - not the one you selected
-        apres_data.data = apres_mat['data']
+        apres_data = ApresData(fn_apres)
     else:
+        apres_data = ApresData(None)
         apres_data.file_format = file_format(fn_apres)
         apres_data.data = load_burst_rmb(apres_data, fn_apres, burst, fs, apres_data.file_format)
+
+    H = apres_parameters()
 
     # Extract just good chirp data from voltage record and rearrange into
     # matrix with one chirp per row
@@ -396,7 +396,6 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     AttSet = apres_data.attenuator1 + 1j*apres_data.attenuator2 # unique code for attenuator setting
 
     ## Add metadata to structure
-    """
 
     # Sampling parameters
     if ischar(apres_data.file_format):
@@ -492,7 +491,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     #ca = [1 4];
     #apres_data = fmcw_cal(apres_data,ca13);
 
-    apres_data.flags = RadarFlags()
+    apres_data.flags = ApresFlags()
     #apres_data.tnum = dzt_data.data.shape[1]
     #apres_data.trace_num = np.arange(dzt_data.data.shape[1]) + 1
     #apres_data.trig_level = np.zeros((dzt_data.tnum, ))
@@ -502,4 +501,3 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     #                                               dzt_data.range / 1.0e3,
     #                                               dzt_data.dt * 1.0e6)).transpose()
     #apres_data.travel_time += dzt_data.dt * 1.0e6
-    """
