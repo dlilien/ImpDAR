@@ -9,7 +9,8 @@
 """
 Load ApRES data
 
-This code is based on a series of Matlab scripts
+This code is based on a series of Matlab scripts from Craig Stewart,
+Keith Nicholls, and others.
 The ApRES (Automated phase-sensitive Radio Echo Sounder) is a self-contained
 instrument from BAS.
 
@@ -32,38 +33,44 @@ from scipy.io import loadmat
 
 # --------------------------------------------------------------------------------------------
 
-def file_format(fn,max_header_len=2000):
-    """
-    Determine fmcw file format from burst header using keyword presence
-
-    Craig Stewart
-    2013-10-20
-    Updated by Keith Nicholls, 2014-10-22: RMB2
-    """
-
-    with open(fn,'rb') as fid:
-        header = str(fid.read(max_header_len))
-    if 'SW_Issue=' in header: # Data from RMB2 after Oct 2014
-        fmt = 5
-    elif 'SubBursts in burst:' in header: # Data from after Oct 2013
-        fmt = 4
-    elif '*** Burst Header ***' in header: # Data from Jan 2013
-        fmt = 3
-    elif 'RADAR TIME' in header: # Data from Prototype FMCW radar (nov 2012)
-        fmt = 2
-    else:
-        TypeError('Unknown file format - check file')
-    return fmt
-
-# --------------------------------------------------------------------------------------------
-
 class apres_parameters:
+    """
+    Class for parameters from the header file.
+    """
     def __init__(self):
         """Initialize data paramaters"""
         self.fsysclk = 1e9
         self.fs = 4e4
 
     def update_parameters(self,fn_apres,max_header_len=2000):
+        """
+        Update the parameters with the apres file header
+
+        Parameters
+        ---------
+        fn_apres: string
+            file name to update with
+        max_header_len: int
+            maximum length of header to read (can be too long)
+
+        Output
+        ---------
+
+        ### Original Matlab Notes ###
+        Extract from the hex codes the actual paramaters used by RMB2
+        The contents of config.ini are copied into a data header.
+        Note this script assumes that the format of the hex codes have quotes
+        e.g. Reg02="0D1F41C8"
+
+        Checks for a sampling frequency of 40 or 80 KHz.  Apart from Lai Bun's
+        variant (WDC + Greenland) it could be hard coded to 40 KHz.
+
+        However, there is no check made by the system that the N_ADC_SAMPLES
+        matches the requested chirp length
+
+        NOT COMPLETE - needs a means of checking for profile mode, where multiple sweeps
+        per period are transmitted- see last line
+        """
         fid = open(fn_apres,'rb')
         header = str(fid.read(max_header_len))
         fid.close()
@@ -155,6 +162,205 @@ class apres_parameters:
             self.rampDir = 'upDown'
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
+# --------------------------------------------------------------------------------------------
+
+def file_format(fn_apres,max_header_len=2000):
+    """
+    Determine fmcw file format from burst header using keyword presence
+    There are a few different formats through the years.
+
+    Parameters
+    ---------
+    fn_apres: string
+        file name to check
+    max_header_len: int
+        length to read looking for header (can be too long)
+
+    Output
+    ---------
+    fmt: int
+        file format (1-5)
+
+    ### Original Matlab script Notes ###
+    Craig Stewart
+    2013-10-20
+    Updated by Keith Nicholls, 2014-10-22: RMB2
+    """
+
+    with open(fn_apres,'rb') as fid:
+        header = str(fid.read(max_header_len))
+    if 'SW_Issue=' in header: # Data from RMB2 after Oct 2014
+        fmt = 5
+    elif 'SubBursts in burst:' in header: # Data from after Oct 2013
+        fmt = 4
+    elif '*** Burst Header ***' in header: # Data from Jan 2013
+        fmt = 3
+    elif 'RADAR TIME' in header: # Data from Prototype FMCW radar (nov 2012)
+        fmt = 2
+    else:
+        TypeError('Unknown file format - check file')
+    return fmt
+
+
+# -----------------------------------------------------------------------------------------------------
+
+def load_burst_rmb(apres_data,fn_apres,burst,fs,max_header_len=2000,burst_pointer=0):
+    """
+    Load bursts from the apres acquisition.
+    Normally, this should be called from the load_apres function.
+
+    Parameters
+    ---------
+    apres_data: class
+        data object
+    fn_apres: string
+        file name to load
+    burst: int
+        number of bursts to load
+    fs: int
+        sampling frequency
+    max_header_len: int
+        maximum length to read for header (can be too long)
+    burst_pointer: int
+        where to start reading the file for bursts
+
+    Output
+    ---------
+    apres_data: class
+        data object
+
+    ### Original Matlab Script Notes ###
+    Read FMCW data file from after Oct 2014 (RMB2b + VAB Iss C, SW Issue >= 101)
+
+    Corrected so that Sampling Frequency has correct use (ie, not used in
+    this case)
+    """
+
+    apres_data.data_code = 0
+
+    try:
+        fid = open(fn_apres,'rb')
+    except:
+        # Unknown file
+        apres_data.data_code = -1;
+        TypeError('Cannot read file', fn_apres)
+
+    # Get the total length of the file
+    fid.seek(0,2)
+    file_len = fid.tell()
+    burst_count = 1
+
+    # Read bursts in a loop
+    while burst_count <= burst and burst_pointer <= file_len - max_header_len:
+        # Go to burst pointer and read the header for the burst
+        fid.seek(burst_pointer)
+        header = str(fid.read(max_header_len))
+
+        try:
+            # Read header values
+            strings = ['N_ADC_SAMPLES=','NSubBursts=','Average=','nAttenuators=','Attenuator1=',
+                      'AFGain=','TxAnt=','RxAnt=']
+            output = np.empty((len(strings))).astype(str)
+            for i,string in enumerate(strings):
+                if string in header:
+                    search_start = header.find(string)
+                    search_end = header[search_start:].find('\\')
+                    output[i] = header[search_start+len(string):search_end+search_start]
+            # Write header values to data object
+            apres_data.snum = int(output[0])
+            apres_data.n_subbursts = int(output[1])
+            apres_data.average = int(output[2])
+            apres_data.n_attenuators = int(output[3])
+            apres_data.attenuator1 = np.array(output[4].split(',')).astype(int)[apres_data.n_attenuators-1]
+            apres_data.attenuator2 = np.array(output[5].split(',')).astype(int)[apres_data.n_attenuators-1]
+            apres_data.tx_ant = np.array(output[6].split(',')).astype(int)
+            apres_data.rx_ant = np.array(output[7].split(',')).astype(int)
+
+            apres_data.tx_ant = apres_data.tx_ant[apres_data.tx_ant==1]
+            apres_data.rx_ant = apres_data.rx_ant[apres_data.rx_ant==1]
+
+            if apres_data.average != 0:
+                apres_data.chips_in_burst = 1
+            else:
+                apres_data.chips_in_burst = apres_data.n_subbursts*len(apres_data.tx_ant)*\
+                                            len(apres_data.rx_ant)*apres_data.n_attenuators
+
+            search_string = '*** End Header ***'
+            search_ind = header.find(search_string)
+            burst_pointer += search_ind + len(search_string)
+
+        except:
+            apres_data.data_code = -2
+            apres_data.burst = burst_count
+
+        words_per_burst = apres_data.chips_in_burst*apres_data.snum
+
+        if burst_count < burst and burst_pointer <= file_len - max_header_len:
+            if apres_data.average != 0:
+                burst_pointer += apres_data.chirps_in_burst*apres_data.snum*4
+            else:
+                burst_pointer += apres_data.chirps_in_burst*apres_data.snum*2
+
+        burst_count += 1
+
+    # --- Section --- #
+
+    strings = ['Time stamp=','Temp1=','Temp2=','BatteryVoltage=']
+    output = np.empty((len(strings))).astype(str)
+
+    for i,string in enumerate(strings):
+        if string in header:
+            search_start = header.find(string)
+            search_end = header[search_start:].find('\\')
+            output[i] = header[search_start+len(string):search_end+search_start]
+
+    if 'Time stamp' not in header:
+        apres_data.data_code = -4
+    else:
+        apres_data.time_stamp = datetime.datetime.strptime(output[0],'%Y-%m-%d %H:%M:%S')
+
+    apres_data.temperature1 = float(output[1])
+    apres_data.temperature2 = float(output[2])
+    apres_data.battery_voltage = float(output[3])
+
+    # --- Section --- #
+
+    if burst_count == burst+1:
+        if apres_data.average == 2:
+            apres_data.data = fid.read(words_per_burst)
+        elif apres_data.average == 1:
+            fid.seek(burst_pointer+1)
+            apres_data.data = fid.read(words_per_burst)
+        else:
+            #apres_data.data = np.fromfile(fid,dtype='uint16',count=words_per_burst)
+            apres_data.data = fid.read(16)
+        if fid.tell()-(burst_pointer-1) < words_per_burst:
+            apres_data.data_code = 2
+
+        apres_data.data[apres_data.data<0] = apres_data[apres_data.data<0] + 2**16.
+        apres_data.data *= 2.5/2**16.
+
+        if apres_data.average == 2:
+            apres_data.data /= (apres_data.n_subbursts*apres_data.n_attenuators)
+
+        apres_data.start_ind = np.transpose(np.arange(0,apres_data.snum*apres_data.chirps_in_burst,apres_data.snum))
+        apres_data.end_ind = apres_data.start_ind + apres_data.snum-1
+        apres_data.burst = burst
+
+    else:
+        apres_data.burst = burst_count -1
+        apres_data.data_code = -4
+
+    fid.close()
+
+    # Clean temperature record (wrong data type?)
+    bti1 = np.argwhere(apres_data.temperature1>300)
+    apres_data.temperature1[bti1] -= 512
+    bti2 = np.argwhere(apres_data.temperature2>300)
+    apres_data.temperature2[bti2] -= 512
+
+    return apres_data
+
 # -----------------------------------------------------------------------------------------------------
 
 def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
@@ -190,6 +396,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     AttSet = apres_data.attenuator1 + 1j*apres_data.attenuator2 # unique code for attenuator setting
 
     ## Add metadata to structure
+    """
 
     # Sampling parameters
     if ischar(apres_data.file_format):
@@ -285,133 +492,14 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     #ca = [1 4];
     #apres_data = fmcw_cal(apres_data,ca13);
 
-# --------------------------------------------------------------------------------------------
-
-def load_burst_rmb(apres_data,fn_apres,burst,fs,file_format,max_header_len=1500,burst_pointer=0):
+    apres_data.flags = RadarFlags()
+    #apres_data.tnum = dzt_data.data.shape[1]
+    #apres_data.trace_num = np.arange(dzt_data.data.shape[1]) + 1
+    #apres_data.trig_level = np.zeros((dzt_data.tnum, ))
+    #apres_data.pressure = np.zeros((dzt_data.tnum, ))
+    #apres_data.dt = dzt_data.range / dzt_data.snum * 1.0e-9
+    #apres_data.travel_time = np.atleast_2d(np.arange(0,
+    #                                               dzt_data.range / 1.0e3,
+    #                                               dzt_data.dt * 1.0e6)).transpose()
+    #apres_data.travel_time += dzt_data.dt * 1.0e6
     """
-    #
-    # Read FMCW data file from after Oct 2014 (RMB2b + VAB Iss C, SW Issue >= 101)
-
-    # Corrected so that Sampling Frequency has correct use (ie, not used in
-    # this case)
-
-    """
-
-    data_code = 0
-
-    try:
-        fid = open(fn_apres,'rb')
-    except:
-        # Unknown file
-        data_code = -1;
-    fid.seek(0,2)
-    file_len = fid.tell()
-    burst_count = 1
-
-    while burst_count <= burst and burst_pointer <= file_len - max_header_len:
-        fid.seek(burst_pointer)
-        header = str(fid.read(max_header_len))
-
-        try:
-            strings = ['N_ADC_SAMPLES=','NSubBursts=','Average=','nAttenuators=','Attenuator1=',
-                      'AFGain=','TxAnt=','RxAnt=']
-            output = np.empty((len(strings))).astype(str)
-
-            for i,string in enumerate(strings):
-                if string in header:
-                    search_start = header.find(string)
-                    search_end = header[search_start:].find('\\')
-                    output[i] = header[search_start+len(string):search_end+search_start]
-            apres_data.snum = int(output[0])
-            apres_data.n_subbursts = int(output[1])
-            apres_data.average = int(output[2])
-            apres_data.n_attenuators = int(output[3])
-            apres_data.attenuator1 = np.array(output[4].split(',')).astype(int)[apres_data.n_attenuators-1]
-            apres_data.attenuator2 = np.array(output[5].split(',')).astype(int)[apres_data.n_attenuators-1]
-            apres_data.tx_ant = np.array(output[6].split(',')).astype(int)
-            apres_data.rx_ant = np.array(output[7].split(',')).astype(int)
-
-            apres_data.tx_ant = apres_data.tx_ant[apres_data.tx_ant==1]
-            apres_data.rx_ant = apres_data.rx_ant[apres_data.rx_ant==1]
-
-            if apres_data.average != 0:
-                apres_data.chips_in_burst = 1
-            else:
-                apres_data.chips_in_burst = apres_data.n_subbursts*len(apres_data.tx_ant)*\
-                                            len(apres_data.rx_ant)*apres_data.n_attenuators
-
-            search_string = '*** End Header ***'
-            search_ind = header.find(search_string)
-            burst_pointer += search_ind + len(search_string)
-
-        except:
-            data_code = -2
-            apres_data.burst = burst_count
-
-        words_per_burst = apres_data.chips_in_burst*apres_data.snum
-
-        if burst_count < burst and burst_pointer <= file_len - max_header_len:
-            if apres_data.average != 0:
-                burst_pointer += apres_data.chirps_in_burst*apres_data.snum*4
-            else:
-                burst_pointer += apres_data.chirps_in_burst*apres_data.snum*2
-
-        burst_count += 1
-
-    # -----------------------------------------------------------------------------------------------
-
-    strings = ['Time stamp=','Temp1=','Temp2=','BatteryVoltage=']
-    output = np.empty((len(strings))).astype(str)
-
-    for i,string in enumerate(strings):
-        if string in header:
-            search_start = header.find(string)
-            search_end = header[search_start:].find('\\')
-            output[i] = header[search_start+len(string):search_end+search_start]
-
-    if 'Time stamp' not in header:
-        data_code = -4
-    else:
-        apres_data.time_stamp = datetime.datetime.strptime(output[0],'%Y-%m-%d %H:%M:%S')
-
-    apres_data.temperature1 = float(output[1])
-    apres_data.temperature2 = float(output[2])
-    apres_data.battery_voltage = float(output[3])
-
-    # -----------------------------------------------------------------------------------------------
-
-    if burst_count == burst+1:
-        if apres_data.average == 2:
-            apres_data.data = fid.read(words_per_burst)
-        elif apres_data.average == 1:
-            fid.seek(burst_pointer+1)
-            apres_data.data = fid.read(words_per_burst)
-        else:
-            #apres_data.data = np.fromfile(fid,dtype='uint16',count=words_per_burst)
-            apres_data.data = fid.read(16)
-        if fid.tell()-(burst_pointer-1) < words_per_burst:
-            data_code = 2
-
-        apres_data.data[apres_data.data<0] = apres_data[apres_data.data<0] + 2**16.
-        apres_data.data *= 2.5/2**16.
-
-        if apres_data.average == 2:
-            apres_data.data /= (apres_data.n_subbursts*apres_data.n_attenuators)
-
-        apres_data.start_ind = np.transpose(np.arange(0,w_per_chirp_cycle*apres_data.chirps_in_burst,w_per_chirp_cycle))
-        apres_data.end_ind = apres_data.start_ind + w_per_chirp_cycle-1
-        apres_data.burst = burst
-
-    else:
-        apres_data.burst = burst_count -1
-        data_code = -4
-
-    fid.close()
-
-    # Clean temperature record (wrong data type?)
-    bti1 = np.argwhere(apres_data.temperature1>300)
-    apres_data.temperature1[bti1] -= 512
-    bti2 = np.argwhere(apres_data.temperature2>300)
-    apres_data.temperature2[bti2] -= 512
-
-    return apres_data,data_code
