@@ -26,6 +26,7 @@ Sept 23 2019
 
 import numpy as np
 import datetime
+import re
 from . import ApresData
 from . import ApresFlags
 
@@ -33,16 +34,30 @@ from . import ApresFlags
 
 def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     """
-    # Craig Stewart
-    # 2013 April 24
-    # 2013 September 30 - corrected error in vif scaling
-    # 2014/5/20 time stamp moved here from fmcw_derive_parameters (so that this
-    # is not overwritted later)
-    # 2014/5/21 changed how radar chirp is defined (now using chirp gradient as
-    # fundamental parameter)
-    # 2014/5/22 fixed bug in chirptime
-    # 2014/8/21 moved make odd length to external (called from fmcw_range)
-    # 2014/10/22 KWN - edited to allow for new headers in RMB2 files
+    Load ApRES data
+    This function calls the load_burst function below
+
+    Parameters
+    ---------
+    fn_apres: string
+        file name
+    burst: int
+        number of bursts to load
+    fs: int
+        sampling frequency
+
+    ### Original Matlab Notes ###
+
+    Craig Stewart
+    2013 April 24
+    2013 September 30 - corrected error in vif scaling
+    2014/5/20 time stamp moved here from fmcw_derive_parameters (so that this
+    is not overwritted later)
+    2014/5/21 changed how radar chirp is defined (now using chirp gradient as
+    fundamental parameter)
+    2014/5/22 fixed bug in chirptime
+    2014/8/21 moved make odd length to external (called from fmcw_range)
+    2014/10/22 KWN - edited to allow for new headers in RMB2 files
     """
 
     ## Load data and reshape array
@@ -52,7 +67,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     else:
         apres_data = ApresData(None)
         apres_data.header.update_parameters()
-        apres_data.data = load_burst_rmb(apres_data, fn_apres, burst, fs, apres_data.header.file_format)
+        apres_data.data = load_burst(apres_data, burst, fs)
 
     # Extract just good chirp data from voltage record and rearrange into
     # matrix with one chirp per row
@@ -65,7 +80,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
     # Sampling parameters
     if ischar(apres_data.file_format):
         apres_data.er = 3.18;
-        apres_data.dt = 1/apres_data.fs;
+        apres_data.dt = 1./apres_data.fs;
         apres_data.ci = 3e8/np.sqrt(apres_data.er);
         apres_data.lambdac = apres_data.ci/apres_data.fc;
         # Load each chirp into a row
@@ -167,7 +182,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
+def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     """
     Load bursts from the apres acquisition.
     Normally, this should be called from the load_apres function.
@@ -195,6 +210,8 @@ def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
 
     if self.header.fn is None:
         raise TypeError('Read in the header before loading data.')
+    if self.header.file_format != 5:
+        raise TypeError('The load_burst function has only been written for rmb5 data.')
 
     self.header.file_read_code = 0
 
@@ -214,19 +231,19 @@ def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     while burst_count <= burst and burst_pointer <= file_len - max_header_len:
         # Go to burst pointer and read the header for the burst
         fid.seek(burst_pointer)
+        self.header.read_header(self.header.fn,max_header_len)
 
         try:
             # Read header values
             strings = ['N_ADC_SAMPLES=','NSubBursts=','Average=','nAttenuators=','Attenuator1=',
                       'AFGain=','TxAnt=','RxAnt=']
             output = np.empty((len(strings))).astype(str)
-            last_read_ind = 0
             for i,string in enumerate(strings):
                 if string in self.header.header_string:
                     search_start = self.header.header_string.find(string)
                     search_end = self.header.header_string[search_start:].find('\\')
                     output[i] = self.header.header_string[search_start+len(string):search_end+search_start]
-                    last_read_ind = max([last_read_ind,search_end])
+
             # Write header values to data object
             self.snum = int(output[0])
             self.n_subbursts = int(output[1])
@@ -251,12 +268,13 @@ def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
             search_ind = self.header.header_string.find(search_string)
             burst_pointer += search_ind + len(search_string)
 
+            words_per_burst = self.chirps_in_burst*self.snum
+
         except:
             # If the burst read is unsuccessful exit with an updated read code
             self.header.file_read_code = -2
             self.burst = burst_count
-
-        words_per_burst = self.chirps_in_burst*self.snum
+            raise TypeError('Burst Read Failed.')
 
         # Move the burst pointer
         if burst_count < burst and burst_pointer <= file_len - max_header_len:
@@ -271,24 +289,25 @@ def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
 
     # Look for a few different strings and save output
     strings = ['Time stamp=','Temp1=','Temp2=','BatteryVoltage=']
-    output = np.empty((len(strings))).astype(str)
+    output = []
     for i,string in enumerate(strings):
         if string in self.header.header_string:
-            search_start = self.header.header_string.find(string)
-            search_end = self.header.header_string[search_start:].find('\\')
-            output[i] = self.header.header_string[search_start+len(string):search_end+search_start]
+            search_start = [m.start() for m in re.finditer(string, self.header.header_string)]
+            search_end = [self.header.header_string[ind:].find('\\') for ind in search_start]
+            out = [self.header.header_string[search_start[i]+len(string):search_end[i]+search_start[i]] for i in range(len(search_start))]
+            output.append(out)
 
     if 'Time stamp' not in self.header.header_string:
         self.header.file_read_code = -4
     else:
-        self.time_stamp = datetime.datetime.strptime(output[0],'%Y-%m-%d %H:%M:%S')
+        self.time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = self.time_stamp - timezero
-        self.decday = day_offset.days + 377. # Matlab compatable
+        self.decday = np.array([offset.days for offset in day_offset]) + 377. # Matlab compatable
 
-    self.temperature1 = float(output[1])
-    self.temperature2 = float(output[2])
-    self.battery_voltage = float(output[3])
+    self.temperature1 = np.array(output[1]).astype(float)
+    self.temperature2 = np.array(output[2]).astype(float)
+    self.battery_voltage = np.array(output[3]).astype(float)
 
     # --- Read in the actual data --- #
 
@@ -327,8 +346,6 @@ def load_burst_rmb(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     fid.close()
 
     # Clean temperature record (wrong data type?)
-    if self.temperature1 > 300:
-        self.temperature1 -= 512
-    if self.temperature2 > 300:
-        self.temperature2 -= 512
+    self.temperature1[self.temperature1>300] -= 512
+    self.temperature2[self.temperature2>300] -= 512
 
