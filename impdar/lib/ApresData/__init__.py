@@ -42,8 +42,11 @@ class ApresData(object):
                         'lat',
                         'long',
                         'snum',
-                        'tnum',
-                        'trace_num',
+                        'cnum',
+                        'bnum',
+                        'chirp_num',
+                        'chirp_att',
+                        'chirp_time',
                         'travel_time']
 
     #: Optional attributes that may be None without affecting processing.
@@ -52,9 +55,7 @@ class ApresData(object):
     #: If they exist, they all have units of meters.
     attrs_optional = ['x_coord',
                       'y_coord',
-                      'elev',
-                      'fn',
-                      'file_read_code']
+                      'elev']
 
     # TODO: add imports
     #from ._ApresDataProcessing import
@@ -65,8 +66,9 @@ class ApresData(object):
         if fn_mat is None:
             # Write these out so we can document them
             # Very basics
-            self.snum = None  #: int number of samples per trace
-            self.tnum = None  #: int, the number of traces in the file
+            self.snum = None  #: int number of samples per chirp
+            self.cnum = None  #: int, the number of chirps in a burst
+            self.bnum = None #: int, the number of bursts
             self.data = None  #: np.ndarray(snum x tnum) of the actual return power
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
@@ -79,17 +81,16 @@ class ApresData(object):
             self.lat = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
             self.long = None
-            self.trace_num = None  #: np.ndarray(tnum,) The 1-indexed number of the trace
+
+            # chirp
+            self.chirp_num = None  #: np.ndarray(cnum,) The 1-indexed number of the chirp
+            self.chirp_att = None  #: np.ndarray(cnum,) Chirp attenuation settings
+            self.chirp_time = None  #: np.ndarray(cnum,) Time at beginning of chirp (serial day)
 
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
 
-            # Optional attributes
-            #: str, the input filename. May be left as None.
-            self.fn = None
-            #: int, the read code. Gives different values based on the success of the read.
-            self.file_read_code = None
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
             self.x_coord = None
             #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.

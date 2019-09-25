@@ -28,7 +28,6 @@ import numpy as np
 import datetime
 import re
 from . import ApresData
-from . import ApresFlags
 
 # -----------------------------------------------------------------------------------------------------
 
@@ -66,119 +65,53 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
         apres_data = ApresData(fn_apres)
     else:
         apres_data = ApresData(None)
-        apres_data.header.update_parameters()
-        apres_data.data = load_burst(apres_data, burst, fs)
+        apres_data.header.update_parameters(fn_apres)
+        start_ind,end_ind = load_burst(apres_data, burst, fs)
 
     # Extract just good chirp data from voltage record and rearrange into
     # matrix with one chirp per row
     # note: you can't just use reshape as we are also cropping the 20K samples
     # of sync tone etc which occur after each 40K of chirp.
-    AttSet = apres_data.attenuator1 + 1j*apres_data.attenuator2 # unique code for attenuator setting
+    AttSet = apres_data.header.attenuator1 + 1j*apres_data.header.attenuator2 # unique code for attenuator setting
 
     ## Add metadata to structure
 
     # Sampling parameters
-    if ischar(apres_data.file_format):
-        apres_data.er = 3.18;
-        apres_data.dt = 1./apres_data.fs;
-        apres_data.ci = 3e8/np.sqrt(apres_data.er);
-        apres_data.lambdac = apres_data.ci/apres_data.fc;
-        # Load each chirp into a row
-
-        apres_data.vif = np.zeros(apres_data.ChirpsInBurst,apres_data.SamplesPerChirp); # preallocate array
-        chirpInterval = 1.6384/(24*3600); # days
-        apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
-        for chirp in range(apres_data.ChirpsInBurst):
-            apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
-            apres_data.chirpNum[chirp,0] = chirp                                                # chirp number in burst
-            apres_data.chirpAtt[chirp,0] = AttSet[1+mod(chirp-1,numel(AttSet))]                 # attenuator setting for chirp
-            apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)      # time of chirp
+    if apres_data.header.file_format is None:
+        raise TypeError("File format is 'None', cannot load")
     else:
-        apres_data.SamplesPerChirp = apres_data.snum
-        apres_data.fs = 4e4         # sampling frequency
-        apres_data.f0 = 2e8         # start frequency
-        #apres_data.fc = 3e8        # start frequency
-        apres_data.K = 2*np.pi*2e8  # chirp gradient in rad/s/s (200MHz/s)
-        #apres_data.f0 = apres_data.f0 + (apres_data.K/(4*pi))/apres_data.fs; # start frequency
-        apres_data.processing = {}
-
-        if apres_data.file_format == 5 or apres_data.file_format == 4:
-            apres_data.K = apres_data.header.K
-            apres_data.f0 = apres_data.header.startFreq
-            apres_data.fs = apres_data.header.fs
-            apres_data.f1 = apres_data.header.startFreq + apres_data.header.chirpLength * apres_data.header.K/2/np.pi
-            apres_data.SamplesPerChirp = round(apres_data.header.chirpLength * apres_data.header.fs);
-            apres_data.T = apres_data.header.chirpLength
-            apres_data.B = apres_data.header.chirpLength * apres_data.header.K/2/np.pi
-            apres_data.fc = apres_data.header.startFreq + apres_data.B/2
-            apres_data.dt = 1./apres_data.header.fs
-            apres_data.er = 3.18
-            apres_data.ci = 3e8/np.sqrt(apres_data.er);
-            apres_data.lambdac = apres_data.ci/apres_data.fc;
-            apres_data.Nsamples = apres_data.header.nchirpSamples;
-            # Load each chirp into a row
-            apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1;
-
-            apres_data.vif = np.zeros((apres_data.ChirpsInBurst,apres_data.SamplesPerChirp)) # preallocate array
-            chirpInterval = 1.6384/(24*3600); # days
-            for chirp in range(apres_data.ChirpsInBurst):
-                apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
-                apres_data.chirpNum[chirp,0] = chirp                                            # chirp number in burst
-                apres_data.chirpAtt[chirp,0] = AttSet(1+mod(chirp-1,numel(AttSet)))             # attenuator setting for chirp
-                apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)  # time of chirp
+        if apres_data.header.file_format != 5:
+            raise TypeError('Loading functions have only been written for rmb5 data.\
+                            Look back to the original Matlab scripts if you need to implement earlier formats.')
         else:
-            apres_data.er = 3.18;
+            apres_data.header.f1 = apres_data.header.f0 + apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
+            apres_data.header.bandwidth = apres_data.header.chirp_length * apres_data.header.chirp_grad/2/np.pi
+            apres_data.header.fc = apres_data.header.f0 + apres_data.header.bandwidth/2.
+            apres_data.dt = 1./apres_data.header.fs
+            apres_data.header.er = 3.18
+            apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er);
+            apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc;
+
             # Load each chirp into a row
-
-            apres_data.Endind = apres_data.Startind + apres_data.SamplesPerChirp - 1
-            apres_data.vif = np.zeros((apres_data.ChirpsInBurst,apres_data.SamplesPerChirp)) # preallocate array
-            chirpInterval = 1.6384/(24*3600) # days
-
-            for chirp in range(apres_data.ChirpsInBurst):
-                apres_data.vif[chirp,:] = apres_data.data[apres_data.Startind[chirp]:apres_data.Endind[chirp]]
-                apres_data.chirpNum[chirp,0] = chirp                                            # chirp number in burst
-                apres_data.chirpAtt[chirp,0] = AttSet[1+mod(chirp-1,numel(AttSet))]             # attenuator setting for chirp
-                apres_data.chirpTime[chirp,0] = apres_data.TimeStamp + chirpInterval*(chirp-1)  # time of chirp
-
-            apres_data.ChirpsInBurst = np.shape(apres_data.vif,0)
-            apres_data.SamplesPerChirp = np.shape(apres_data.vif,1)
-            apres_data.dt = 1./apres_data.fs                            # sample interval (s)
-            apres_data.T = (np.shape(apres_data.vif,1)-1)/apres_data.fs     # period between first and last sample
-            #apres_data.T = size(apres_data.vif,1)/apres_data.fs; # period of sampling (cls test 26 aug 2014)
-            # - this makes the amplitude of the fft centred at the right range, but phase wrong
-
-            apres_data.f1 = apres_data.f0 + apres_data.T*apres_data.K/(2*np.pi) # stop frequency
-            #apres_data.f1 = apres_data.f0 + apres_data.dt*(apres_data.SamplesPerChirp-1)*apres_data.K/(2*pi); # stop frequency
-
-            #apres_data.B = apres_data.f1-apres_data.f0; # bandwidth (hz)
-            #apres_data.B = apres_data.T*(apres_data.K/(2*pi)); # bandwidth (hz)
-            apres_data.B = (np.shape(apres_data.vif,1)/apres_data.fs)*(apres_data.K/(2*np.pi)) # bandwidth (hz)
-
-            apres_data.fc = np.mean([apres_data.f0, apres_data.f1]); # Centre frequency
-            #apres_data.fc = apres_data.f0 + apres_data.B/2; # Centre frequency
-            apres_data.ci = 3e8/np.sqrt(apres_data.er); # velocity in material
-            apres_data.lambdac = apres_data.ci/apres_data.fc; # Centre wavelength
+            data_load = np.zeros((apres_data.cnum,apres_data.snum)) # preallocate array
+            apres_data.chirp_num = np.arange(apres_data.cnum)
+            apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
+            apres_data.chirp_time = np.zeros((apres_data.cnum))
+            chirp_interval = 1.6384/(24.*3600.); # days TODO: why is this assigned directly?
+            for chirp in range(apres_data.cnum):
+                data_load[chirp,:] = apres_data.data[start_ind[chirp]:end_ind[chirp]]
+                apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]             # attenuator setting for chirp
+                apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)  # time of chirp
+            apres_data.data = data_load
 
     # Create time and frequency stamp for samples
-    apres_data.t = apres_data.dt*(range(np.shape(apres_data.vif,2)-1)); # sampling times (rel to first)
-    apres_data.f = apres_data.f0 + apres_data.t*apres_data.K/(2*np.pi);
+    apres_data.travel_time = apres_data.dt*np.arange(apres_data.snum) # sampling times (rel to first)
+    apres_data.frequencies = apres_data.header.f0 + apres_data.travel_time*apres_data.header.chirp_grad/(2.*np.pi)
+    apres_data.travel_time *= 1e6
 
-    # Calibrate
-    #ca13 = [1 6]; # 2013
-    #ca14 = [1 2]; # 2014
-    #ca = [1 4];
-    #apres_data = fmcw_cal(apres_data,ca13);
+    apres_data.data_dtype = apres_data.data.dtype
 
-    apres_data.flags = ApresFlags()
-    #apres_data.tnum = dzt_data.data.shape[1]
-    #apres_data.trace_num = np.arange(dzt_data.data.shape[1]) + 1
-    #apres_data.trig_level = np.zeros((dzt_data.tnum, ))
-    #apres_data.pressure = np.zeros((dzt_data.tnum, ))
-    #apres_data.dt = dzt_data.range / dzt_data.snum * 1.0e-9
-    #apres_data.travel_time = np.atleast_2d(np.arange(0,
-    #                                               dzt_data.range / 1.0e3,
-    #                                               dzt_data.dt * 1.0e6)).transpose()
-    #apres_data.travel_time += dzt_data.dt * 1.0e6
+    return apres_data
 
 # -----------------------------------------------------------------------------------------------------
 
@@ -211,15 +144,14 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     if self.header.fn is None:
         raise TypeError('Read in the header before loading data.')
     if self.header.file_format != 5:
-        raise TypeError('The load_burst function has only been written for rmb5 data.')
-
-    self.header.file_read_code = 0
+        raise TypeError('Loading functions have only been written for rmb5 data.\
+                        Look back to the original Matlab scripts if you need to implement earlier formats.')
 
     try:
         fid = open(self.header.fn,'rb')
     except:
         # Unknown file
-        self.header.file_read_code = -1;
+        self.flags.file_read_code = 'Unable to read file' + self.header.fn
         raise TypeError('Cannot open file', self.header.fn)
 
     # Get the total length of the file
@@ -248,40 +180,38 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
             self.snum = int(output[0])
             self.n_subbursts = int(output[1])
             self.average = int(output[2])
-            self.n_attenuators = int(output[3])
-            self.attenuator1 = np.array(output[4].split(',')).astype(int)[self.n_attenuators-1]
-            self.attenuator2 = np.array(output[5].split(',')).astype(int)[self.n_attenuators-1]
-            self.tx_ant = np.array(output[6].split(',')).astype(int)
-            self.rx_ant = np.array(output[7].split(',')).astype(int)
+            self.header.n_attenuators = int(output[3])
+            self.header.attenuator1 = np.array(output[4].split(',')).astype(int)[:self.header.n_attenuators]
+            self.header.attenuator2 = np.array(output[5].split(',')).astype(int)[:self.header.n_attenuators]
+            self.header.tx_ant = np.array(output[6].split(',')).astype(int)
+            self.header.rx_ant = np.array(output[7].split(',')).astype(int)
 
-            self.tx_ant = self.tx_ant[self.tx_ant==1]
-            self.rx_ant = self.rx_ant[self.rx_ant==1]
+            self.header.tx_ant = self.header.tx_ant[self.header.tx_ant==1]
+            self.header.rx_ant = self.header.rx_ant[self.header.rx_ant==1]
 
             if self.average != 0:
-                self.chirps_in_burst = 1
+                self.cnum = 1
             else:
-                self.chirps_in_burst = self.n_subbursts*len(self.tx_ant)*\
-                                            len(self.rx_ant)*self.n_attenuators
+                self.cnum = self.n_subbursts*len(self.header.tx_ant)*\
+                                            len(self.header.rx_ant)*self.header.n_attenuators
 
             # End of burst
             search_string = '*** End Header ***'
             search_ind = self.header.header_string.find(search_string)
             burst_pointer += search_ind + len(search_string)
 
-            words_per_burst = self.chirps_in_burst*self.snum
-
         except:
             # If the burst read is unsuccessful exit with an updated read code
-            self.header.file_read_code = -2
-            self.burst = burst_count
+            self.flags.file_read_code = 'Corrupt header in burst' + str(burst_count) + 'for file' + self.header.fn
+            self.bnum = burst_count
             raise TypeError('Burst Read Failed.')
 
         # Move the burst pointer
         if burst_count < burst and burst_pointer <= file_len - max_header_len:
             if self.average != 0:
-                burst_pointer += self.chirps_in_burst*self.snum*4
+                burst_pointer += self.cnum*self.snum*4
             else:
-                burst_pointer += self.chirps_in_burst*self.snum*2
+                burst_pointer += self.cnum*self.snum*2
 
         burst_count += 1
 
@@ -298,7 +228,7 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
             output.append(out)
 
     if 'Time stamp' not in self.header.header_string:
-        self.header.file_read_code = -4
+        self.flags.file_read_code = 'Burst' + str(self.bnum) + 'not found in file' + self.header.fn
     else:
         self.time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
@@ -313,35 +243,36 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
 
     # Go to the end of the header
     end_byte = b'*** End Header ***'
-    data_ind = fid.read(5000).rfind(end_byte) + len(end_byte)
+    data_ind = fid.read(max_header_len).rfind(end_byte) + len(end_byte)
     fid.seek(data_ind)
 
     # Only if all the bursts were read
     if burst_count != burst+1:
-        self.burst = burst_count - 1
-        self.header.file_read_code = -4
+        # too few bursts in file
+        self.bnum = burst_count - 1
+        self.flags.file_read_code = 'Burst' + str(self.bnum) + 'not found in file' + self.header.fn
     else:
         # TODO: Check the other readers for average == 1 or average == 2
         if self.average == 2:
-            self.data = np.fromfile(fid,dtype='uint32',count=words_per_burst)
+            self.data = np.fromfile(fid,dtype='uint32',count=self.cnum*self.snum)
         elif self.average == 1:
             fid.seek(burst_pointer+1)
-            self.data = np.fromfile(fid,dtype='float4',count=words_per_burst)
+            self.data = np.fromfile(fid,dtype='float4',count=self.cnum*self.snum)
         else:
-            self.data = np.fromfile(fid,dtype='uint16',count=words_per_burst)
+            self.data = np.fromfile(fid,dtype='uint16',count=self.cnum*self.snum)
 
-        if fid.tell()-(burst_pointer-1) < words_per_burst:
-            self.header.file_read_code = 2
+        if fid.tell()-(burst_pointer-1) < self.cnum*self.snum:
+            self.flags.file_read_code = 'Corrupt header in burst' + str(burst_count) + 'for file' + self.header.fn
 
         self.data[self.data<0] = self.data[self.data<0] + 2**16.
         self.data = self.data.astype(float) * 2.5/2**16.
 
         if self.average == 2:
-            self.data /= (self.n_subbursts*self.n_attenuators)
+            self.data /= (self.n_subbursts*self.header.n_attenuators)
 
-        self.start_ind = np.transpose(np.arange(0,self.snum*self.chirps_in_burst,self.snum))
-        self.end_ind = self.start_ind + self.snum
-        self.burst = burst
+        start_ind = np.transpose(np.arange(0,self.snum*self.cnum,self.snum))
+        end_ind = start_ind + self.snum
+        self.bnum = burst
 
     fid.close()
 
@@ -349,3 +280,6 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     self.temperature1[self.temperature1>300] -= 512
     self.temperature2[self.temperature2>300] -= 512
 
+    self.flags.file_read_code = 'Successful Read'
+
+    return start_ind,end_ind

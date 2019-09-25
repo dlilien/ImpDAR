@@ -42,19 +42,18 @@ class ApresHeader():
         self.file_format = None
         self.noDwellHigh = None
         self.noDwellLow = None
-        self.startFreq = None
-        self.stopFreq = None
-        self.rampUpStep = None
-        self.rampDownStep = None
-        self.tstepUp = None
-        self.tstepDown = None
-        self.fs = None
+        self.f0 = None
+        self.f_stop = None
+        self.ramp_up_step = None
+        self.ramp_down_step = None
+        self.tstep_up = None
+        self.tstep_down = None
         self.snum = None
-        self.nstepsDDS = None
-        self.chirpLength = None
-        self.nchirpSamples = None
-        self.K = None
-        self.rampDir = None
+        self.nsteps_DDS = None
+        self.chirp_length = None
+        self.chirp_grad = None
+        self.nchirp_samples = None
+        self.ramp_dir = None
         self.nchirpsPerPeriod = None
 
     # --------------------------------------------------------------------------------------------
@@ -163,8 +162,8 @@ class ApresHeader():
                 # Digital ramp lower limit 32-bit digital ramp lower limit value.
                 loc3 = self.header_string[loc2[k]+2:].find('"')
                 val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
-                self.startFreq = int(val[8:], 16)*self.fsysclk/(2**32)
-                self.stopFreq = int(val[:8], 16)*self.fsysclk/(2**32)
+                self.f0 = int(val[8:], 16)*self.fsysclk/(2**32)
+                self.f_stop = int(val[:8], 16)*self.fsysclk/(2**32)
 
             elif case == 'Reg0C':
                 # Digital Ramp Step Size Register Address 0x0C
@@ -172,8 +171,8 @@ class ApresHeader():
                 # Digital ramp increment step size 32-bit digital ramp increment step size value.
                 loc3 = self.header_string[loc2[k]+2:].find('"')
                 val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
-                self.rampUpStep = int(val[8:], 16)*self.fsysclk/(2**32)
-                self.rampDownStep = int(val[:8], 16)*self.fsysclk/(2**32)
+                self.ramp_up_step = int(val[8:], 16)*self.fsysclk/(2**32)
+                self.ramp_down_step = int(val[:8], 16)*self.fsysclk/(2**32)
 
             elif case == 'Reg0D':
                 # Digital Ramp Rate Register Address 0x0D
@@ -181,8 +180,8 @@ class ApresHeader():
                 # Digital ramp positive slope rate 16-bit digital ramp positive slope value that defines the time interval between increment values.
                 loc3 = self.header_string[loc2[k]+2:].find('"')
                 val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
-                self.tstepUp = int(val[4:], 16)*4/self.fsysclk
-                self.tstepDown = int(val[:4], 16)*4/self.fsysclk
+                self.tstep_up = int(val[4:], 16)*4/self.fsysclk
+                self.tstep_down = int(val[:4], 16)*4/self.fsysclk
 
         strings = ['SamplingFreqMode=','N_ADC_SAMPLES=']
         output = np.empty((len(strings))).astype(str)
@@ -200,23 +199,23 @@ class ApresHeader():
 
         self.snum = int(output[1])
 
-        self.nstepsDDS = round(abs((self.stopFreq - self.startFreq)/self.rampUpStep)) # abs as ramp could be down
-        self.chirpLength = int(self.nstepsDDS * self.tstepUp)
-        self.nchirpSamples = round(self.chirpLength * self.fs)
+        self.nstepsDDS = round(abs((self.f_stop - self.f0)/self.ramp_up_step)) # abs as ramp could be down
+        self.chirp_length = int(self.nstepsDDS * self.tstep_up)
+        self.nchirp_samples = round(self.chirp_length * self.fs)
 
         # If number of ADC samples collected is less than required to collect
         # entire chirp, set chirp length to length of series actually collected
-        if self.nchirpSamples > self.snum:
-            self.chirpLength = self.snum / self.fs
+        if self.nchirp_samples > self.snum:
+            self.chirp_length = self.snum / self.fs
 
-        self.K = 2.*np.pi*(self.rampUpStep/self.tstepUp) # chirp gradient (rad/s/s)
-        if self.stopFreq > 400e6:
-            self.rampDir = 'down'
+        self.chirp_grad = 2.*np.pi*(self.ramp_up_step/self.tstep_up) # chirp gradient (rad/s/s)
+        if self.f_stop > 400e6:
+            self.ramp_dir = 'down'
         else:
-            self.rampDir = 'up'
+            self.ramp_dir = 'up'
 
         if self.noDwellHigh and self.noDwellLow:
-            self.rampDir = 'upDown'
+            self.ramp_dir = 'upDown'
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
 
