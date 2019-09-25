@@ -26,6 +26,7 @@ import datetime
 import numpy as np
 from scipy.io import loadmat
 from .ApresFlags import ApresFlags
+from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
 class ApresData(object):
@@ -99,6 +100,7 @@ class ApresData(object):
             # Special attributes
             #: impdar.lib.RadarFlags object containing information about the processing steps done.
             self.flags = ApresFlags()
+            self.header = ApresHeader()
 
             self.data_dtype = None
             return
@@ -128,6 +130,7 @@ class ApresData(object):
 
         self.fn = fn_mat
         self.flags = ApresFlags()
+        self.header = ApresHeader()
         self.flags.from_matlab(mat['flags'])
         self.check_attrs()
 
@@ -163,6 +166,3 @@ class ApresData(object):
         """A python operable version of the time of acquisition of each trace"""
         return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
                          for dd in self.decday], dtype=np.datetime64)
-
-
-

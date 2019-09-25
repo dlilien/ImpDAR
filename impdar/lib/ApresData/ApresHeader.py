@@ -37,6 +37,25 @@ class ApresHeader():
         """Initialize data paramaters"""
         self.fsysclk = 1e9
         self.fs = 4e4
+        self.fn = None
+        self.header_string = None
+        self.file_format = None
+        self.noDwellHigh = None
+        self.noDwellLow = None
+        self.startFreq = None
+        self.stopFreq = None
+        self.rampUpStep = None
+        self.rampDownStep = None
+        self.tstepUp = None
+        self.tstepDown = None
+        self.fs = None
+        self.snum = None
+        self.nstepsDDS = None
+        self.chirpLength = None
+        self.nchirpSamples = None
+        self.K = None
+        self.rampDir = None
+        self.nchirpsPerPeriod = None
 
     # --------------------------------------------------------------------------------------------
 
@@ -54,13 +73,14 @@ class ApresHeader():
         Output
         ---------
         """
+        self.fn = fn_apres
         fid = open(fn_apres,'rb')
-        self.header = str(fid.read(max_header_len))
+        self.header_string = str(fid.read(max_header_len))
         fid.close()
 
     # --------------------------------------------------------------------------------------------
 
-    def file_format(self):
+    def get_file_format(self):
         """
         Determine fmcw file format from burst header using keyword presence
         There are a few different formats through the years.
@@ -71,18 +91,18 @@ class ApresHeader():
         Updated by Keith Nicholls, 2014-10-22: RMB2
         """
 
-        if 'SW_Issue=' in self.header: # Data from RMB2 after Oct 2014
-            self.fileformat = 5
-        elif 'SubBursts in burst:' in self.header: # Data from after Oct 2013
+        if 'SW_Issue=' in self.header_string: # Data from RMB2 after Oct 2014
+            self.file_format = 5
+        elif 'SubBursts in burst:' in self.header_string: # Data from after Oct 2013
             self.file_format = 4
-        elif '*** Burst Header ***' in self.header: # Data from Jan 2013
+        elif '*** Burst Header ***' in self.header_string: # Data from Jan 2013
             self.file_format = 3
-        elif 'RADAR TIME' in self.header: # Data from Prototype FMCW radar (nov 2012)
+        elif 'RADAR TIME' in self.header_string: # Data from Prototype FMCW radar (nov 2012)
             self.file_format = 2
         else:
-            TypeError('Unknown file format - check file')
+            raise TypeError('Unknown file format - check file')
 
-    def update_parameters(self):
+    def update_parameters(self,fn_apres=None):
         """
         Update the parameters with the apres file header
 
@@ -103,11 +123,19 @@ class ApresHeader():
         per period are transmitted- see last line
         """
 
-        loc1 = [m.start() for m in re.finditer('Reg0', self.header)]
-        loc2 = [m.start() for m in re.finditer('="', self.header)]
+        if self.header_string is None:
+            if fn_apres is None:
+                raise TypeError('Must input file name if the header has not been read yet.')
+            else:
+                self.read_header(fn_apres)
+        if self.file_format is None:
+            self.get_file_format()
+
+        loc1 = [m.start() for m in re.finditer('Reg0', self.header_string)]
+        loc2 = [m.start() for m in re.finditer('="', self.header_string)]
 
         for k in range(len(loc1)):
-            case = self.header[loc1[k]:loc2[k]]
+            case = self.header_string[loc1[k]:loc2[k]]
 
             if case == 'Reg01':
                 # Control Function Register 2 (CFR2) Address 0x01 Four bytes
@@ -117,8 +145,8 @@ class ApresHeader():
                 # With no-dwell high, a positive transition of the DRCTL pin initiates a positive slope ramp, which
                 # continues uninterrupted (regardless of any activity on the DRCTL pin) until the upper limit is reached.
                 # Setting both no-dwell bits invokes a continuous ramping mode of operation;
-                loc3 = self.header[loc2[k]+2:].find('"')
-                val = self.header[loc2[k]+2:loc2[k]+loc3+2]
+                loc3 = self.header_string[loc2[k]+2:].find('"')
+                val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
                 val = bin(int(val, 16))
                 val = val[::-1]
                 self.noDwellHigh = int(val[18])
@@ -133,8 +161,8 @@ class ApresHeader():
                 # Digital Ramp Limit Register Address 0x0B
                 # Digital ramp upper limit 32-bit digital ramp upper limit value.
                 # Digital ramp lower limit 32-bit digital ramp lower limit value.
-                loc3 = self.header[loc2[k]+2:].find('"')
-                val = self.header[loc2[k]+2:loc2[k]+loc3+2]
+                loc3 = self.header_string[loc2[k]+2:].find('"')
+                val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
                 self.startFreq = int(val[8:], 16)*self.fsysclk/(2**32)
                 self.stopFreq = int(val[:8], 16)*self.fsysclk/(2**32)
 
@@ -142,8 +170,8 @@ class ApresHeader():
                 # Digital Ramp Step Size Register Address 0x0C
                 # Digital ramp decrement step size 32-bit digital ramp decrement step size value.
                 # Digital ramp increment step size 32-bit digital ramp increment step size value.
-                loc3 = self.header[loc2[k]+2:].find('"')
-                val = self.header[loc2[k]+2:loc2[k]+loc3+2]
+                loc3 = self.header_string[loc2[k]+2:].find('"')
+                val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
                 self.rampUpStep = int(val[8:], 16)*self.fsysclk/(2**32)
                 self.rampDownStep = int(val[:8], 16)*self.fsysclk/(2**32)
 
@@ -151,18 +179,18 @@ class ApresHeader():
                 # Digital Ramp Rate Register Address 0x0D
                 # Digital ramp negative slope rate 16-bit digital ramp negative slope value that defines the time interval between decrement values.
                 # Digital ramp positive slope rate 16-bit digital ramp positive slope value that defines the time interval between increment values.
-                loc3 = self.header[loc2[k]+2:].find('"')
-                val = self.header[loc2[k]+2:loc2[k]+loc3+2]
+                loc3 = self.header_string[loc2[k]+2:].find('"')
+                val = self.header_string[loc2[k]+2:loc2[k]+loc3+2]
                 self.tstepUp = int(val[4:], 16)*4/self.fsysclk
                 self.tstepDown = int(val[:4], 16)*4/self.fsysclk
 
         strings = ['SamplingFreqMode=','N_ADC_SAMPLES=']
         output = np.empty((len(strings))).astype(str)
         for i,string in enumerate(strings):
-            if string in self.header:
-                search_start = self.header.find(string)
-                search_end = self.header[search_start:].find('\\')
-                output[i] = self.header[search_start+len(string):search_end+search_start]
+            if string in self.header_string:
+                search_start = self.header_string.find(string)
+                search_end = self.header_string[search_start:].find('\\')
+                output[i] = self.header_string[search_start+len(string):search_end+search_start]
 
         self.fs = output[0]
         if self.fs == 1:        # if self.fs > 70e3:
