@@ -20,44 +20,65 @@ Sept 23 2019
 """
 
 import numpy as np
-from .load.load_apres import file_format
 
-def proc_apres_range(dat,p,maxrange=2000,winfun='blackman'):
+def apres_range(self,p,max_range=2000,winfun='blackman'):
     """
-    # [Rcoarse,Rfine,spec_cor,spec] = fmcw_range(dat,p,maxrange,winfun)
-    #
-    # Phase sensitive processing of FMCW radar data based on Brennan et al. 2013
-    #
-    # Based on Paul's scripts but following the nomenclature of:
-    # "Phase-sensitive FMCW radar imaging system for high precision Antarctic
-    # ice shelf profile monitoring"
-    # Brennan, Lok, Nicholls and Corr, 2013
-    #
-    # Summary: converts raw FMCW radar voltages into a range for
-    #
-    # input args:
-    # dat = structure containing shot metadata
-    # dat.vif = data matrix of vltages as digitised with one chirp per row size(nchirps,nsamples)
-    # p = pad factor (i.e. level of interpolation to use during fft)
-    # maxrange = maximum range to crop output to
-    # winfun = window function handle (defaults to blackman)
-    #
-    # outputs:
-    # Rcoarse = range to bin centres (m)
-    # Rfine = range to reflector from bin centre (m)
-    # spec_cor = spectrum corrected. positive frequency half of spectrum with
-    # ref phase subtracted. This is the complex signal which can be used for
-    # cross-correlating two shot segements.
 
-    # Craig Stewart
-    # 2013 April 24
-    # Modified frequencies 10 April 2014
+    Parameters
+    ---------
+    self: class
+        data object
+    p: int
+        pad factor, level of interpolation for fft
+    winfun: str
+        window function for fft
+
+    Output
+    --------
+    Rcoarse: array
+        range to bin centres (m)
+    Rfine: array
+        range to reflector from bin centre (m)
+    spec_cor: array
+        spectrum corrected. positive frequency half of spectrum with
+        ref phase subtracted. This is the complex signal which can be used for
+        cross-correlating two shot segements.
+
+
+
+    ### Original Matlab File Notes ###
+    Phase sensitive processing of FMCW radar data based on Brennan et al. 2013
+
+    Based on Paul's scripts but following the nomenclature of:
+    "Phase-sensitive FMCW radar imaging system for high precision Antarctic
+    ice shelf profile monitoring"
+    Brennan, Lok, Nicholls and Corr, 2013
+
+    Summary: converts raw FMCW radar voltages into a range for
+
+    Craig Stewart
+    2013 April 24
+    Modified frequencies 10 April 2014
     """
+
+    if self.flags.range != 0:
+        raise TypeError('The range filter has already been done on these data.')
 
     # Processing settings
-    N = np.shape(dat.vif,1)
-    xn = round(0.5*(N))
-    nchirps,N = np.shape(dat.vif)
+    nf = int(np.floor(p*self.snum/2))    # number of frequencies to recover
+    # TODO: implement all the other window functions
+    if winfun not in ['blackman','bartlett','hamming','hanning','kaiser']:
+        raise TypeError('Window must be in: blackman, bartlett, hamming, hanning, kaiser')
+    elif winfun == 'blackman':
+        win = np.blackman(self.snum)
+
+    # Get the coarse range
+    self.Rcoarse = np.arange(nf)*self.header.ci/(2*self.header.bandwidth*p)
+
+    # Calculate phase of each range bin centre for correction
+    # eq 17: phase for each range bin centre (measured at t=T/2), given that tau = n/(B*p)
+    self.phiref = 2.*np.pi*self.header.fc*np.arange(nf)/(self.header.bandwidth*p) - \
+            (self.header.chirp_grad*np.arange(nf)**2)/(2*self.header.bandwidth**2*p**2)
 
     # Measure the sampled IF signal: FFT to measure frequency and phase of IF
     #deltaf = 1/(T*p); # frequency step of FFT
@@ -65,48 +86,45 @@ def proc_apres_range(dat,p,maxrange=2000,winfun='blackman'):
     #Rcoarse = f*ci*T/(2*B); # Range at the centre of each range bin: eq 14 (rearranged) (p is accounted for inf)
     #Rcoarse = [0:1/p:T*fs/2-1/p]*ci/(2*B); # Range at the centre of each range bin: eq 14 (rearranged) (p is accounted for inf)
 
-    nf = round((dat.p*N)/2 - 0.5) # number of frequencies to recover
-    #nf = length(f); # changed from above 2014/5/22
-    #nf = length(Rcoarse);
-    win = window(winfun,N) #chebwin(N);  #rectwin(N); #
+    # --- Loop through for each chirp in burst --- #
 
-    ## Loop through for each shot in burst
-    # Calculate phase of each range bin centre for correction
-    n = np.transpose(np.arange(nf) - 1)
-    Rcoarse = np.transpose(n*dat.ci/(2*dat.B*dat.p))
-    phiref = 2*np.pi*dat.fc*n/(dat.B*dat.p) - (dat.K*n**2)/(2*dat.B**2*dat.p**2) # eq 17: phase for each range bin centre (measured at t=T/2), given that tau = n/(B*p)
-    spec,spec_cor = deal(np.zeros(nchirps,nf)) # preallocate
-    for ii in range(nchirps):
-        vif = dat.vif[ii,:]
-        vif = vif-np.mean(vif) # de-mean
-        vif = np.transpose(win*vif) # windowed
-        #vif = [vif; zeros((p-1)*N,1)]; # zero padded to length p*N
-        vifpad = np.zeros(dat.p*N,1)
-        vifpad[:length(vif)] = vif
-        vifpad = circshift(vifpad,-xn) # signal time shifted so phase centre at start
-        #plot(vifpad), keyboard
-        fftvif = (np.sqrt(2*dat.p)/len(vifpad))*fft(vifpad) # fft and scale for padding
-        fftvif = fftvif/rms(win) # scale for window
-        spec[ii,:] = fftvif[1:nf] # positive frequency half of spectrum up to (nyquist minus deltaf)
-        comp = exp(-1j*(phiref)) # unit phasor with conjugate of phiref phase
-        spec_cor[ii,:] = comp*fftvif[1:nf] # positive frequency half of spectrum with ref phase subtracted
+    # preallocate
+    spec = np.zeros((nf,self.cnum)).astype(np.cdouble)
+    spec_cor = np.zeros((nf,self.cnum)).astype(np.cdouble)
 
-    #Rfine = lambdac*angle(spec_cor)/(4*pi); # Distance from centre of range bin to effective reflector: eq 15
-    #Rfine = angle(spec_cor)./((4*pi/lambdac) - (4*Rcoarse*K/ci^2)); # this is the full equation including the term generated by the last term in (13)
-    Rfine = proc_apres_phase2range(angle(spec_cor),lambdac,repmat(Rcoarse,size(spec_cor,1),1),K,ci)
-    #R = Rcoarse + Rfine;
+    for ii in range(self.cnum):
+        # isolate the chirp and preprocess before transform
+        chirp = self.data[:,ii].copy()
+        chirp = chirp-np.mean(chirp) # de-mean
+        chirp *= win # windowed
+
+        # fourier transform
+        fft_chirp = (np.sqrt(2.*p)/len(chirp))*np.fft.fft(chirp,p*self.snum) # fft and scale for padding
+        fft_chirp /= np.sqrt(np.mean(win**2.)) # scale with rms of window
+
+        # output
+        spec[:,ii] = fft_chirp[:nf] # positive frequency half of spectrum up to (nyquist minus deltaf)
+        comp = np.exp(-1j*(self.phiref)) # unit phasor with conjugate of phiref phase
+        spec_cor[:,ii] = comp*fft_chirp[:nf] # positive frequency half of spectrum with ref phase subtracted
+
+    self.data = spec_cor.copy()
+
+    self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
+            np.transpose(np.tile(self.Rcoarse,(self.cnum,1))),
+            self.header.chirp_grad,self.header.ci)
 
     # Crop output variables to useful depth range only
-    n = find(Rcoarse<=maxrange,1,'last')
-    Rcoarse = Rcoarse[:n]
-    #Rcoarse = repmat(Rcoarse,nchirps,1); # make output same size as Rfine for consistence
-    Rfine = Rfine[:,:n];
-    spec = spec[:,:n];
-    spec_cor = spec_cor[:,:n];
+    n = np.argmin(self.Rcoarse<=max_range)
+    self.Rcoarse = self.Rcoarse[:n]
+    self.Rfine = self.Rfine[:n,:]
+    self.data = self.data[:n,:]
+    self.snum = n
+
+    self.flags.range = max_range
 
 # --------------------------------------------------------------------------------------------
 
-def proc_apres_phase2range(phi,lambdac,rc=None,K=None,ci=None):
+def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     """
     # r = fmcw_phase2range(phi,lambdac,rc,K,ci)
     #
@@ -125,126 +143,43 @@ def proc_apres_phase2range(phi,lambdac,rc=None,K=None,ci=None):
     # 2014/6/10
     """
 
-    if not all([rc,K,ci]):
+    if not all([K,ci]) or rc is None:
         # First order method
-        r = lambdac*phi/(4.*np.pi);
+        r = lambdac*phi/(4.*np.pi)
     else:
         # Precise
-        r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2));
+        r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2.))
+
+    return r
 
 # --------------------------------------------------------------------------------------------
 
-def meanchirp(Nchirps,fns,plottype=0,fs=40000,doClean=False):
+def stacking(self,num_chirps=None):
     """
-    # fmcw_meanchirp_oneatt(Nchirps,filelist)
-    #
-    # Calculate mean chirp from chirps spread over multiple bursts and files
-    # saves mean chirp in new .mat file.
-    #
-    # Uses chirp stacking (to burst level) during read to conserve memory
-    #
-    # args in:
-    # Nchirps: number of chirps to average
-    # filelist: list of files to use chirps from
-    #
-    # note: if filelist contains fewer chirps than requested this will use all
-    # the chirps available.
-    #
-    # Craig Stewart
-    # 2013-10-02
-    # 2014/12/3: added optional cleaning to remove noisey shots from each burst
+    Parameters
+    ---------
+    num_chirps: int
+        number of chirps to average
     """
 
-    outputfilenameroot = 'meanchirp'; # just use standard name for output files
+    #TODO: update for stacking across multiple bursts
 
-    # Loop through number to average
-    for nci in rangE(len(Nchirps)):
-        print(' ')
-        print('Averaging chirps for N = ', str(Nchirps(nci)))
+    if self.flags.range == 0:
+        raise TypeError('Do the range conversion before stacking chirps.')
 
-        # Loop through files
-        nchirpstoget = Nchirps(nci)
-        ii = 0 # master burst number
-        for fn in fns:
-            fmt = file_format(fn)
-            Burst = 0
+    if num_chirps == None:
+        num_chirps = self.cnum
+    elif num_chirps > self.cnum:
+        Warning('Number of chirps given for average is greater than the number of chirps in the burst.\
+                reducing to self.cnum.')
+        num_chirps = self.cnum
 
-            datt.Code = 0
-            while nchirpstoget > 0 and datt.Code == 0:
-                # i.e. still need chirps and last read was good
-                Burst = Burst + 1
-                # Loop through bursts
-                if doClean:
-                    datt = fmcw_load(Filename,Burst)
-                    if datt.Code == 0:
-                        datt = fmcw_keep_clean_chirps(datt,round(size(datt.vif,1)*0.7),0) # best 70# of chirps
-                        if size(datt.vif,1)>nchirpstoget:
-                            datt.vif = datt.vif[:nchirpstoget,:]
+    if num_chirps == self.cnum:
+        self.stacked_data = np.mean(np.real(self.data),axis=1)
+    else:
+        data_hold = np.empty((self.cnum//num_chirps,self.snum))
+        for i in range(self.cnum//num_chirps):
+            data_hold[i,:] = np.mean(np.real(self.data[:,i*num_chirps:(i+1)*num_chirps]),axis=1)
+        self.stacked_data = data_hold
 
-                        # Now burst stack for consistency with LongBurst case below
-                        datt.data = sum(datt.vif)
-                        datt.NChirp = size(datt.vif,1)
-
-                else:
-                    # memory efficient loading of long bursts using burst stacking (cleaning not supported)
-                    if fmt==3:
-                        datt = LongBurstRMB3(Filename, Burst, SamplingFrequency, nchirpstoget)
-                    elif fmt ==4:
-                        datt = LongBurstRMB4(Filename, Burst, SamplingFrequency, nchirpstoget)
-                    elif fmt ==5:
-                        datt = LongBurstRMB5(Filename, Burst, SamplingFrequency, nchirpstoget)
-                    else:
-                        error('Unsupported file format')
-
-                if datt.Code == 0:
-                    dat = datt # Keep temporary variable if we've had a good read
-
-                    ii += 1
-                    #file(ii) = {Filename}
-                    burstno[ii] = Burst
-                    data[ii,:] = dat.data         # stacked NChirp chirps from this burst
-                    n[ii] = dat.NChirp      # number of chirps used
-                    nchirpstoget = nchirpstoget - dat.NChirp
-                    time[ii] = dat.TimeStamp
-                    print('Loaded ', str(dat.NChirp), ' chirps from file ', fn, ' burst ', str(Burst))
-        nchirpsread = Nchirps(nci) - nchirpstoget
-
-        # Now find average of all chirps
-        dat.data = sum(data,1)/sum(n)
-        dat.ChirpsInBurst = 1
-        dat.TimeStamp = np.mean(time)
-        dat.processing = {'Multi-chirp mean produced by ' + mfilename + ' using ' + int2str(sum(n)) + ' chirps.'}
-        #dat.Code = -10; # matlab file
-        #dat.Attenuator_1 = mean(dat.Attenuator_1);
-        #dat.Attenuator_2 = mean(dat.Attenuator_2);
-        FileFormat = file_format(fn);
-        H.update_parameters()
-
-        dat.Code = 0;
-        if FileFormat == 5 or FileFormat == 4:
-            dat.K = H.K;
-            dat.f0 = H.startFreq;
-            dat.fs = H.fs;
-            dat.f1 = H.startFreq + H.chirpLength * H.K/2/pi;
-            dat.SamplesPerChirp = round(H.chirpLength * H.fs);
-            dat.T = H.chirpLength;
-            dat.B = H.chirpLength * H.K/2/pi;
-            dat.fc = H.startFreq + dat.B/2;
-            dat.dt = 1/H.fs;
-            dat.er = 3.18;
-            dat.ci = 3e8/sqrt(dat.er);
-            dat.lambdac = dat.ci/dat.fc;
-            #dat.Nsamples = H.Nsamples;
-        else:
-            dat.er = 3.18;
-            dat = fmcw_derive_parameters(dat);
-
-        dat.vif = dat.data[:dat.SamplesPerChirp]
-        dat.Startind[1] = 1
-        dat.Endind[1] = dat.SamplesPerChirp
-        dat.ChirpsInBurst = 1
-        outputfilelist[nci] = {outputfilenameroot + '_n' + sprintf('#06u',nchirpsread) + '.mat'}
-        eval(['save ' + outputfilelist[nci] + ' dat']) # note we're just using dat from the last burst read, but this shouldn't be used anyway??
-
-        if nchirpstoget > 0:
-            print('Warning: only ', str(nchirpsread), ' chirps in files selected')
+    self.flags.stack = num_chirps

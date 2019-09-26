@@ -41,8 +41,10 @@ class ApresFlags():
 
     def __init__(self):
         self.file_read_code = None
-        self.attrs = ['file_read_code']
-        self.attr_dims = [None]
+        self.range = 0
+        self.stack = 1
+        self.attrs = ['file_read_code','phase2range','stack']
+        self.attr_dims = [None,None,None]
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`

@@ -102,7 +102,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
                 data_load[chirp,:] = apres_data.data[start_ind[chirp]:end_ind[chirp]]
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]             # attenuator setting for chirp
                 apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)  # time of chirp
-            apres_data.data = data_load
+            apres_data.data = np.transpose(data_load)
 
     # Create time and frequency stamp for samples
     apres_data.travel_time = apres_data.dt*np.arange(apres_data.snum) # sampling times (rel to first)
