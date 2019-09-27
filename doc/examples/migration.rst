@@ -1,5 +1,7 @@
+Migration
+=========
 What is Migration?
-===================
+------------------
 
 The goal of migration is to transform a geophysical dataset (typically seismic data but in this case radar) into an image that accurately represents the subsurface stratigraphy. Migration is a mathematical transformation in which geophysical events (timing of wave return) are re-located to where the event (the reflection) occurred in the subsurface rather than the time at which it was recorded by the receiver at the surface. Because off-nadir information intrudes into each trace, the image must be migrated as a whole to describe the true reflector geometry. Migration adjusts the angle of dipping reflectors, shortens and moves reflectors updip, unravels bowties, and most generally collapses diffractions. 
 
@@ -15,7 +17,7 @@ where :math:`\xi` is the true reflector dip and :math:`\xi_a` is the apparent di
 *Note: migration typically assumes coincident source and receiver, meaning that this processing step should be carried out after any stacking or move-out (nmo) corrections.*
 
 Synthetic Example
-===================
+-----------------
 
 Here, we create a synthetic domain to use as an example for the ImpDAR migration routines. For this case, the permittivity is elevated within the dark blue box in the image below (:math:`\epsilon_r=12` inside and :math:`3.2` for ice outside). 
 
@@ -28,7 +30,7 @@ Loading this domain into gprmax (a finite-difference time-domain modeling softwa
 This synthetic image illustrates why we need to migrate. There are large hyperbolae that extend away from the actual location of the box in both horizontal directions. These hyperbola, or diffraction curves, do not accurately represent the subsurface stratigraphy, they are only a result of imaging the box from the side as an off-nadir reflector. 
 
 Kirchhoff Migration
---------------------
+___________________
 
 The first migration method that we use here is the most direct to explain conceptually. Originally (~1920’s), geophysical datesets were migrated by hand, and this method follows the logic used then. The energy is integrated along each diffraction curve and placed at the apex of the curve (Hagedoorn, 1954). The diffraction curves are expected to be hyperbolic (in a constant velocity medium they will be), so here we iterate through each point of the image, looking for a hyperbolic diffraction curve around that point and integrating the power along it.
 
@@ -45,14 +47,14 @@ Summary of Kirchhoff Migration:
 • Weaknesses - Slow, Over migrates, No lateral velocity variation.
 
 Stolt Migration
---------------------
+_______________
 
 Migration is most commonly done in the frequency domain. In this case, the transformation is one from vertical frequency (:math:`\omega_z`) to vertical wavenumber (:math:`k_z`); thus, these migration routines are grouped as 'frequency-wavenumber' routines. The transformation is done in the frequency domain, so a 2-D Fourier transform is used before the migration and an inverse Fourier transform after. There are many such migration routines; here I highlight a couple popular ones which have been implemented in ImpDAR.
 
 The first, and probably the simplest, of the frequency-wavenumber migration routines is 'Stolt Migration'. Stolt Migration is done over the entire domain simultaneously, so it requires the assumption of a constant velocity throughout. The transformation is
 
 .. math::
-    P(x, z, t = 0) = \int \int \left [ \frac{v}{2} \frac{k_z}{\sqrt{k_x^2+k_z^2}} \right ] P \left ( k_x, 0, v \slash 2 \sqrt{k_x^2 + k_z^2} \right ) e^{−ik_x x−ik_z z} dk_x dk_z
+    P(x, z, t = 0) = \int \int \left [ \frac{v}{2} \frac{k_z}{\sqrt{k_x^2+k_z^2}} \right ] P \left ( k_x, 0, \frac{v}{2} \sqrt{k_x^2 + k_z^2} \right ) e^{−ik_x x−ik_z z} dk_x dk_z
 
 where an interpolation is done from :math:`\omega_z` to :math:`k_z` in frequency-space. The routine is implemented in ImpDAR as,
 
@@ -69,7 +71,7 @@ Summary of Stolt Migration:
 • Weaknesses – Constant velocity.
 
 Phase-Shift Migration
------------------------
+_____________________
 
 The second frequency-wavenumber migration routines is actually a set of a few called phase-shift migration (sometimes Gazdag migration). A phase-shifting operator :math:`eˆ{-ik_z z}` is applied at each z-step in downward continuation. These methods are advantageous in that they allow variable velocity as one steps down. Generally, this only allows vertical velocity variation but there is also a case which accomadates lateral velocity variation (phase-shift plus interpolation).
 
@@ -90,7 +92,7 @@ Summary of Phase-Shift Migration:
 • Weaknesses – Maximum dip angle.
 
 SeisUnix Migration Routines
-----------------------------
+___________________________
 
 There are many migration routines implemented in the seismic processing package, SeisUnix. With ImpDAR, we have no intent to replicate the work that they have done; instead, we allow the user to easily convert radar data to .segy, migrate with SeisUnix, then convert back, all in a kind of black-box fashion with only one command. If SeisUnix is not installed, this command with raise an error. 
 
@@ -99,7 +101,7 @@ There are many migration routines implemented in the seismic processing package,
 .. image:: ./migration_figures/synthetic_migrated_sumigtk.png
 
 Data Example
-===================
+------------
 
 Below is a real example of migration in ImpDAR for 3-MHz ground-based data from the Northeast Greenland Ice Stream (Christianson et al., 2014).
 

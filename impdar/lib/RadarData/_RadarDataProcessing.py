@@ -46,9 +46,9 @@ def constant_sample_depth_spacing(self):
     # First, we make a new array of depths
     if self.nmo_depth is None:
         raise AttributeError('Call nmo first...')
-    if np.all(np.diff(self.nmo_depth) == self.nmo_depth[1] - self.nmo_depth[0]):
+    if np.allclose(np.diff(self.nmo_depth), np.ones((self.snum - 1,)) * (self.nmo_depth[1] - self.nmo_depth[0])):
         print('No constant sampling when you already have constant sampling...')
-        return
+        return 1
 
     depths = np.linspace(np.min(self.nmo_depth[0], 0), self.nmo_depth[-1], len(self.nmo_depth))
     self.data = interp1d(self.nmo_depth, self.data.transpose())(depths).transpose()
@@ -152,7 +152,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * uice * 1e-6
     else:
-        traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
+        self.nmo_depth = traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
     if const_sample:
         constant_sample_depth_spacing(self)
     # Set flags
@@ -195,7 +195,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     Convert travel_time to depth based on density profile
 
     This is called from within the nmo processing function
-    It defines nmo_depth, the moveout-corrected depth, in the case of a variable velocity
+    It returns the depth for the moveout-corrected depth, in the case of a variable velocity
 
     Parameters
     ----------
@@ -207,24 +207,30 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
         speed of light in vacuum
     permittivity_model: function
         specific density-to-permittivity model to use
+
+    Returns
+    -------
+    depth: np.ndarray (self.snum x 1)
     """
     # get the input velocity-depth profile
     eps = np.real(permittivity_model(profile_rho))
     profile_u = c / np.sqrt(eps)
     # iterate over time, moving down according to the velocity at each step
     z = 0.
-    self.nmo_depth = np.zeros_like(self.travel_time)
+    depth = self.travel_time / 2. * c / np.sqrt(np.real(permittivity_model(917.))) * 1.0e-6
     for i, t in enumerate(self.travel_time):
         if t < 0.:
             continue
         elif t < self.dt * 1.0e6:
             step_u = profile_u[0]
             z += t / 2. * step_u * 1.0e-6
-            self.nmo_depth[i] = z
+            depth[i] = z
         else:
             step_u = profile_u[np.nanargmin(abs(profile_depth - z))]
             z += self.dt / 2. * step_u
-            self.nmo_depth[i] = z
+            depth[i] = z
+    return depth
+
 
 def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     """Crop the radar data in the vertical. We can take off the top or bottom.
@@ -272,6 +278,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
     if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
+            self.trig = self.trig - ind
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
@@ -454,7 +461,7 @@ def agc(self, window=50, scaling_factor=50):
     self.flags.agc = True
 
 
-def constant_space(self, spacing, min_movement=1.0e-2):
+def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     """Restack the radar data to a constant spacing.
 
     This method uses the GPS information (i.e. the distance, x, y, lat, and lon),
@@ -479,18 +486,34 @@ def constant_space(self, spacing, min_movement=1.0e-2):
     min_movement: float, optional
         Minimum trace spacing. If there is not this much separation, toss the next shot.
         Set high to keep everything. Default 1.0e-2.
+    show_nomove: bool, optional
+        If True, make a plot shading the areas where we think there is no movement.
+        This can be really helpful for diagnosing what is wrong if you have lingering stationary traces.
     """
     # eliminate an interpolation error by masking out little movement
     good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
-    new_dists = np.arange(np.min(self.dist[good_vals]),
-                          np.max(self.dist[good_vals]),
+
+    # Correct the distances to reduce noise
+    for i in range(len(self.dist)):
+        if not good_vals[i]:
+            self.dist[i:] = self.dist[i:] - (self.dist[i] - self.dist[i - 1])
+    temp_dist = self.dist[good_vals]
+
+    if show_nomove:
+        from .. import plot
+        fig, ax = plot.plot_radargram(self)
+        ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
+        plot.plt.show()
+
+    new_dists = np.arange(np.min(temp_dist),
+                          np.max(temp_dist),
                           step=spacing / 1000.0)
-    self.data = interp1d(self.dist[good_vals], self.data[:, good_vals])(new_dists)
+    self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
     for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
         setattr(self,
                 attr,
-                interp1d(self.dist[good_vals], getattr(self, attr)[good_vals])(new_dists))
+                interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
@@ -513,7 +536,7 @@ def elev_correct(self, v_avg=1.69e8):
     the data, otherwise the noise a handheld GPS will make the results look pretty bad.
 
     Be aware that this is not a precise conversion if your nmo correction had antenna
-    separation, or if you used adepth-variable velocity structure. This is because we have
+    separation, or if you used a depth-variable velocity structure. This is because we have
     a single vector describing depths in the data array, so only one value for each depth
     step.
 

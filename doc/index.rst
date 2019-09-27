@@ -56,15 +56,9 @@ The downside here is that I need to update version tags in order to update on Py
     cd impdar
     python setup.py install
 
-This requires `git <https://git-scm.com/downloads>`_. 
+This requires `git <https://git-scm.com/downloads>`_.
 
-If you want to run the bleeding-edge version with the picker, use 
-.. code-block:: bash
-
-    git clone https://github.com/dlilien/ImpDAR.git
-    git checkout picker
-    cd impdar
-    python setup.py install
+If you want to have the full suite of migration options, you will need a bit more.
 
 Contributing
 ------------

@@ -53,7 +53,8 @@ class RadarData(object):
                       'fn']
 
     from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
-        rangegain, agc, constant_space, elev_correct
+        rangegain, agc, constant_space, elev_correct, constant_sample_depth_spacing, \
+        traveltime_to_depth
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, _get_pick_targ_info
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
         winavg_hfilt, hfilt, vertical_band_pass, migrate
@@ -119,6 +120,8 @@ class RadarData(object):
 
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
+            if attr not in mat:
+                raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
             if mat[attr].shape == (1, 1):
                 setattr(self, attr, mat[attr][0][0])
             elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
@@ -170,6 +173,10 @@ class RadarData(object):
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
+
+        if (self.data.shape != (self.snum, self.tnum)) and (self.elev is None):
+            print(self.data.shape, (self.snum, self.tnum))
+            raise ImpdarError('The data shape does not match the snum and tnum values!!!')
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype

@@ -16,7 +16,7 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', gssi=False, pe=False, gprMax=False, gecko=False, segy=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -27,27 +27,12 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram. Default is None (plot radargram)
     power: int, optional
         If not None, then plot power returned from this layer
-    gssi: bool, optional
-        If True, fns are .DZT files
-    pe: bool, optional
-        If True, fns are Pulse Ekko files
+    filetype: str, optional
+        Type of input file. Default mat.
     x_range: tuple, optional
         The range of traces to plot in the radargram. Default is (0, -1) (plot all traces)
     """
-    if gssi and pe:
-        raise ValueError('Input cannot be both pulse-ekko and gssi')
-    if gssi:
-        radar_data = load('gssi', fns)
-    elif pe:
-        radar_data = load('pe', fns)
-    elif gecko:
-        radar_data = load('gecko', fns)
-    elif gprMax:
-        radar_data = load('gprMax', fns)
-    elif segy:
-        radar_data = load('segy', fns)
-    else:
-        radar_data = load('mat', fns)
+    radar_data = load(filetype, fns)
 
     if xd:
         xdat = 'dist'
@@ -193,7 +178,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         return im, xd, yd, x_range, lims
 
 
-def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
+def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyle='solid'):
     """Plot power vs depth or twtt in a trace
 
     Parameters
@@ -247,7 +232,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None):
         ax.set_ylabel('Depth (m)')
 
     for j in range(*tr):
-        ax.plot(dat.data[:, j], yd)
+        ax.plot(dat.data[:, j], yd, linewidth=linewidth, linestyle=linestyle)
 
     if lims[0] < 0 and lims[1] > 0:
         ax.set_xlim(lims[0], -lims[0])

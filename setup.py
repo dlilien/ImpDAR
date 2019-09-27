@@ -15,7 +15,7 @@ setuptools
 if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main', 'impproc=impdar.bin.impproc:main', 'imppick=impdar.bin.imppick:main', 'impplot=impdar.bin.impplot:main']
     setuptools.setup(name='impdar',
-                     version='0.5a',
+                     version='0.6a',
                      description='Scripts for impulse radar',
                      url='http://github.com/dlilien/impdar',
                      author='David Lilien',
@@ -23,5 +23,5 @@ if __name__ == '__main__':
                      license='GNU GPL-3.0',
                      entry_points={'console_scripts': console_scripts},
                      install_requires=['numpy>1.12.0', 'scipy>1.0.0', 'matplotlib>2.0.0', 'h5py'],
-                     packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui'],
+                     packages=['impdar', 'impdar.lib', 'impdar.bin', 'impdar.gui', 'impdar.lib.load', 'impdar.lib.RadarData'],
                      test_suite='nose.collector')
