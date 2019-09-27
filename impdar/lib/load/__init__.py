@@ -10,7 +10,7 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_mcords_mat, load_segy
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
@@ -70,12 +70,12 @@ def load(filetype, fns_in, channel=1):
     elif filetype == 'gprMax':
         dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
     elif filetype == 'mcords_nc':
-        if load_mcords_nc.NC:
-            dat = [load_mcords_nc.load_mcords_nc(fn) for fn in fns_in]
+        if load_mcords.NC:
+            dat = [load_mcords.load_mcords_nc(fn) for fn in fns_in]
         else:
             raise ImportError('You need netCDF4 in order to read the MCoRDS files')
     elif filetype == 'mcords_mat':
-        dat = [load_mcords_mat.load_mcords_mat(fn) for fn in fns_in]
+        dat = [load_mcords.load_mcords_mat(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
