@@ -57,7 +57,7 @@ class RadarData(object):
         traveltime_to_depth
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, _get_pick_targ_info
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
-        winavg_hfilt, hfilt, vertical_band_pass, migrate
+        winavg_hfilt, hfilt, vertical_band_pass, denoise, migrate
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):

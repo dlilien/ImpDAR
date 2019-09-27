@@ -9,7 +9,7 @@
 The class methods for filtering.
 """
 import numpy as np
-from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter
+from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter, wiener
 from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
@@ -48,7 +48,7 @@ def adaptivehfilt(self, *args, **kwargs):
 
     print('Adaptive filtering')
     # Create average trace for first (rough) scan of data
-    avg_trace = np.mean(self.data, axis=1)
+    #avg_trace = np.mean(self.data, axis=1)
     # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
     hfiltdata_mass = self.data.copy()
 
@@ -406,6 +406,34 @@ def vertical_band_pass(self,
     self.flags.bpass[0] = 1
     self.flags.bpass[1] = low
     self.flags.bpass[2] = high
+
+
+def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
+    """
+    Denoising filter
+
+    For now this just uses the scipy wiener filter,
+    We could experiment with other options though
+
+    Parameters
+    ---------
+    vert_win: int; optional
+        vertical window size
+    hor_win: int; optional
+        horizontal window size
+    noise: float; optional
+        power of noise reduction, default is the average of the local variance of the image
+    ftype: string; optional
+        filter type
+
+    """
+    if ftype == 'wiener':
+        if noise is None:
+            self.data = wiener(self.data,mysize=(vert_win,hor_win))
+        else:
+            self.data = wiener(self.data,mysize=(vert_win,hor_win),noise=noise)
+    else:
+        raise TypeError('Only the wiener filter has been implemented for denoising.')
 
 
 def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):

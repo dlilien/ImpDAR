@@ -69,7 +69,7 @@ def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
             d.save(out_fn)
 
 
-def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None, migrate=None, **kwargs):
+def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None, denoise=None, migrate=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData objects
 
     Parameters
@@ -84,6 +84,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         Horizontal filter subtracting average trace between (hfilt1, hfilt2). Default is None (no hfilt).
     ahfilt: bool, optional
         Adaptively horizontally filter the data.
+    denoise: bool, optional
+        denoising filter (only wiener for now).
     migrate: string, optional
         Migrates the data.
 
@@ -160,6 +162,11 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
             nmo = (nmo, 1.6)
         for dat in RadarDataList:
             dat.nmo(*nmo)
+        done_stuff = True
+
+    if denoise is not None:
+        for dat in RadarDataList:
+            dat.denoise(*denoise)
         done_stuff = True
 
     if interp is not None:
