@@ -136,7 +136,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
             d = minimize(optimize_moveout_depth,.5*t*uice,args=(t,ant_sep,d_interp,u_interp),
                          tol=1e-8,bounds=((0,0.5*t*uair),))['x'][0]
             u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
-        # get the upper leg of the trave_path triangle (direct arrival) from the antennae separation and the rms velocity
+        # get the upper leg of the trave_path triangle (direct arrival) from the antenna separation and the rms velocity
         tsep_ice = 1e6*(ant_sep / u_rms)
         # hypotenuese, adjust to 'transmit time' by adding the separation time
         thyp = t+tsep_ice

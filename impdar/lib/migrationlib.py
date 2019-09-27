@@ -399,8 +399,11 @@ def migrationSeisUnix(dat,
         raise FileNotFoundError('Cannot find chosen SeisUnix migration routine,' + mtype + '. Either install or choose a different migration routine.')
 
     # save to seisunix format for migration with SU routines
-    out_fn = os.path.splitext(dat.fn)[0] + '.sgy'
-    dat.save_as_segy(out_fn)
+    if dat.fn is None:
+        raise TypeError('Need a filename. Please save the file using the ImpDAR save function.')
+    else:
+        out_fn = os.path.splitext(dat.fn)[0] + '.sgy'
+        dat.save_as_segy(out_fn)
 
     # Get the trace spacing
     if np.mean(dat.trace_int) <= 0:
@@ -433,7 +436,6 @@ def migrationSeisUnix(dat,
                             stdin=ps2.stdout,
                             stdout=fout)
 
-            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
         # Fourier Finite Difference
         elif mtype == 'sumigffd':
             if vel_fn is None:
@@ -444,9 +446,9 @@ def migrationSeisUnix(dat,
                             'dz={:f}'.format(dz),
                             'dt={:f}'.format(dat.dt * 1.0e-6),
                             'dx={:f}'.format(dx)],
-                           stdout=sp.PIPE,
+                           stdout=fout,
                            stdin=ps2.stdout)
-            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
+
         # Stolt
         elif mtype == 'sustolt':
             ps3 = sp.Popen(['sustolt',
@@ -458,9 +460,8 @@ def migrationSeisUnix(dat,
                             'dxcdp={:f}'.format(dx),
                             'cdpmin=0',
                             'cdpmax={:d}'.format(dat.tnum)],
-                           stdout=sp.PIPE,
+                           stdout=fout,
                            stdin=ps2.stdout)
-            #ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE)
         else:
             ps1.stdout.close()
             ps2.communicate()
