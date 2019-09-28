@@ -9,7 +9,9 @@
 """
 A wrapper around the other loading utilities
 """
+
 import os.path
+import numpy as np
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy
 from ..RadarData import RadarData
 
@@ -101,9 +103,31 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
     channel: Receiver channel that the data were recorded on
         This is primarily for the St. Olaf HF data
     """
+
     if not isinstance(fns_in, (list, tuple)):
         fns_in = [fns_in]
-    dat = load(filetype, fns_in, channel=channel)
+
+    # If a pulse ekko project file is input. We need to partition it first
+    if filetype =='pe' and np.any(np.array([os.path.splitext(fn)[-1] for fn in fns_in]) == '.GPZ'):
+        for fn in fns_in:
+            if os.path.splitext(fn)[-1] != '.GPZ':
+                print(fn,'is NOT a Pulse Ekko Project File but we are partitioning now.'+\
+                        'Load it on its own.')
+                continue
+            else:
+                bn_pe = os.path.splitext(fn)[0]
+                print(fn,'is a Pulse Ekko project file.\n'+\
+                'We will partition it into the respective data and header files at ./'+\
+                bn_pe)
+                if not os.path.isdir(bn_pe):
+                    os.mkdir(bn_pe)
+                os.rename(fn,bn_pe+'/'+fn)
+                os.chdir(bn_pe)
+                load_pulse_ekko.partition_project_file(fn)
+                os.rename(fn,'../'+fn)
+        return
+    else:
+        dat = load(filetype, fns_in, channel=channel)
 
     if filetype == 'gecko' and len(fns_in) > 1:
         f_common = fns_in[0]
