@@ -164,9 +164,6 @@ def stacking(self,num_chirps=None):
 
     #TODO: update for stacking across multiple bursts
 
-    if self.flags.range == 0:
-        raise TypeError('Do the range conversion before stacking chirps.')
-
     if num_chirps == None:
         num_chirps = self.cnum
     elif num_chirps > self.cnum:
@@ -175,11 +172,13 @@ def stacking(self,num_chirps=None):
         num_chirps = self.cnum
 
     if num_chirps == self.cnum:
-        self.stacked_data = np.mean(np.real(self.data),axis=1)
+        self.data = np.reshape(np.mean(self.data,axis=1),(self.snum,1))
     else:
         data_hold = np.empty((self.cnum//num_chirps,self.snum))
         for i in range(self.cnum//num_chirps):
             data_hold[i,:] = np.mean(np.real(self.data[:,i*num_chirps:(i+1)*num_chirps]),axis=1)
-        self.stacked_data = data_hold
+        self.data = data_hold
+
+    self.cnum = np.shape(self.data)[1]
 
     self.flags.stack = num_chirps
