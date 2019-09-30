@@ -101,7 +101,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
 
 
     # need to crop out the pretrigger before doing the move-out
-    if self.trig > 0:
+    if np.any(self.trig > 0):
         raise ValueError('Crop out the pretrigger before doing the nmo correction.')
 
 

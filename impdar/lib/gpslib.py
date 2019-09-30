@@ -185,7 +185,9 @@ class RadarGPS(nmea_info):
 def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False, guess_offset=True):
     """Use new, better GPS data for lat, lon, and elevation
 
-    The interpolation in this function is done using the time since the radar has accurate timing from its GPS. The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist). I've dropped that dependency.
+    The interpolation in this function is done using the time since the radar has accurate timing from its GPS.
+    The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist).
+    I've dropped that dependency.
 
     Parameters
     ----------
@@ -218,6 +220,10 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
 
     if type(dats) not in [list, tuple]:
         dats = [dats]
+
+    for in_dat in [lat, lon, elev]:
+        if len(decday) != len(in_dat):
+            raise IndexError('lat, lon, elev, and decday must be the same length')
 
     offsets = [offset for i in dats]
     if guess_offset:
@@ -330,10 +336,8 @@ def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1
             kinematic_gps_mat(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
         elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
             kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset, **genfromtxt_kwargs)
-    else:
-        for dat in dats:
-            kinematic_gps_control(dat, dat.lat, dat.long, dat.elev, dat.decday, offset=0.0, extrapolate=extrapolate, guess_offset=False)
-            #raise ValueError('fn_type must be mat or csv')
+        else:
+            raise ValueError('Cannot identify fn filetype, must be mat or csv')
     if spacing is not None:
         for dat in dats:
             dat.constant_space(spacing, min_movement=min_movement)

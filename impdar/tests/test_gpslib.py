@@ -87,9 +87,10 @@ class TestGPS(unittest.TestCase):
         gpslib.interp(dats, 10., fn='dum.mat')
         self.assertTrue(len(mock_kgm.mock_calls) > 0)
         self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             gpslib.interp(dats, 10., fn='dum.badext')
 
+        dats = [NoInitRadarData(big=True)]
         dats[0].constant_space = MagicMock()
         gpslib.interp(dats, 10.)
         self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
