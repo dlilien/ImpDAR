@@ -415,7 +415,7 @@ def migrationSeisUnix(dat,
     if nz is None:
         nz = dat.snum
     if dz is None:
-        dz = vel/1e6 * dat.travel_time[-1] / 2 / dat.snum
+        dz = vel / 1.0e6 * dat.travel_time[-1] / 2 / dat.snum
 
     # Do the migration through the command line
     segy_name = os.path.splitext(dat.fn)[0]
@@ -423,7 +423,7 @@ def migrationSeisUnix(dat,
 
     ps1 = sp.Popen(['segyread', 'tape=' + segy_name + '.sgy'], stdout=sp.PIPE)
     ps2 = sp.Popen(['segyclean'], stdin=ps1.stdout, stdout=sp.PIPE)
-    with open(segy_name+'_mig.sgy','wb') as fout:
+    with open(segy_name + '_mig.sgy', 'wb') as fout:
         # Time Wavenumber
         if mtype == 'sumigtk':
             ps3 = sp.Popen(['sumigtk',
@@ -433,8 +433,8 @@ def migrationSeisUnix(dat,
                             'nxpad={:d}'.format(int(nxpad)),
                             'ltaper={:d}'.format(htaper),
                             'dxcdp={:f}'.format(dx)],
-                            stdin=ps2.stdout,
-                            stdout=fout)
+                           stdin=ps2.stdout,
+                           stdout=fout)
 
         # Fourier Finite Difference
         elif mtype == 'sumigffd':

@@ -147,7 +147,7 @@ class TestMigration(unittest.TestCase):
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sustolt.mat')
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(Exception):
             migrationlib.migrationSeisUnix(data)
 
     def tearDown(self):
