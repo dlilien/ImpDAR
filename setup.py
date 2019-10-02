@@ -13,7 +13,7 @@ import setuptools
 setuptools
 
 if __name__ == '__main__':
-    console_scripts = ['impdar=impdar.bin.impdar:main', 'impproc=impdar.bin.impproc:main', 'imppick=impdar.bin.imppick:main', 'impplot=impdar.bin.impplot:main']
+    console_scripts = ['impdar=impdar.bin.impdarexec:main', 'impproc=impdar.bin.impproc:main', 'imppick=impdar.bin.imppick:main', 'impplot=impdar.bin.impplot:main']
     setuptools.setup(name='impdar',
                      version='0.6a',
                      description='Scripts for impulse radar',
