@@ -220,7 +220,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.travel_time += pe_data.dt * 1.0e6
 
     # Now deal with the gps info
-    try:
+    if pe_data.version == '1.0':
         pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
         pe_data.lat = pe_data.gps_data.lat
         pe_data.long = pe_data.gps_data.lon
@@ -234,8 +234,9 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
         pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
                                        np.diff(pe_data.dist)))
-    except:
-        Warning('No GPS file.')
+        pe_data.check_attrs()
+    elif pe_data.version == '1.5.340':
+        print('GPS not implemented for version 1.5.340 yet.')
+        #pe_data.check_attrs()
 
-    #pe_data.check_attrs()
     return pe_data
