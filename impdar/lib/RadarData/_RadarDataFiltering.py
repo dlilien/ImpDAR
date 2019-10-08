@@ -14,7 +14,7 @@ from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
 
-def adaptivehfilt(self, *args, **kwargs):
+def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     """Adaptively filter to reduce noise in upper layers
 
     This subtracts the average of traces around an individual trace in order to filter it.
@@ -47,21 +47,19 @@ def adaptivehfilt(self, *args, **kwargs):
     """
 
     print('Adaptive filtering')
-    # Create average trace for first (rough) scan of data
-    avg_trace = np.mean(self.data, axis=1)
     # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
     hfiltdata_mass = self.data.copy()
 
     # Preallocate array
-    avg_trace_scale = np.zeros_like(self.travel_time)
+    avg_trace_scale = np.ones_like(self.travel_time)
 
     # create a piecewise scaling function (insures that the filter only affects
     # the top layers of data)
     mask = self.travel_time <= 0.3 * np.max(self.travel_time)
     mtt = np.max(self.travel_time)
     transition = 0.1 * mtt
-    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (self.travel_time[mask] - transition) / mtt ** 2. + 1
-    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (((self.travel_time[~mask] - transition) - 0.2 * mtt) * ((self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (self.travel_time[mask] - transition) / mtt ** 2. + 1
+    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (((self.travel_time[~mask] - transition) - 0.2 * mtt) * ((self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
 
     # preallocate array
     hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
@@ -69,12 +67,12 @@ def adaptivehfilt(self, *args, **kwargs):
     # begin looping through data
     for i in range(int(self.tnum)):
         # build a packet of 100 traces around the trace in question
-        if i <= 50:
-            scpacket = hfiltdata_mass[:, 0:100 - i]
-        elif i >= self.tnum - 50:
-            scpacket = hfiltdata_mass[:, int(self.tnum) - 100:int(self.tnum)]
+        if i <= window_size // 2:
+            scpacket = hfiltdata_mass[:, 0:window_size // 2 + i]
+        elif i >= self.tnum - window_size // 2:
+            scpacket = hfiltdata_mass[:, int(self.tnum) - window_size:int(self.tnum)]
         else:
-            scpacket = hfiltdata_mass[:, i - 49:i + 50]
+            scpacket = hfiltdata_mass[:, i - window_size // 2 + 1:i + window_size // 2]
 
         # average the packet horizontally and double filter it (allows the
         # program to maintain small horizontal artifacts that are likely real)

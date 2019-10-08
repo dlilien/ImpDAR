@@ -38,6 +38,11 @@ install:
 - pip install mock
 - pip install .
 
+matrix:
+  allow_failures:
+      - python: 2.7
+        env: seisunix_inc=true
+
 cache:
     directories:
       - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1

@@ -202,7 +202,6 @@ def load_gssi(fn_dzt, *args, **kwargs):
         dzt_data.elev = dzt_data.gps_data.z
 
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
-        print(dzt_data.create)
         day_offset = dzt_data.create - timezero
         tmin = day_offset.days + np.min(dzt_data.gps_data.dectime)  + 377.  # matlab compat
         tmax = day_offset.days + np.max(dzt_data.gps_data.dectime) + 377.

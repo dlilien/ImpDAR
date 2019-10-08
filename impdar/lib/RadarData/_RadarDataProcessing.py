@@ -360,9 +360,8 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
         if getattr(self, var) is not None and isinstance(getattr(self, var), np.ndarray):
             setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
 
-    # More complex modifications for these two
+    # More complex modifications for this
     self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
-    self.travel_time = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
 
     # Finally tnum
     self.tnum = self.data.shape[1]
@@ -390,7 +389,6 @@ def restack(self, traces):
     trace_int = np.zeros((tnum, ))
     oned_restack_vars = ['dist',
                          'pressure',
-                         'trig_level',
                          'lat',
                          'long',
                          'x_coord',
@@ -401,7 +399,7 @@ def restack(self, traces):
     for j in range(tnum):
         stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],
                               axis=1)
-        trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
+        # trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
         for var, val in oned_newdata.items():
             if val is not None:
                 val[j] = np.mean(getattr(self, var)[j * traces:

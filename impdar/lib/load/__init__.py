@@ -10,13 +10,13 @@
 A wrapper around the other loading utilities
 """
 import os.path
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_mcords_mat, load_segy, load_UoA_mat
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords_nc, load_mcords_mat, load_segy, load_UoA_mat, load_ramac
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc', 'UoA_mat']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac']
 
 
 def load(filetype, fns_in, channel=1):
@@ -79,6 +79,8 @@ def load(filetype, fns_in, channel=1):
         dat = [load_mcords_mat.load_mcords_mat(fn) for fn in fns_in]
     elif filetype == 'UoA_mat':
         dat = [load_UoA_mat.load_UoA_mat(fn) for fn in fns_in]
+    elif filetype == 'ramac':
+        dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
     return dat

@@ -16,7 +16,7 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', pick_colors=None, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -54,7 +54,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
     elif spectra:
         figs = [plot_specdense(dat, freq_limit, window, scaling) for dat in radar_data]
     else:
-        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
+        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None, pick_colors=pick_colors) for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
         if dat.fn is not None:
@@ -351,6 +351,9 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
                 cl = colors
             else:
                 cl = ('none', colors, 'none')
+        elif type(colors) == bool and colors:
+            colors = [None for i in range(rd.picks.samp1.shape[0])]
+            variable_colors = True
         elif not len(colors) == rd.picks.samp1.shape[0]:
             raise ValueError('If not a string, must have same length as the picks')
         else:
@@ -358,7 +361,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
 
     for i in range(rd.picks.samp1.shape[0]):
         if variable_colors:
-            if len(colors[i]) == 3:
+            if hasattr(colors[i], '__len__') and len(colors[i]) == 3:
                 cl = colors[i]
             else:
                 cl = ('none', colors[i], 'none')

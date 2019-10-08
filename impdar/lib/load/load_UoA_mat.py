@@ -9,7 +9,9 @@ This allows easy colorbar adjustment, interpolation to geospatial coordinates, a
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
 from ..RadarData import RadarData
+from ..gpslib import nmea_info
 import h5py
 
 
@@ -29,14 +31,27 @@ def load_UoA_mat(fn_mat):
         UoA_data.trace_num = np.arange(UoA_data.tnum) + 1
         UoA_data.travel_time = fin['Data']['time1'][:].flatten() * 1.0e6
         UoA_data.dt = np.mean(np.diff(UoA_data.travel_time)) * 1.0e-6
-        UoA_data.decday = fin['INS_GPS']['POSIX_time'][:].flatten() / (24. * 60. * 60.)  # Stored in seconds
+        nminfo = nmea_info()
+        nminfo.time = fin['INS_GPS']['POSIX_time'][:].flatten() / (24. * 60. * 60.)  # Stored in seconds
+        nminfo.ppstime = fin['INS_GPS']['pps_cntr'][:].flatten()
+        nminfo.lat = fin['INS_GPS']['latitude'][:].flatten()
+        nminfo.lon = fin['INS_GPS']['longitude'][:].flatten()
+        nminfo.elev = fin['INS_GPS']['altitude_MSL'][:].flatten()
+        nminfo.get_utm()
+        nminfo.get_dist()
+
+        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.x_coord = interp1d(nminfo.ppstime, nminfo.x)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.y_coord = interp1d(nminfo.ppstime, nminfo.y)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.dist = interp1d(nminfo.ppstime, nminfo.dist)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev)(fin['Data']['PPS_Time'][:].flatten())
+        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time)(fin['Data']['PPS_Time'][:].flatten())
         UoA_data.trace_int = UoA_data.decday[1] - UoA_data.decday[0]
-        UoA_data.lat = fin['INS_GPS']['latitude'][:].flatten()
-        UoA_data.long = fin['INS_GPS']['longitude'][:].flatten()
         UoA_data.pressure = np.zeros_like(UoA_data.decday)
         UoA_data.trig = np.zeros_like(UoA_data.decday).astype(int)
         UoA_data.trig_level = 0.
-        if fn_mat[-10:] == '_files.matdfa':
+        if fn_mat[-10:] == '_files.mat':
             UoA_data.chan = 999
         else:
             if 'hannel' in fn_mat:
