@@ -12,13 +12,13 @@ A wrapper around the other loading utilities
 
 import os.path
 import numpy as np
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_delores
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc','delores']
 
 
 def load(filetype, fns_in, channel=1):
@@ -78,6 +78,8 @@ def load(filetype, fns_in, channel=1):
             raise ImportError('You need netCDF4 in order to read the MCoRDS files')
     elif filetype == 'mcords_mat':
         dat = [load_mcords.load_mcords_mat(fn) for fn in fns_in]
+    elif filetype == 'delores':
+        dat = [load_delores.load_delores(fn, channel=channel) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
