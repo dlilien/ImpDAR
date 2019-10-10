@@ -12,7 +12,7 @@ Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
 
 import os
 from .RadarData import RadarData
-from .load import load_gssi, load_pulse_ekko, load_segy
+from .load import load_gssi, load_pulse_ekko, load_segy, load_mcords
 
 
 def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
@@ -53,6 +53,10 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             loaders = [load_gssi.load_gssi for i in fns_in]
         elif in_fmt == 'pe':
             loaders = [load_pulse_ekko.load_pe for i in fns_in]
+        elif in_fmt == 'mcords_nc':
+            loaders = [load_mcords.load_mcords_nc for i in fns_in]
+        elif in_fmt == 'mcords_mat':
+            loaders = [load_mcords.load_mcords_mat for i in fns_in]
         elif in_fmt == 'sgy':
             if not load_segy.SEGY:
                 raise ImportError('You cannot use segy without segyio installed!')
