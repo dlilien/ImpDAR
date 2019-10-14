@@ -32,6 +32,7 @@ def load_mcords_nc(fn):
     """
 
     mcords_data = RadarData(None)
+    mcords_data.fn = fn
 
     if not NC:
         raise ImportError('Cannot load MCoRDS without netcdf4')
@@ -73,6 +74,7 @@ def load_mcords_mat(fn_mat):
     """
 
     mcords_data = RadarData(None)
+    mcords_data.fn = fn_mat
 
     mat = loadmat(fn_mat)
     if ('Data' not in mat) or ('Longitude' not in mat):

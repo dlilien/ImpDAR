@@ -157,6 +157,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     """Load data from a pulse_ekko file"""
 
     pe_data = RadarData(None)
+    pe_data.fn = fn_dt1
     bn_pe = os.path.splitext(fn_dt1)[0]
     hdname = bn_pe + '.HD'
     true_fn = bn_pe + '.DT1'

@@ -32,6 +32,7 @@ def load_gprMax(fn_h5, *args, **kwargs):
         raise ImportError('You need H5 to load gprMax')
 
     h5_data = RadarData(None)
+    h5_data.fn = fn_h5
 
     # open the h5 file
     with h5py.File(fn_h5) as f_in:

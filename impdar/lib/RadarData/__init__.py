@@ -62,6 +62,9 @@ class RadarData(object):
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
         if fn_mat is None:
+            # Store this for possible later filename modification
+            self.fn = fn_mat
+
             # Write these out so we can document them
             # Very basics
             self.snum = None  #: int number of samples per trace
@@ -133,7 +136,7 @@ class RadarData(object):
             if attr in mat:
                 if mat[attr].shape == (1, 1):
                     setattr(self, attr, mat[attr][0][0])
-                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                elif mat[attr].shape[0] == 1 or (len(mat[attr].shape) > 1 and mat[attr].shape[1] == 1):
                     setattr(self, attr, mat[attr].flatten())
                 else:
                     setattr(self, attr, mat[attr])
@@ -161,7 +164,9 @@ class RadarData(object):
         ------
         ImpdarError
             If any required attribute is None or any optional attribute is fully absent"""
-        for attr in self.attrs_guaranteed:
+
+        # fn is required but defined separately
+        for attr in self.attrs_guaranteed + ['fn']:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))

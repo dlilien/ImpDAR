@@ -29,6 +29,7 @@ class NoInitRadarData(RadarData):
             self.data = np.zeros((10, 20))
             self.travel_time = np.arange(self.data.shape[0])
 
+        self.fn = ''
         self.tnum = self.data.shape[1]
         self.snum = self.data.shape[0]
         self.dist = np.arange(self.tnum,)
@@ -46,6 +47,7 @@ class NoInitRadarDataFiltering(RadarData):
 
     def __init__(self):
         super(NoInitRadarDataFiltering, self).__init__(None)
+        self.fn = ''
         self.data = DATA_DUMMY.copy()
         self.dt = 0.1
         self.tnum = self.data.shape[1]

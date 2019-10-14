@@ -50,6 +50,13 @@ else:
         raise ImportError('Cannot convert coordinates: osr not importable')
 
 
+def hhmmss2dec(times):
+    s = times % 100
+    m = (times % 10000 - s) / 100
+    h = (times - m * 100 - s) / 10000
+    return (h + m / 60.0 + s / 3600.0) / 24.0
+
+
 class nmea_info:
     """Container for general information about lat, lon, etc.
 
@@ -139,10 +146,7 @@ class nmea_info:
 
     @property
     def dectime(self):
-        s = self.times % 100
-        m = (self.times % 10000 - s) / 100
-        h = (self.times - m * 100 - s) / 10000
-        return (h + m / 60.0 + s / 3600.0) / 24.0
+        return hhmmss2dec(self.times)
 
 
 def nmea_all_info(list_of_sentences):
