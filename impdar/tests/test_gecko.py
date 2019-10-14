@@ -28,6 +28,17 @@ class TestLoadGecko(unittest.TestCase):
         load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=1)
         load_olaf.load_olaf(os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), channel=2)
 
+    def test_common_start(self):
+        start = load_olaf._common_start('abra', 'abracadabra')
+        self.assertEqual('abra', start)
+
+        start = load_olaf._common_start('abra', 'abra')
+        self.assertEqual('abra', start)
+
+        start = load_olaf._common_start('', 'abra')
+        self.assertEqual('', start)
+
+
 
 if __name__ == '__main__':
     unittest.main()
