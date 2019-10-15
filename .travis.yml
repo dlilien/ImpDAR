@@ -50,11 +50,6 @@ cache:
       - $CWPROOT
       - $HOME/.cache/pip
 
-matrix:
-    allow_failures:
-        - python: 2.7
-          env: seisunix_inc=true
-
 deploy:
   provider: pypi
   user: dlilien

@@ -34,8 +34,7 @@ if __name__ == '__main__':
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
                              sources=["impdar/lib/migrationlib/_mig_cython" + ext,
-                                      "impdar/lib/migrationlib/mig_cython.c",
-                                      "impdar/lib/migrationlib/interpolation_c.c"],
+                                      "impdar/lib/migrationlib/mig_cython.c"],
                              include_dirs=[np.get_include()])]
     if CYTHON:
         from Cython.Build import cythonize
