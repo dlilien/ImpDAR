@@ -72,6 +72,7 @@ class TestMain(unittest.TestCase):
         with patch('argparse.ArgumentParser._print_message', argparse_mock):
             with self.assertRaises(SystemExit):
                 imppick.main()
+
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)
@@ -89,6 +90,7 @@ class TestMain(unittest.TestCase):
         with patch('argparse.ArgumentParser._print_message', argparse_mock):
             with self.assertRaises(SystemExit):
                 imppick.main()
+
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)
@@ -107,6 +109,7 @@ class TestMain(unittest.TestCase):
         with patch('argparse.ArgumentParser._print_message', argparse_mock):
             with self.assertRaises(SystemExit):
                 imppick.main()
+
         self.assertTrue(load_patch.called)
         load_patch.asseert_called_with('mat', ['fn'])
         self.assertTrue(pick_patch.called)

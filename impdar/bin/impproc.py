@@ -103,6 +103,12 @@ def _get_args():
     parser_geolocate.add_argument('--guess', action='store_true', help='Guess at offset')
     add_def_args(parser_geolocate)
 
+    # Denoise
+    parser_denoise = add_procparser(subparsers, 'denoise', 'Denoising filter for the data image', denoise, defname='denoise')
+    parser_denoise.add_argument('vert_win', type=int, help='Size of filtering window in vertical (number of samples)')
+    parser_denoise.add_argument('hor_win', type=int, help='Size of filtering window in horizontal (number of traces)')
+    add_def_args(parser_denoise)
+
     # Migration
     parser_mig = add_procparser(subparsers, 'migrate', 'Migration', mig, defname='migrated')
     parser_mig.add_argument('--mtype', type=str, default='phsh', choices=['stolt', 'kirch', 'phsh', 'tk', 'sumigtk', 'sustolt', 'sumigffd'], help='Migration routines.')
@@ -230,6 +236,10 @@ def interp(dats, spacing, gps_fn, offset=0.0, minmove=1.0e-2, extrapolate=False,
 
 def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
     interpdeep(dats, spacing=None, fn=gps_fn, extrapolate=extrapolate, guess_offset=guess)
+
+
+def denoise(dat, vert_win=1, hor_dim=10, noise=None, ftype='wiener', **kwargs):
+    dat.denoise(vert_win=vert_win, hor_dim=hor_dim, noise=noise, ftype=ftype)
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0, verbose=0, vel_fn=None, nxpad=1, nearfield=False, **kwargs):

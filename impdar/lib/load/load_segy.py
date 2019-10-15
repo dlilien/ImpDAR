@@ -26,14 +26,14 @@ def load_segy(fn_sgy, *args, **kwargs):
     if not SEGY:
         raise ImportError('Need segyio to load SGY files')
     segy_data = RadarData(None)
-    segy_data.f = segyio.open(fn_sgy, ignore_geometry=True)
-    where_good = np.where(segy_data.f.attributes(
-        segyio.TraceField.SourceX)[:] == segy_data.f.attributes(segyio.TraceField.SourceX)[0])[0]
-    segy_data.data = segyio.tools.collect(
-        segy_data.f.trace[where_good[0]:where_good[-1] + 1]).transpose()
-    segy_data.snum = segy_data.f.bin[segyio.BinField.Samples]
+    segy_data.fn = fn_sgy
+    f = segyio.open(fn_sgy, ignore_geometry=True)
+    where_good = np.where(f.attributes(
+        segyio.TraceField.SourceX)[:] == f.attributes(segyio.TraceField.SourceX)[0])[0]
+    segy_data.data = segyio.tools.collect(f.trace[where_good[0]:where_good[-1] + 1]).transpose()
+    segy_data.snum = f.bin[segyio.BinField.Samples]
     segy_data.tnum = segy_data.data.shape[1]
-    segy_data.dt = segy_data.f.bin[segyio.BinField.Interval] * 1.0e-12
+    segy_data.dt = f.bin[segyio.BinField.Interval] * 1.0e-12
     segy_data.travel_time = np.arange(segy_data.snum) * segy_data.dt * 1.0e6
     segy_data.trace_num = np.arange(segy_data.data.shape[1]) + 1
     segy_data.flags = RadarFlags()

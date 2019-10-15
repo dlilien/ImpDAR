@@ -16,7 +16,7 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', pick_colors=None, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', pick_colors=None, ft=False, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -53,6 +53,8 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         figs = [plot_power(radar_data, power)]
     elif spectra:
         figs = [plot_specdense(dat, freq_limit, window, scaling) for dat in radar_data]
+    elif ft:
+        figs = [plot_ft(dat) for dat in radar_data]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None, pick_colors=pick_colors) for dat in radar_data]
 
@@ -176,6 +178,20 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         return fig, ax
     else:
         return im, xd, yd, x_range, lims
+
+
+def plot_ft(dat, fig=None, ax=None):
+    fft = np.fft.fft(dat.data)
+    fft_dat = np.mean(np.sqrt(fft.real ** 2.0 + fft.imag ** 2.0), axis=1)
+    freq = np.fft.fftfreq(dat.snum) / dat.dt
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(freq / 1.0e6, fft_dat)
+    ax.set_xlabel('Freq (MHz)')
+    return fig, ax
 
 
 def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyle='solid'):

@@ -13,13 +13,15 @@ Earth and Space Sciences
 Mar 12 2019
 
 """
+
+import sys
 import os
 import unittest
 import subprocess as sp
 import numpy as np
-
 from impdar.lib import migrationlib
 from impdar.lib.migrationlib import mig_python
+
 try:
     from impdar.lib.migrationlib import mig_cython
     CYTHON = True
@@ -126,7 +128,7 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
-    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix or segy not found')
+    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY) or (sys.version_info[0] < 3), 'SeisUnix not found')
     def test_sumigtk(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
@@ -134,7 +136,7 @@ class TestMigration(unittest.TestCase):
         data.fn = os.path.join(THIS_DIR, 'input_data', 'rectangle_sumigtk.mat')
         migrationlib.migrationSeisUnix(data, quiet=True)
 
-    @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or (not load_segy.SEGY), 'SeisUnix or segy not found')
+    @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY) or (sys.version_info[0] < 3), 'SeisUnix not found')
     def test_sustolt(self):
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9

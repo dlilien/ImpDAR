@@ -117,6 +117,7 @@ def load_gssi(fn_dzt, *args, **kwargs):
     but ImpDAR does not use all this information
     """
     dzt_data = RadarData(None)
+    dzt_data.fn = fn_dzt
     with open(fn_dzt, 'rb') as fid:
         lines = fid.read()
     # tag = struct.unpack('<H', lines[0:2])[0]
@@ -203,7 +204,7 @@ def load_gssi(fn_dzt, *args, **kwargs):
 
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = dzt_data.create - timezero
-        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime)  + 377.  # matlab compat
+        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime) + 377.  # matlab compat
         tmax = day_offset.days + np.max(dzt_data.gps_data.dectime) + 377.
         dzt_data.decday = np.linspace(tmin, tmax, dzt_data.tnum)
         dzt_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(dzt_data.dist))),

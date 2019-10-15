@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-
+Test converting between filetypes
 """
 import os
 import unittest
@@ -53,17 +53,17 @@ class TestConvert(unittest.TestCase):
     @unittest.skipIf(SEGY, 'SEGY enabled, this is a failure test')
     def test_nosegy(self):
         with self.assertRaises(ImportError):
-            convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'mat', in_fmt='segy')
+            convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'mat', in_fmt='sgy')
 
         with self.assertRaises(ImportError):
-            convert.convert([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], 'segy', in_fmt='mat')
+            convert.convert([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], 'sgy', in_fmt='mat')
 
     @unittest.skipIf(not SEGY, 'SEGY needed for this test')
     def test_segy_save(self):
-        convert.convert(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), 'segy', in_fmt='mat')
-        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data.segy')))
+        convert.convert(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), 'sgy', in_fmt='mat')
+        self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data.sgy')))
 
-        convert.convert(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'), 'mat', in_fmt='segy')
+        convert.convert(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'), 'mat', in_fmt='sgy')
 
     def test_badinsout(self):
         with self.assertRaises(ValueError):
@@ -72,7 +72,7 @@ class TestConvert(unittest.TestCase):
             convert.convert([os.path.join(THIS_DIR, 'input_data', 'small_data.wtf')], 'shp')
 
     def tearDown(self):
-        for ext in ['shp', 'shx', 'dbf', 'prj', 'segy']:
+        for ext in ['shp', 'shx', 'dbf', 'prj', 'sgy']:
             for pref in ['small_data', 'test_gssi', 'test_pe']:
                 if os.path.exists(os.path.join(THIS_DIR, 'input_data', pref + '.' + ext)):
                     os.remove(os.path.join(THIS_DIR, 'input_data', pref + '.' + ext))

@@ -41,9 +41,24 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
+    version = '0.7a'
+    packages = ['impdar',
+                'impdar.lib',
+                'impdar.bin',
+                'impdar.gui',
+                'impdar.gui.ui',
+                'impdar.lib.load',
+                'impdar.lib.RadarData',
+                'impdar.lib.migrationlib']
+
+    requires = ['numpy>1.12.0',
+                'scipy>1.0.0',
+                'matplotlib>2.0.0',
+                'h5py']
+
     try:
         setuptools.setup(name='impdar',
-                         version='0.5a',
+                         version=version,
                          description='Scripts for impulse radar',
                          url='http://github.com/dlilien/impdar',
                          author='David Lilien',
@@ -51,37 +66,19 @@ if __name__ == '__main__':
                          license='GNU GPL-3.0',
                          entry_points={'console_scripts': console_scripts},
                          ext_modules=ext_modules,
-                         install_requires=['numpy>1.12.0',
-                                           'scipy>1.0.0',
-                                           'matplotlib>2.0.0',
-                                           'h5py'],
-                         packages=['impdar',
-                                   'impdar.lib',
-                                   'impdar.bin',
-                                   'impdar.gui',
-                                   'impdar.lib.load',
-                                   'impdar.lib.RadarData',
-                                   'impdar.lib.migrationlib'],
+                         install_requires=requires,
+                         packages=packages,
                          test_suite='nose.collector')
     except SystemExit:
         print('Failed to compile c-sources. Using pure python version')
         setuptools.setup(name='impdar',
-                         version='0.5a',
+                         version=version,
                          description='Scripts for impulse radar',
                          url='http://github.com/dlilien/impdar',
                          author='David Lilien',
                          author_email='dal22@uw.edu',
                          license='GNU GPL-3.0',
                          entry_points={'console_scripts': console_scripts},
-                         install_requires=['numpy>1.12.0',
-                                           'scipy>1.0.0',
-                                           'matplotlib>2.0.0',
-                                           'h5py'],
-                         packages=['impdar',
-                                   'impdar.lib',
-                                   'impdar.bin',
-                                   'impdar.gui',
-                                   'impdar.lib.load',
-                                   'impdar.lib.RadarData',
-                                   'impdar.lib.migrationlib'],
+                         install_requires=requires,
+                         packages=packages,
                          test_suite='nose.collector')

@@ -1,10 +1,19 @@
 #! /usr/bin/env python
-# this is a not done function to read pulse ekko data into matlab and
-# convert to stro_radar format
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+#
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+#
+# Distributed under terms of the GNU GPL3.0 license.
+
+"""
+Read Pulse Ekko data
+
 # Knut Christianson 6 April 2017; 20 May 2017
 # Pythonized by David Lilien, May 2018
 # Distributed under the GNU GPL3 license
-"""Read Pulse Ekko data"""
+# Benjamin Hills Added capability for v.1.5.340; Sept 27 2019
+"""
 
 import os.path
 import struct
@@ -71,7 +80,7 @@ def _get_gps_data(fn_gps, trace_nums):
 
     Parameters
     ----------
-    fn: str
+    fn_gps: str
         A dzg file with ggis and gga strings.
     rev: bool, optional
         Reverse the points in this file (used for concatenating radar files). Default False.
@@ -90,28 +99,95 @@ def _get_gps_data(fn_gps, trace_nums):
     return data
 
 
+def partition_project_file(fn_project):
+    """
+    The new pulse ekko dvl writes 'project' files with all the profiles stored together
+    We want to break them out into all the .HD header files and .DT1 data files.
+
+    Parameters
+    --------
+    fn_project: str
+        Filename for the .gpz project file
+    """
+
+    with open(fn_project, 'rb') as fin:
+        f = fin.read()
+
+    profile_num = 1
+    while f.find(b'line%d'%profile_num) != -1:
+        # Get the header file
+        hd_start = f.find(b'line%d.hd'%(profile_num))
+        hd_end = f[hd_start:].find(b'PK')+hd_start
+        hd_str = str(f[hd_start:hd_end])
+        hd_lines = hd_str.split('\\r\\n')
+        hd_lines[0] = hd_lines[0][2:]
+        hd_lines[-1] = ''
+
+        # Get the 'ini' file
+        ini_start = f.find(b'line%d.ini'%(profile_num))
+        ini_end = f[ini_start:].find(b'PK')+ini_start
+        ini_str = str(f[ini_start:ini_end])
+        for i,line in enumerate(ini_str.split('\\r\\n')):
+            if i == 0:
+                hd_lines.append(line[2:len('line%d.ini'%(profile_num))+2])
+                hd_lines.append(line[len('line%d.ini'%(profile_num))+2:])
+            elif i == len(ini_str.split('\\r\\n'))-1:
+                continue
+            else:
+                hd_lines.append(line)
+
+        # Write to the header file
+        with open('LINE'+str(profile_num)+'.HD','w') as fout:
+            for line in hd_lines:
+                fout.write(line+'\n')
+
+        # Get the data file
+        dt_start = f.find(b'line%d.dt1'%(profile_num))
+        dt_start += len(b'line%d.dt1'%(profile_num))
+        dt_end = f[dt_start:].find(b'Lineset')+dt_start
+        dt_str = f[dt_start:dt_end]
+        # Write to the data file
+        with open('LINE'+str(profile_num)+'.DT1','wb') as fout:
+            fout.write(dt_str)
+
+        profile_num += 1
+
+
 def load_pe(fn_dt1, *args, **kwargs):
     """Load data from a pulse_ekko file"""
+
     pe_data = RadarData(None)
+    pe_data.fn = fn_dt1
     bn_pe = os.path.splitext(fn_dt1)[0]
     hdname = bn_pe + '.HD'
     true_fn = bn_pe + '.DT1'
     gps_fn = bn_pe + '.GPS'
 
     with open(hdname, 'rU') as fin:
+        if fin.read().find('pulseEKKO') == -1:
+            pe_data.version = '1.0'
+        else:
+            pe_data.version = '1.5.340'
+        fin.seek(0)
         for i, line in enumerate(fin):
-            if 'TRACES' in line:
+            if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
-            if 'PTS' in line:
+            if 'PTS' in line or 'NUMBER OF PTS/TRC' in line:
                 pe_data.snum = int(line.rstrip('\n\r ').split(' ')[-1])
-            if 'WINDOW' in line:
+            if 'WINDOW' in line or 'TOTAL TIME WINDOW' in line:
                 window = float(line.rstrip('\n\r ').split(' ')[-1])
-            if 'TIMEZERO' in line:
+            if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
                 pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1]))
-            if i == 4:
-                doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
+            if i == 4 and pe_data.version == '1.0':
+                doy = (int(line[:4]),int(line[5:7]),int(line[8:10]))
+            if i == 2 and pe_data.version == '1.5.340':
+                doy = (int(line[6:10]),int(line[:2]),int(line[3:5]))
 
-    pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
+    if pe_data.version == '1.0':
+        pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
+    elif pe_data.version == '1.5.340':
+        pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.float32)
+
     pe_data.traceheaders = TraceHeaders(pe_data.tnum)
     with open(true_fn, 'rb') as fin:
         lines = fin.read()
@@ -120,9 +196,17 @@ def load_pe(fn_dt1, *args, **kwargs):
     for i in range(pe_data.tnum):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
-        pe_data.data[:, i] = struct.unpack('<{:d}h'.format(pe_data.snum),
-                                           lines[offset: offset + pe_data.snum * 2])
-        offset += pe_data.snum * 2
+        if pe_data.version == '1.0':
+            trace = struct.unpack('<{:d}h'.format(pe_data.snum),lines[offset: offset + pe_data.snum * 2])
+            offset += pe_data.snum * 2
+        elif pe_data.version == '1.5.340':
+            fmt = '<%df' % (len(lines[offset: offset + pe_data.snum*4]) // 4)
+            trace = struct.unpack(fmt,lines[offset: offset + pe_data.snum * 4])
+            offset += pe_data.snum * 4
+
+        trace -= np.nanmean(trace[:100])
+        pe_data.data[:,i] = trace.copy()
+
 
     # known vars that are not really set
     pe_data.chan = 1
@@ -137,19 +221,23 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.travel_time += pe_data.dt * 1.0e6
 
     # Now deal with the gps info
-    pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
-    pe_data.lat = pe_data.gps_data.lat
-    pe_data.long = pe_data.gps_data.lon
-    pe_data.x_coord = pe_data.gps_data.x
-    pe_data.y_coord = pe_data.gps_data.y
-    pe_data.dist = pe_data.gps_data.dist.flatten()
-    pe_data.elev = pe_data.gps_data.z
+    if pe_data.version == '1.0':
+        pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
+        pe_data.lat = pe_data.gps_data.lat
+        pe_data.long = pe_data.gps_data.lon
+        pe_data.x_coord = pe_data.gps_data.x
+        pe_data.y_coord = pe_data.gps_data.y
+        pe_data.dist = pe_data.gps_data.dist.flatten()
+        pe_data.elev = pe_data.gps_data.z
+        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
+        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
+        pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
+        pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
+                                       np.diff(pe_data.dist)))
+        pe_data.check_attrs()
+    elif pe_data.version == '1.5.340':
+        print('GPS not implemented for version 1.5.340 yet.')
+        #pe_data.check_attrs()
 
-    day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
-    tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
-    tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
-    pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
-    pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
-                                   np.diff(pe_data.dist)))
-    pe_data.check_attrs()
     return pe_data

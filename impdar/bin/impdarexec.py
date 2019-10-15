@@ -63,6 +63,8 @@ def _get_args():
                                      First argument is the new spacing, in meters. \
                                      Second argument is the filename (csv or mat) \
                                      with the new GPS data')
+    parser_proc.add_argument('-denoise', type=str,
+                             help='Denoising filter (scipy wiener for now)')
     parser_proc.add_argument('-migrate', type=str,
                              help='Migrate the data with the indicated routine.')
     parser_proc.add_argument('fn', type=str, nargs='+', help='File(s) to process')

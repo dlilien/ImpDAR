@@ -1,10 +1,10 @@
-dist: trusty
+dist: xenial
 language: python
 python:
 - '2.7'
 - '3.5'
 - '3.6'
-- 3.7-dev
+- '3.7'
 
 services:
       - xvfb
@@ -31,7 +31,7 @@ install:
 - if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; export CPLUS_INCLUDE_PATH=/usr/include/gdal; export C_INCLUDE_PATH=/usr/include/gdal; pip install gdal==1.10.0; fi
   # for seisunix we need to spoof the license to prevent prompting
   # fix the version to avoid problems with this
-- if [ "$seisunix_inc" = true ] ; export thisdir=$PWD; then sudo apt-get install gfortran ; git clone https://github.com/JohnWStockwellJr/SeisUnix $HOME/seisunix; cd $CWPROOT/src ; git checkout 7ee78c1b70f258fc406385e6bb752fe2bdb35850 ; mv configs/Makefile.config_Linux_x86_64 Makefile.config; touch LICENSE_44R14_ACCEPTED; touch MAILHOME_44R14; make install <<< y; make finstall <<< y; cd $thisdir; fi
+- if [ "$seisunix_inc" = true ] ; then export thisdir=$PWD; mkdir $CWPROOT; cd $CWPROOT; sudo apt-get install gfortran ; wget 'https://nextcloud.seismic-unix.org/index.php/s/LZpzc8jMzbWG9BZ/download?path=%2F&files=cwp_su_all_44R16.tgz'; tar -xvf 'download?path=%2F&files=cwp_su_all_44R16.tgz'; cd $CWPROOT/src ; mv configs/Makefile.config_Linux_x86_64 Makefile.config; touch LICENSE_44R14_ACCEPTED; touch MAILHOME_44R14; make install <<< y; cd $thisdir; fi
 - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
 - pip install -r requirements.txt
 - pip install coveralls
@@ -50,6 +50,11 @@ cache:
       - $CWPROOT
       - $HOME/.cache/pip
 
+matrix:
+    allow_failures:
+        - python: 2.7
+          env: seisunix_inc=true
+
 deploy:
   provider: pypi
   user: dlilien
@@ -58,7 +63,7 @@ deploy:
   skip_existing: true
   distributions: "sdist bdist_wheel"
 
-script: xvfb-run --server-args="-screen 0 1200x1080x24" coverage run --source impdar --omit=impdar/tests/* setup.py test
+script: coverage run --source impdar --omit=impdar/tests/* setup.py test
 
 
 after_success:

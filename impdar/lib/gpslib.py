@@ -50,6 +50,13 @@ else:
         raise ImportError('Cannot convert coordinates: osr not importable')
 
 
+def hhmmss2dec(times):
+    s = times % 100
+    m = (times % 10000 - s) / 100
+    h = (times - m * 100 - s) / 10000
+    return (h + m / 60.0 + s / 3600.0) / 24.0
+
+
 class nmea_info:
     """Container for general information about lat, lon, etc.
 
@@ -139,10 +146,7 @@ class nmea_info:
 
     @property
     def dectime(self):
-        s = self.times % 100
-        m = (self.times % 10000 - s) / 100
-        h = (self.times - m * 100 - s) / 10000
-        return (h + m / 60.0 + s / 3600.0) / 24.0
+        return hhmmss2dec(self.times)
 
 
 def nmea_all_info(list_of_sentences):
@@ -185,7 +189,9 @@ class RadarGPS(nmea_info):
 def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False, guess_offset=True):
     """Use new, better GPS data for lat, lon, and elevation
 
-    The interpolation in this function is done using the time since the radar has accurate timing from its GPS. The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist). I've dropped that dependency.
+    The interpolation in this function is done using the time since the radar has accurate timing from its GPS.
+    The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist).
+    I've dropped that dependency.
 
     Parameters
     ----------
@@ -219,6 +225,9 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
     if type(dats) not in [list, tuple]:
         dats = [dats]
 
+    for in_dat in [lat, lon, elev]:
+        if len(decday) != len(in_dat):
+            raise IndexError('lat, lon, elev, and decday must be the same length')
     offsets = [offset for i in dats]
     if guess_offset:
         print('CC search')
@@ -310,7 +319,8 @@ def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1
     spacing: float, optional
         Target distance spacing in meters
     fn: str, optional
-        If this is None, no control. Otherwise, this should be a mat or csv file with lat, long, elev, and decday fields
+        If this is None, no control.
+        Otherwise, this should be a mat or csv file with lat, long, elev, and decday fields
     fn_type: str, optional
         csv or mat? Ignored if fn is None. Will guess based on extension if this is None
     offset: float, optional
@@ -331,7 +341,7 @@ def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1
         elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
             kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset, **genfromtxt_kwargs)
         else:
-            raise ValueError('fn_type must be mat or csv')
+            raise ValueError('Cannot identify fn filetype, must be mat or csv')
     if spacing is not None:
         for dat in dats:
             dat.constant_space(spacing, min_movement=min_movement)

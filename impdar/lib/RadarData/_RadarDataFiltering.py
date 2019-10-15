@@ -9,7 +9,7 @@
 The class methods for filtering.
 """
 import numpy as np
-from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter
+from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter, wiener
 from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
@@ -47,6 +47,8 @@ def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     """
 
     print('Adaptive filtering')
+    # Create average trace for first (rough) scan of data
+    # avg_trace = np.mean(self.data, axis=1)
     # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
     hfiltdata_mass = self.data.copy()
 
@@ -58,8 +60,16 @@ def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     mask = self.travel_time <= 0.3 * np.max(self.travel_time)
     mtt = np.max(self.travel_time)
     transition = 0.1 * mtt
-    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (self.travel_time[mask] - transition) / mtt ** 2. + 1
-    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (((self.travel_time[~mask] - transition) - 0.2 * mtt) * ((self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
+    #   self.travel_time[mask] - transition) / mtt ** 2. + 1
+    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
+    #   ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
+    #   (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
+        self.travel_time[mask] - transition) / mtt ** 2. + 1
+    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
+        ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
+            (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
 
     # preallocate array
     hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
@@ -406,7 +416,44 @@ def vertical_band_pass(self,
     self.flags.bpass[2] = high
 
 
-def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
+def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
+    """
+    Denoising filter
+
+    For now this just uses the scipy wiener filter,
+    We could experiment with other options though
+
+    Parameters
+    ---------
+    vert_win: int; optional
+        vertical window size
+    hor_win: int; optional
+        horizontal window size
+    noise: float; optional
+        power of noise reduction, default is the average of the local variance of the image
+    ftype: string; optional
+        filter type
+
+    """
+    if ftype == 'wiener':
+        if noise is None:
+            self.data = wiener(self.data, mysize=(vert_win, hor_win))
+        else:
+            self.data = wiener(self.data, mysize=(vert_win, hor_win), noise=noise)
+    else:
+        raise TypeError('Only the wiener filter has been implemented for denoising.')
+
+
+def migrate(self,
+            mtype='stolt',
+            vtaper=10,
+            htaper=10,
+            tmig=0,
+            vel_fn=None,
+            vel=1.68e8,
+            nxpad=10,
+            nearfield=False,
+            verbose=0):
     """Migrate the data.
 
     This is a wrapper around all the migration routines in migration_routines.py.
@@ -424,9 +471,21 @@ def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=
     elif mtype == 'phsh':
         migrationlib.migrationPhaseShift(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'tk':
-        migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
-    elif mtype == 'su':
-        migrationlib.migrationSeisUnix(self, sutype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
+        migrationlib.migrationTimeWavenumber(self,
+                                             vel=vel,
+                                             vel_fn=vel_fn,
+                                             htaper=htaper,
+                                             vtaper=vtaper)
+    elif mtype[:2] == 'su':
+        migrationlib.migrationSeisUnix(self,
+                                       mtype=mtype,
+                                       vel=vel,
+                                       vel_fn=vel_fn,
+                                       tmig=tmig,
+                                       verbose=verbose,
+                                       nxpad=nxpad,
+                                       htaper=htaper,
+                                       vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 

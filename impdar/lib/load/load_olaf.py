@@ -17,6 +17,21 @@ import numpy as np
 from ..RadarData import RadarData
 
 
+def _common_start(string_a, string_b):
+    """ returns the longest common substring from the beginning of sa and sb
+
+    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
+    """
+    def _iter():
+        for char_a, char_b in zip(string_a, string_b):
+            if char_a == char_b:
+                yield char_a
+            else:
+                return
+
+    return ''.join(_iter())
+
+
 class SInfo:
     """Information about a single profile line"""
 
@@ -120,8 +135,9 @@ class SInfo:
                 trace_record_len = 21552
         else:
             trace_record_len = 21548
+        # define number of samples and traces to preallocate arrays, can change later
         self.snum = self.pre_trigger_depth + self.post_trigger_depth
-        self.tnum = (len(lines) - self.offset) // self.n_channels // trace_record_len
+        self.tnum = (len(lines) - self.offset) // self.n_channels // (2*self.snum)
 
     def get_trigger_source_string(self):
         """Turn an integer source info into a string"""
@@ -324,6 +340,12 @@ def load_olaf(fns_olaf, channel=1):
     # We want to be able to use this step concatenate a series of files numbered by the controller
     if isinstance(fns_olaf, str):
         fns_olaf = [fns_olaf]
+        olaf_data.fn = fns_olaf[0]
+    else:
+        f_common = fns_olaf[0]
+        for i in range(1, len(fns_olaf)):
+            f_common = _common_start(f_common, fns_olaf[i]).rstrip('[')
+        olaf_data.fn = f_common
 
     sinfo = []
     stacks = []
@@ -340,24 +362,28 @@ def load_olaf(fns_olaf, channel=1):
 
         # Read trace-by-trace, channel-by-channel
         for n_trc in range(sinfo[i].tnum):
-            for s_j in s_i:
-                s_j.read_trace(lines, sinfo[i], n_trc)
+            try:
+                for s_j in s_i:
+                    s_j.read_trace(lines, sinfo[i], n_trc)
+            except:
+                continue
 
         stacks.append(s_i[channel - 1])
 
     # I don't know if we actually want to do this, but the filenaming scheme is wacky and this
     # will make any logical collection look good
-    # s.sort(key=lambda x: x.Time[0])
+    sort_idx = np.argsort(np.array([(lambda x: x.serialtime)(s) for s in sinfo]))
+    sinfo = [sinfo[i] for i in sort_idx]
+    stacks = [stacks[i] for i in sort_idx]
 
     # Now merge the data into the normal format
     olaf_data.dt = 1. / sinfo[0].samp_freq
-    olaf_data.pre_trigger_depth = sinfo[0].pre_trigger_depth
     olaf_data.fns_in = sinfo[0].fn_in
     olaf_data.ant_sep = sinfo[0].antenna_separation
     olaf_data.freq = sinfo[0].nominal_frequency
     olaf_data.travel_time = stacks[0].travel_time * 1.0e6
     olaf_data.trig_level = stacks[0].trigger_level
-    olaf_data.trig = stacks[0].trigger_level  #TODO this is not correct, but works for now
+    olaf_data.trig = sinfo[0].pre_trigger_depth
 
     olaf_data.fnames = [si.fn_in for si in sinfo]
 

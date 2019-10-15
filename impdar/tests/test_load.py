@@ -64,16 +64,6 @@ class TestLoad(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
 
-    def test_common_start(self):
-        start = load._common_start('abra', 'abracadabra')
-        self.assertEqual('abra', start)
-
-        start = load._common_start('abra', 'abra')
-        self.assertEqual('abra', start)
-
-        start = load._common_start('', 'abra')
-        self.assertEqual('', start)
-
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat'))

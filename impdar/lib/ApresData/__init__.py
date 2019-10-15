@@ -7,73 +7,74 @@
 # Distributed under terms of the GNU GPL-3.0 license.
 
 """
-The basic class of ImpDAR. Methods for saving, processing, and filtering are defined externally.
+An alternative ImpDAR class for ApRES data.
+This should be considered separate from impulse data.
+This class has a different set of loading and filtering scripts.
+
+Author:
+Benjamin Hills
+bhills@uw.edu
+University of Washington
+Earth and Space Sciences
+
+Sept 24 2019
+
 """
 
 
 import datetime
 import numpy as np
 from scipy.io import loadmat
-from ..RadarFlags import RadarFlags
+from .ApresFlags import ApresFlags
+from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
-from ..Picks import Picks
 
-
-class RadarData(object):
-    """A class that holds the relevant information for a radar profile.
+class ApresData(object):
+    """A class that holds the relevant information for an ApRES acquisition.
 
     We keep track of processing steps with the flags attribute.
     This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
     """
-    #: Attributes that every RadarData object should have and should not be None.
-    attrs_guaranteed = ['chan',
-                        'data',
+    #: Attributes that every ApresData object should have and should not be None.
+    attrs_guaranteed = ['data',
                         'decday',
                         'dt',
-                        'lat',
-                        'long',
-                        'pressure',
                         'snum',
-                        'tnum',
-                        'trace_int',
-                        'trace_num',
+                        'cnum',
+                        'bnum',
+                        'chirp_num',
+                        'chirp_att',
+                        'chirp_time',
                         'travel_time',
-                        'trig',
-                        'trig_level']
+                        'frequencies']
 
     #: Optional attributes that may be None without affecting processing.
     #: These may not have existed in old StoDeep files that we are compatible with,
     #: and they often cannot be set at the initial data load.
     #: If they exist, they all have units of meters.
-    attrs_optional = ['nmo_depth',
-                      'elev',
-                      'dist',
+    attrs_optional = ['lat',
+                      'long',
                       'x_coord',
                       'y_coord',
-                      'fn']
+                      'elev',
+                      'temperature1',
+                      'temperature2',
+                      'battery_voltage']
 
-    from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
-        rangegain, agc, constant_space, elev_correct, constant_sample_depth_spacing, \
-        traveltime_to_depth
-    from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, _get_pick_targ_info
-    from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
-        winavg_hfilt, hfilt, vertical_band_pass, denoise, migrate
+    # TODO: add imports
+    #from ._ApresDataProcessing import
+    #from ._ApresDataSaving import
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
         if fn_mat is None:
-            # Store this for possible later filename modification
-            self.fn = fn_mat
-
             # Write these out so we can document them
             # Very basics
-            self.snum = None  #: int number of samples per trace
-            self.tnum = None  #: int, the number of traces in the file
+            self.snum = None  #: int number of samples per chirp
+            self.cnum = None  #: int, the number of chirps in a burst
+            self.bnum = None #: int, the number of bursts
             self.data = None  #: np.ndarray(snum x tnum) of the actual return power
-            self.trace_int = None  #: float, the time between traces
-            self.chan = None  #: The Channel number of the data
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
-            self.trig_level = None  #: float, The value on which the radar was triggering
 
             # Per-trace attributes
             #: np.ndarray(tnum,) of the acquisition time of each trace
@@ -84,47 +85,34 @@ class RadarData(object):
             self.lat = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
             self.long = None
-            #: np.ndarray(tnum,) of the distances along the profile.
-            #: units will depend on whether geographic coordinate transforms,
-            #: as well as GPS data, are available.
-            self.dist = None
-            #: np.ndarray(tnum,) The pressure at acquisition. ImpDAR does not use this at present.
-            self.pressure = None
-            self.trace_num = None  #: np.ndarray(tnum,) The 1-indexed number of the trace
-            #: np.ndarray(tnum,) the index in each trace where the trigger was met.
-            self.trig = None
+
+            # chirp
+            self.chirp_num = None  #: np.ndarray(cnum,) The 1-indexed number of the chirp
+            self.chirp_att = None  #: np.ndarray(cnum,) Chirp attenuation settings
+            self.chirp_time = None  #: np.ndarray(cnum,) Time at beginning of chirp (serial day)
 
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
 
-            # Optional attributes
-            #: str, the input filename. May be left as None.
-            self.fn = None
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
             self.x_coord = None
             #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
             self.y_coord = None
             #: np.ndarray(tnum,) Optional. Elevation along the profile.
             self.elev = None
-            #: np.ndarray(tnum,) Optional. Depth of each trace below the surface
-            self.nmo_depth = None
 
             # Special attributes
             #: impdar.lib.RadarFlags object containing information about the processing steps done.
-            self.flags = RadarFlags()
-            #: impdar.lib.Picks object with information about picks in/interpretation of the data.
-            #: The init method of picks needs some basic data to calculate frequencies, etc, so it
-            #: is not created until it is needed (maybe after some modifications to the data).
-            self.picks = None
+            self.flags = ApresFlags()
+            self.header = ApresHeader()
 
             self.data_dtype = None
             return
 
+        # TODO: add a matlab load
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
-            if attr not in mat:
-                raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
             if mat[attr].shape == (1, 1):
                 setattr(self, attr, mat[attr][0][0])
             elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
@@ -136,7 +124,7 @@ class RadarData(object):
             if attr in mat:
                 if mat[attr].shape == (1, 1):
                     setattr(self, attr, mat[attr][0][0])
-                elif mat[attr].shape[0] == 1 or (len(mat[attr].shape) > 1 and mat[attr].shape[1] == 1):
+                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
                     setattr(self, attr, mat[attr].flatten())
                 else:
                     setattr(self, attr, mat[attr])
@@ -146,12 +134,9 @@ class RadarData(object):
         self.data_dtype = self.data.dtype
 
         self.fn = fn_mat
-        self.flags = RadarFlags()
+        self.flags = ApresFlags()
+        self.header = ApresHeader()
         self.flags.from_matlab(mat['flags'])
-        if 'picks' not in mat:
-            self.picks = Picks(self)
-        else:
-            self.picks = Picks(self, mat['picks'])
         self.check_attrs()
 
     def check_attrs(self):
@@ -164,9 +149,7 @@ class RadarData(object):
         ------
         ImpdarError
             If any required attribute is None or any optional attribute is fully absent"""
-
-        # fn is required but defined separately
-        for attr in self.attrs_guaranteed + ['fn']:
+        for attr in self.attrs_guaranteed:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
@@ -178,10 +161,6 @@ class RadarData(object):
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
-
-        if (self.data.shape != (self.snum, self.tnum)) and (self.elev is None):
-            print(self.data.shape, (self.snum, self.tnum))
-            raise ImpdarError('The data shape does not match the snum and tnum values!!!')
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
