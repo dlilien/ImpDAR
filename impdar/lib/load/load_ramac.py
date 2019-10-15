@@ -16,7 +16,7 @@ import datetime
 import numpy as np
 from scipy.interpolate import interp1d
 from ..RadarData import RadarData
-from ..gpslib import nmea_info
+from ..gpslib import nmea_info, conversions_enabled
 
 
 def load_ramac(ramac_fn):
@@ -46,6 +46,8 @@ def load_ramac(ramac_fn):
         header_fn = ramac_fn
         data_fn = ramac_fn[:-3] + 'rd3'
         gps_fn = ramac_fn[:-3] + 'cor'
+
+    ramac_data.fn = data_fn
 
     with open(header_fn) as f_header:
         header = f_header.readlines()
@@ -98,11 +100,16 @@ def load_ramac(ramac_fn):
         nminfo.lat = ramac_data.lat
         nminfo.lon = ramac_data.long
         nminfo.elev = ramac_data.elev
-        nminfo.get_utm()
-        nminfo.get_dist()
-        ramac_data.x_coord = nminfo.x
-        ramac_data.y_coord = nminfo.y
-        ramac_data.dist = nminfo.dist
+        if conversions_enabled:
+            nminfo.get_utm()
+            nminfo.get_dist()
+            ramac_data.x_coord = nminfo.x
+            ramac_data.y_coord = nminfo.y
+            ramac_data.dist = nminfo.dist
+        else:
+            ramac_data.x_coord = ramac_data.long
+            ramac_data.y_coord = ramac_data.lat
+            ramac_data.dist = np.sqrt(ramac_data.x_coord ** 2.0 + ramac_data.y_coord ** 2.0)
 
     else:
         ramac_data.decday = np.arange(ramac_data.tnum)
