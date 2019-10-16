@@ -23,6 +23,8 @@ def _get_args():
 
     add_simple_procparser(subparsers, 'ft', 'Plot ft', plot_ft, defname='spec', xd=True, yd=True)
 
+    add_simple_procparser(subparsers, 'ft', 'Plot ft', plot_ft, defname='spec', xd=True, yd=True)
+
     trace_parser = add_simple_procparser(subparsers, 'traces', 'Plot traces vs depth', plot_traces, defname='traces', xd=False, yd=True)
     trace_parser.add_argument('t_start', type=int, help='Starting trace number')
     trace_parser.add_argument('t_end', type=int, help='Ending trace number')
@@ -66,6 +68,10 @@ def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
 
 def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', picks=False, **kwargs):
     plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, pick_colors=picks)
+
+
+def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, ft=True)
 
 
 def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
