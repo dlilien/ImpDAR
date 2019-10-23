@@ -8,10 +8,9 @@ Load BSI IceRadar h5 files and convert to the .mat ImpDAR file
 import os
 import numpy as np
 from ..RadarData import RadarData
-# from ..RadarFlags import RadarFlags
 import re
 from .. import gpslib
-# import datetime
+import datetime
 
 
 try:
@@ -38,6 +37,18 @@ def _dm2dec(dms):
     return ((dms - dms % 100) / 100 + (dms % 100) / 60)
 
 
+def _dt_from_comment(dset):
+    """Return the day when the first location in the dset was collected"""
+    low_level_group = h5py.h5g.open(dset['location_0'].id, b'.')
+    group_comment = low_level_group.get_comment(b'.').decode('utf-8')
+    # this string is variable length, so we need complicated parsing
+    group_comment = group_comment[group_comment.find(']') + 1:]
+    group_comment = group_comment[group_comment.find(']') + 1:]
+    group_comment = group_comment[:group_comment.find(' ')]
+    dmy = list(map(int, group_comment.split('/')))
+    return datetime.datetime(dmy[2], dmy[0], dmy[1], 0, 0, 0)
+
+
 def load_bsi(fn_h5, *args, **kwargs):
     """Load a BSI IceRadar file, which is just an h5 file, into ImpDAR"""
     if not H5:
@@ -56,7 +67,6 @@ def load_bsi(fn_h5, *args, **kwargs):
                 continue
 
             dset = f_in[dset_name]
-
             h5_data = RadarData(None)
             # We need this for logical file naming later on
             h5_data.fn = os.path.splitext(fn_h5)[0] + dset_name + '.h5'
@@ -89,10 +99,12 @@ def load_bsi(fn_h5, *args, **kwargs):
 
             h5_data.lat = _dm2dec(lat)
             h5_data.long = _dm2dec(lon)
-            # timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
-            # day_offset = gpslib.hhmmss2dec(time)[0] - timezero
-            # h5_data.decday = gpslib.hhmmss2dec(time) + 377. + day_offset.day
-            h5_data.decday = gpslib.hhmmss2dec(time)
+
+            # need to access a comment to get the day
+            day_collection = _dt_from_comment(dset)
+            day_offset = (day_collection - datetime.datetime(1, 1, 1, 0, 0, 0)).days
+            h5_data.decday = gpslib.hhmmss2dec(time) + day_offset
+
             transform = gpslib.get_utm_conversion(h5_data.lat[0], h5_data.long[0])
             pts = np.array(transform(np.vstack((h5_data.long, h5_data.lat)).transpose()))
             h5_data.x_coord, h5_data.y_coord = pts[:, 0], pts[:, 1]
