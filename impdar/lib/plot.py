@@ -181,16 +181,18 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
 
 
 def plot_ft(dat, fig=None, ax=None):
-    fft = np.fft.fft(dat.data)
-    fft_dat = np.mean(np.sqrt(fft.real ** 2.0 + fft.imag ** 2.0), axis=1)
+    """Plot the Fourier spectrum of the data; we first fft, then average the fft"""
+    fft = np.fft.fft(dat.data, axis=0)
+    fft_dat = np.mean(np.abs(fft) ** 2.0, axis=1)
     freq = np.fft.fftfreq(dat.snum) / dat.dt
     if fig is not None:
         if ax is None:
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(12, 8))
-    ax.plot(freq / 1.0e6, fft_dat)
+    ax.plot(freq[freq >= 0] / 1.0e6, fft_dat[freq >= 0])
     ax.set_xlabel('Freq (MHz)')
+    ax.set_ylabel('Power spectral density')
     return fig, ax
 
 
