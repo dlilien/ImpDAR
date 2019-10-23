@@ -88,12 +88,15 @@ def load_bsi(fn_h5, *args, **kwargs):
             # Other information that ImpDAR currently cannot use
             # _xmlGetVal(digitizer_data, 'vertical range')
             h5_data.trig_level = float(_xmlGetVal(digitizer_data, 'trigger level'))
-            h5_data.trig = np.ones((h5_data.tnum, )) * float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
+            time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
+            h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
+            h5_data.trig = np.floor(np.ones((h5_data.tnum, )) * np.abs(time_offset) / h5_data.dt)
+
             for location_num in range(h5_data.tnum):
                 h5_data.data[:, location_num] = dset['location_{:d}'.format(location_num)]['datacapture_0']['echogram_0']
                 gps_data = dset['location_{:d}'.format(location_num)]['datacapture_0']['echogram_0'].attrs['GPS Cluster- MetaData_xml'].decode('utf-8')
                 lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
-                lon[location_num] = float(_xmlGetVal(gps_data, 'Long_ W'))
+                lon[location_num] = -1. * float(_xmlGetVal(gps_data, 'Long_ W'))
                 time[location_num] = float(_xmlGetVal(gps_data, 'GPS_timestamp_UTC'))
                 h5_data.elev[location_num] = float(_xmlGetVal(gps_data, 'Alt_asl_m'))
 
@@ -108,7 +111,7 @@ def load_bsi(fn_h5, *args, **kwargs):
             transform = gpslib.get_utm_conversion(h5_data.lat[0], h5_data.long[0])
             pts = np.array(transform(np.vstack((h5_data.long, h5_data.lat)).transpose()))
             h5_data.x_coord, h5_data.y_coord = pts[:, 0], pts[:, 1]
-            h5_data.dist = np.sqrt(h5_data.x_coord ** 2.0 + h5_data.y_coord ** 2.0)
+            h5_data.dist = np.hstack(([0], np.cumsum(np.sqrt(np.diff(h5_data.x_coord) ** 2.0 + np.diff(h5_data.y_coord) ** 2.0)))) / 1000.
 
             h5_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(h5_data.dist))), np.diff(h5_data.dist)))
             h5_data.pressure = np.zeros_like(h5_data.lat)
