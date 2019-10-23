@@ -485,7 +485,7 @@ def plot_specdense(dat, freq_limit, window='hanning', scaling='spectrum', fig=No
 
     # set title
     title = 'Power Spectral Density as a Function of Trace Number and Frequency'
-    # add space between the title and the plot
-    ax.set_title(title, pad=20)
+    # add space between the title and the plot -DL deleted due to incompatibility with some mpl versions
+    ax.set_title(title)
 
     return fig, ax
