@@ -163,10 +163,10 @@ def load_pe(fn_dt1, *args, **kwargs):
     gps_fn = bn_pe + '.GPS'
 
     with open(hdname, 'rU') as fin:
-        if fin.read().find('pulseEKKO') == -1:
-            pe_data.version = '1.0'
-        else:
+        if fin.read().find('1.5.340') != -1:
             pe_data.version = '1.5.340'
+        else:
+            pe_data.version = '1.0'
         fin.seek(0)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
@@ -178,7 +178,10 @@ def load_pe(fn_dt1, *args, **kwargs):
             if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
                 pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1]))
             if i == 4 and pe_data.version == '1.0':
-                doy = (int(line[:4]),int(line[5:7]),int(line[8:10]))
+                try:
+                    doy = (int(line[6:10]),int(line[3:5]),int(line[1:2]))
+                except:
+                    doy = (int(line[:4]),int(line[5:7]),int(line[8:10]))
             if i == 2 and pe_data.version == '1.5.340':
                 doy = (int(line[6:10]),int(line[:2]),int(line[3:5]))
 
@@ -220,7 +223,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.travel_time += pe_data.dt * 1.0e6
 
     # Now deal with the gps info
-    if pe_data.version == '1.0':
+    if os.path.exists(gps_fn):
         pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
         pe_data.lat = pe_data.gps_data.lat
         pe_data.long = pe_data.gps_data.lon
@@ -234,9 +237,17 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
         pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
                                        np.diff(pe_data.dist)))
-        pe_data.check_attrs()
-    elif pe_data.version == '1.5.340':
-        print('GPS not implemented for version 1.5.340 yet.')
-        #pe_data.check_attrs()
 
+    else:
+        print('Cannot find gps file, %s.'%gps_fn)
+        pe_data.lat = np.zeros((pe_data.data.shape[1],))
+        pe_data.long = np.zeros((pe_data.data.shape[1],))
+        pe_data.x_coord = np.zeros((pe_data.data.shape[1],))
+        pe_data.y_coord = np.zeros((pe_data.data.shape[1],))
+        pe_data.dist = np.zeros((pe_data.data.shape[1],))
+        pe_data.elev = np.zeros((pe_data.data.shape[1],))
+        pe_data.decday = np.arange(pe_data.data.shape[1])
+        pe_data.trace_int = np.ones((pe_data.data.shape[1],))
+
+    pe_data.check_attrs()
     return pe_data
