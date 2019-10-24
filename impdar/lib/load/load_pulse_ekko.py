@@ -76,14 +76,12 @@ class TraceHeaders:
 
 
 def _get_gps_data(fn_gps, trace_nums):
-    """Read GPS data associated with a GSSI sir4000 file.
+    """Read GPS data associated with a Pulse Ekko .GPS file.
 
     Parameters
     ----------
     fn_gps: str
         A dzg file with ggis and gga strings.
-    rev: bool, optional
-        Reverse the points in this file (used for concatenating radar files). Default False.
 
     Returns
     -------
@@ -92,8 +90,17 @@ def _get_gps_data(fn_gps, trace_nums):
 
     with open(fn_gps) as f_in:
         lines = f_in.readlines()
-    ggis = lines[::2]
-    gga = lines[1::2]
+    ggis = []
+    gga = []
+    for line in lines:
+        if line[:5] == 'Trace':
+            ggis.append(line)
+        elif line[:6] == '$GPGGA':
+            gga.append(line)
+        else:
+            continue
+    if len(gga) == 0:
+        raise ValueError('I can only do gga sentences right now')
     scans = np.array(list(map(lambda x: int(float(x.rstrip('\n\r ').split(' ')[-1])), ggis)))
     data = RadarGPS(gga, scans, trace_nums)
     return data
@@ -179,7 +186,7 @@ def load_pe(fn_dt1, *args, **kwargs):
                 pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1]))
             if i == 4 and pe_data.version == '1.0':
                 try:
-                    doy = (int(line[6:10]),int(line[3:5]),int(line[1:2]))
+                    doy = (int(line[6:10]),int(line[1:2]),int(line[3:5]))
                 except:
                     doy = (int(line[:4]),int(line[5:7]),int(line[8:10]))
             if i == 2 and pe_data.version == '1.5.340':
