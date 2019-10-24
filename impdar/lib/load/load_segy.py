@@ -44,7 +44,7 @@ def load_segy(fn_sgy, *args, **kwargs):
     #TODO  these next ones are filler
     segy_data.trace_int = 1
     segy_data.chan = 1
-    segy_data.trig = 1
+    segy_data.trig = np.zeros((segy_data.tnum, ))
     segy_data.decday = np.zeros((segy_data.tnum, ))
     segy_data.long = np.zeros((segy_data.tnum, ))
     segy_data.lat = np.zeros((segy_data.tnum, ))

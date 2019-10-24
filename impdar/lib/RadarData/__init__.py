@@ -179,9 +179,23 @@ class RadarData(object):
                 raise ImpdarError('{:s} is missing. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
+        # Do some shape checks, but we need to be careful since variable-surface will screw this up
         if (self.data.shape != (self.snum, self.tnum)) and (self.elev is None):
-            print(self.data.shape, (self.snum, self.tnum))
             raise ImpdarError('The data shape does not match the snum and tnum values!!!')
+        if (self.travel_time.shape[0] != self.snum) and (self.elev is None):
+            raise ImpdarError('The travel_time shape does not match the tnum value!!!')
+        if hasattr(self, 'nmo_depth') and (self.nmo_depth is not None):
+            if (self.nmo_depth.shape[0] != self.snum) and (self.elev is None):
+                raise ImpdarError('The nmo_depth shape does not match the tnum value!!!')
+
+        # We checked for existence, so we can just confirm that these have the right length
+        # if they exist
+        for attr in ['lat', 'long', 'pressure', 'trig', 'elev', 'dist', 'x_coord', 'y_coord']:
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                if (not hasattr(getattr(self, attr), 'shape')) or (len(getattr(self, attr).shape) < 1):
+                    raise ImpdarError('{:s} needs to be a vector'.format(attr))
+                if getattr(self, attr).shape[0] != self.tnum:
+                    raise ImpdarError('{:s} needs length tnum {:d}'.format(attr, self.tnum))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype

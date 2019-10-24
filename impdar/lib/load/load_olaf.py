@@ -376,6 +376,13 @@ def load_olaf(fns_olaf, channel=1):
     sinfo = [sinfo[i] for i in sort_idx]
     stacks = [stacks[i] for i in sort_idx]
 
+    # Data and things we derive from it
+    olaf_data.chan = channel
+    olaf_data.data = np.hstack([s_i.data for s_i in stacks])
+    olaf_data.snum = olaf_data.data.shape[0]
+    olaf_data.tnum = olaf_data.data.shape[1]
+    olaf_data.trace_num = np.arange(olaf_data.tnum) + 1
+
     # Now merge the data into the normal format
     olaf_data.dt = 1. / sinfo[0].samp_freq
     olaf_data.fns_in = sinfo[0].fn_in
@@ -383,16 +390,8 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.freq = sinfo[0].nominal_frequency
     olaf_data.travel_time = stacks[0].travel_time * 1.0e6
     olaf_data.trig_level = stacks[0].trigger_level
-    olaf_data.trig = sinfo[0].pre_trigger_depth
-
+    olaf_data.trig = sinfo[0].pre_trigger_depth * np.ones(olaf_data.tnum)
     olaf_data.fnames = [si.fn_in for si in sinfo]
-
-    # Data and things we derive from it
-    olaf_data.chan = channel
-    olaf_data.data = np.hstack([s_i.data for s_i in stacks])
-    olaf_data.snum = olaf_data.data.shape[0]
-    olaf_data.tnum = olaf_data.data.shape[1]
-    olaf_data.trace_num = np.arange(olaf_data.tnum) + 1
 
     # Other variables that need concatenating
     olaf_data.decday = np.hstack([s_i.time for s_i in stacks])

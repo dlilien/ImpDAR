@@ -40,6 +40,8 @@ class NoInitRadarData(RadarData):
         self.decday = np.arange(self.tnum)
         self.trace_int = 1
         self.dt = 1
+        self.trig = np.zeros((self.tnum,))
+        self.pressure = np.zeros((self.tnum,))
 
 
 class NoInitRadarDataFiltering(RadarData):
