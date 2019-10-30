@@ -53,7 +53,7 @@ class TestConvert(unittest.TestCase):
     @unittest.skipIf(SEGY, 'SEGY enabled, this is a failure test')
     def test_nosegy(self):
         with self.assertRaises(ImportError):
-            convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'mat', in_fmt='sgy')
+            convert.convert([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], 'mat', in_fmt='segy')
 
         with self.assertRaises(ImportError):
             convert.convert([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], 'sgy', in_fmt='mat')
