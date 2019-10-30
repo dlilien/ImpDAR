@@ -63,7 +63,7 @@ class TestConvert(unittest.TestCase):
         convert.convert(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), 'sgy', in_fmt='mat')
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data.sgy')))
 
-        convert.convert(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'), 'mat', in_fmt='sgy')
+        convert.convert(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'), 'mat', in_fmt='segy')
 
     def test_badinsout(self):
         with self.assertRaises(ValueError):

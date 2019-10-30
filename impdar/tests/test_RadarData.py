@@ -41,7 +41,7 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.nmo_depth = None
         self.data.travel_time = np.arange(0, 0.2, 0.01)
         self.data.dt = 1.0e-8
-        self.data.trig = 0.
+        self.data.trig = self.data.trig * 0.
 
     def test_Reverse(self):
         data_unrev = self.data.data.copy()

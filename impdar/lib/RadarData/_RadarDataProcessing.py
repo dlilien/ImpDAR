@@ -451,7 +451,6 @@ def agc(self, window=50, scaling_factor=50):
     maxamp = np.zeros((self.snum,))
     # In the for loop, old code indexed used range(window // 2). This did not make sense to me.
     for i in range(self.snum):
-        print(i, max(0, i - window // 2), min(i + window // 2, self.snum))
         maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):
                                             min(i + window // 2, self.snum), :]))
     maxamp[maxamp == 0] = 1.0e-6
@@ -508,7 +507,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                           step=spacing / 1000.0)
     self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
-    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
+    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
         setattr(self,
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))

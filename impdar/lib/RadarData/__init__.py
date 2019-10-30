@@ -152,6 +152,7 @@ class RadarData(object):
             self.picks = Picks(self)
         else:
             self.picks = Picks(self, mat['picks'])
+
         self.check_attrs()
 
     def check_attrs(self):
@@ -190,7 +191,7 @@ class RadarData(object):
 
         # We checked for existence, so we can just confirm that these have the right length
         # if they exist
-        for attr in ['lat', 'long', 'pressure', 'trig', 'elev', 'dist', 'x_coord', 'y_coord']:
+        for attr in ['lat', 'long', 'pressure', 'trig', 'elev', 'dist', 'x_coord', 'y_coord', 'decday']:
             if hasattr(self, attr) and getattr(self, attr) is not None:
                 if (not hasattr(getattr(self, attr), 'shape')) or (len(getattr(self, attr).shape) < 1):
                     raise ImpdarError('{:s} needs to be a vector'.format(attr))
