@@ -217,7 +217,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyl
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(8, 12))
-    ax.set_xscale('symlog')
+    #ax.set_xscale('symlog')
     lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
     ax.invert_yaxis()
 
@@ -233,12 +233,11 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyl
 
     for j in range(*tr):
         ax.plot(dat.data[:, j], yd, linewidth=linewidth, linestyle=linestyle)
-
     if lims[0] < 0 and lims[1] > 0:
         ax.set_xlim(lims[0], -lims[0])
     else:
         ax.set_xlim(*lims)
-    ax.set_xlabel('Power')
+    ax.set_xlabel('Amplitude')
     return fig, ax
 
 

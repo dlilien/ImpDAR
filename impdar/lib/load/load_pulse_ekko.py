@@ -224,7 +224,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.pressure = np.zeros((pe_data.tnum, ))
     pe_data.flags = RadarFlags()
 
-    # some more real variables
+    #Power some more real variables
     pe_data.dt = window / pe_data.snum * 1.0e-9
     pe_data.travel_time = np.atleast_2d(np.arange(0, window / 1.e3, pe_data.dt * 1.0e6)).transpose()
     pe_data.travel_time += pe_data.dt * 1.0e6
@@ -246,7 +246,7 @@ def load_pe(fn_dt1, *args, **kwargs):
                                        np.diff(pe_data.dist)))
 
     else:
-        print('Cannot find gps file, %s.'%gps_fn)
+        print('Warning: Cannot find gps file, %s.'%gps_fn)
         pe_data.lat = np.zeros((pe_data.data.shape[1],))
         pe_data.long = np.zeros((pe_data.data.shape[1],))
         pe_data.x_coord = np.zeros((pe_data.data.shape[1],))

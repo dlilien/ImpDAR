@@ -271,7 +271,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
             ind = int(self.trig)
         else:
             ind = self.trig.astype(int)
-        self.trig = 0
+        #self.trig = 0
     else:
         ind = int(lim)
 
@@ -425,7 +425,7 @@ def rangegain(self, slope):
     slope: float
         The slope of the linear range gain to be applied. Maybe try 1.0e-2?
     """
-    if isinstance(self.trig, (float, int)):
+    if isinstance(self.trig, (float, int, np.float, np.int64)):
         gain = self.travel_time[int(self.trig) + 1:] * slope
         self.data[int(self.trig + 1):, :] *= np.atleast_2d(gain).transpose()
     else:

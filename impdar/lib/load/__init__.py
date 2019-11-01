@@ -146,6 +146,9 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
             for d_i, f_i in zip(dat, fns_in):
                 fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(f_i)[0] + '_raw.mat')[-1])
                 d_i.save(fn_out)
+        elif os.path.isdir(kwargs['o']):
+            fn_out = kwargs['o'] + os.path.splitext(fns_in[0])[0] + '_raw.mat'
+            dat[0].save(fn_out)
         else:
             fn_out = kwargs['o']
             dat[0].save(fn_out)
