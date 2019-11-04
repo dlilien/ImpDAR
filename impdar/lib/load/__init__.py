@@ -12,13 +12,13 @@ A wrapper around the other loading utilities
 
 import os.path
 import numpy as np
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_delores, load_osu
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_delores, load_osu, load_ramac
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc','delores','osu']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc','delores','osu','ramac']
 
 
 def load(filetype, fns_in, channel=1):
@@ -82,6 +82,8 @@ def load(filetype, fns_in, channel=1):
         dat = [load_delores.load_delores(fn, channel=channel) for fn in fns_in]
     elif filetype == 'osu':
         dat = [load_osu.load_osu(fns_in)]
+    elif filetype == 'ramac':
+        dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
     return dat
