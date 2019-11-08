@@ -21,65 +21,68 @@ Sept 26 2019
 """
 
 import numpy as np
-from scipy.interpolate import interp1d
 
 # ----------------------------------------------------------------------------
 
-def Spreading(z,eps=3.12,d_eps=0.,h=0.,refraction=False):
+def power_correction(dat,eps=[],d_eps=[],u=1.69e8,h_aircraft=0.):
     """
-    Geometrical spreading correction for radar power.
+    Geometric spreading correction for radar power.
     Optionally includes refractive focusing
-    Dowedswell and Evans eq. TODO: look this up
 
     Parameters
     ---------
-    z:      array or scalar     depth of desired output locations (m)
-    eps:    array or scalar     permittivity (relative)
-    d_eps:    array or scalar     depths for permittivity boundaries
-    h:      scalar              height of aircraft
+    eps:    array; optional
+        permittivity (relative)
+    d_eps:  array; optional
+        depths for permittivity boundaries
+    u:      float; optional
+        speed of light in ice
+    h_aircraft: float; optional
+        height of aircraft, airborne surveys need a correction for refractive focusing from air to ice
+
 
     Output
     ---------
-    loss:   array or scalar     spreading loss (dB)
+    corrected_power
     """
 
-    # geometric spreading correction
-    spherical = (2.*z)**2.
-
-    if refraction:
-        # permittivity profile from Kravchenko (2004) JGlac.
-        d_eps = np.arange(0,round(np.nanmax(z))+1,.1)
-
-        # refractive focusing correction
-        if hasattr(eps,"__len__"):
-            q = np.ones_like(d_eps).astype(float)
-            for i in range(1,len(eps)):
-                qadd = refractiveFocusing(d_eps[i],d_eps-d_eps[i],eps[i-1],eps[i])
-                q*=qadd
-            qinterp = interp1d(d_eps,q)
-        else:
-            q = refractiveFocusing(h,d_eps,1.,eps)
-            qinterp = interp1d(d_eps,q)
-
-        # include refractive losses
-        loss = 10.*np.log10(spherical/qinterp(z))
+    # get a pick depth
+    if 'z' in vars(dat.picks):
+        Z = dat.picks.z
     else:
-        # purely spherical spreading
-        loss = 10.*np.log10(spherical)
+        print('Warning: setting pick depth for constant velocity in ice.')
+        Z = dat.picks.time*u/2./1e6
 
-    return loss,qinterp
+    # spreading correction for a spherical wave
+    spherical_loss = (2.*Z)**2.
+
+    q = np.ones_like(Z)
+    if len(d_eps) > 0:
+        if d_eps[0] != 0:
+            raise KeyError('The first depth needs to be 0.')
+        # correct for focusing from air to firn
+        if h_aircraft > 0.:
+            qadd = refractive_focusing(h_aircraft,2.*(Z+h_aircraft),1.,eps[0])
+            q*=qadd
+        # correct for focusing within the firn
+        for i in range(len(eps)-1):
+            qadd = refractive_focusing(d_eps[i],2.*Z,eps[i],eps[i+1])
+            q*=qadd
+
+    # power correction including spreading and refractive gains
+    dat.picks.corrected_power = dat.picks.power * spherical_loss/q
 
 # ----------------------------------------------------------------------------
 
-def refractiveFocusing(z1,z2,eps1,eps2):
+def refractive_focusing(z1,z2,eps1,eps2):
     """
     Refractive focusing at an interface
-    # TODO: wrong equation
-    Dowedswell and Evans eq. 5
+    Bogorodsky et al., 1985; equation 3.8
 
     Parameters
     ---------
-    z1:     scalar      Thickness above interface (m)
+    z1:     float
+        scalar      Thickness above interface (m)
     z2:     scalar      Thickness below interface (m)
     eps1:   scalar      Permittivity above interface (relative)
     eps2:   scalar      Permittivity below interface (relative)
@@ -89,10 +92,9 @@ def refractiveFocusing(z1,z2,eps1,eps2):
     q:      scalar              refractive focusing coefficient
     """
     q = ((z1+z2)/(z1+z2*np.sqrt(eps1/eps2)))**2.
-    q[z2 <= z1] = 1.
+    if hasattr(q,'__len__'):
+        q[z2 <= z1] = 1.
+    else:
+        if z2 <= z1:
+            q = 1.
     return q
-
-# ----------------------------------------------------------------------------
-
-def slope_power_correction():
-    return

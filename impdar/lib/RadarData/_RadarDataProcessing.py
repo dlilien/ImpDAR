@@ -346,7 +346,7 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
             raise ValueError('lim should be at least two to preserve some data')
         if lim > self.tnum:
             raise ValueError('lim should be less than tnum+1 {:d} in order to do anything'.format(self.tnum + 1))
-        if lim == -1 or lim < -self.tnum:
+        if lim == -1 or lim < -int(self.tnum):
             raise ValueError('If negative, lim should be in [-self.tnum; -1)')
         ind = int(lim) - 1
 

@@ -24,7 +24,7 @@ import numpy as np
 
 # ----------------------------------------------------------------------------
 
-def continuityKarlsson(P,s_ind,b_ind,lat,lon,cutoff_ratio,win=20,uice=168.,eps=3.2):
+def continuity_index(dat,b_ind,s_ind=None,cutoff_ratio=None):
     """
     Karlsson Continuity Method
 
@@ -33,39 +33,49 @@ def continuityKarlsson(P,s_ind,b_ind,lat,lon,cutoff_ratio,win=20,uice=168.,eps=3
 
     Parameters
     ----------
-    P:              uncorrected power
-    s_ind:          surface pick index
-    b_ind:          bed pick index
-    cutoff_ratio:   assigns the number of samples that are removed from top and bottom of the trace
+    b_ind:  int
+        bed pick index
+    s_ind:  int; optional
+        surface pick index
+    cutoff_ratio:   float; optional
+        assigns the number of samples that are removed from top and bottom of the trace
 
     Output
     ---------
-    cont:
-    cont_filt:
-
+    conttinuity_index: array
     """
 
+    P = 10*np.log10(dat.data**2.)
+
+    bpick = dat.picks.samp1[b_ind]
+    if s_ind is None:
+        spick = np.zeros_like(bpick)
+    else:
+        spick = dat.picks.samp1[s_ind]
+
     # empty continuity index array
-    cont = np.empty_like(b_ind).astype(float)
-    cont[:] = np.nan
+    cont = np.empty((dat.tnum,)).astype(float)
     # calculate the continuity index for each trace
-    for tr in range(len(P[0])):
-        spick=int(s_ind[tr])
-        bpick=int(b_ind[tr])
-        if bpick-spick<10 or bpick>len(P[:,0]) or np.isnan(bpick-spick):
-            continue
+    for tr in range(dat.tnum):
+        # Nan if the picks are nan
+        if np.isnan(bpick[tr]) or np.isnan(spick[tr]):
+            cont[tr] = np.nan
         else:
             # get data from between the surface and bed
-            p_ext=P[spick:bpick,tr]
+            b = int(bpick[tr])
+            s = int(spick[tr])
+            p_ext=P[s:b,tr]
             # cutoff based on the assigned ratio
-            cut=int(len(p_ext)/cutoff_ratio)
-            p_ext=p_ext[cut:-cut]
-            if np.any(~np.isfinite(p_ext)):
-                continue
+            if cutoff_ratio is not None:
+                cut=int(len(p_ext)*cutoff_ratio)
+                p_ext=p_ext[cut:-cut]
+
+            # Nan if sampling criteria are not met
+            if len(p_ext) < 10 or len(p_ext) > dat.snum or np.any(~np.isfinite(p_ext)):
+                cont[tr] = np.nan
+
             # calculate the continuity index based on Karlsson et al. (2012) eq. 1
-            cont[tr]=np.mean(abs(np.gradient(p_ext)))
-    # smoother--simple moving boxcar
-    cont_filt = np.convolve(cont, np.ones((win,))/win, mode='valid')
+            else:
+                cont[tr]=np.mean(abs(np.gradient(p_ext)))
 
-    return cont,cont_filt
-
+    dat.continuity_index = cont
