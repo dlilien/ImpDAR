@@ -91,15 +91,21 @@ def attenuation_method2(dat,picknum,sigPc=0.,sigZ=0.,Cint=.95,u=1.69e8,*args, **
     if sigZ == 0 and sigPc == 0:
         # Simple regression
         N = -(Szp)/Szz
-        Nerr = np.nan #TODO: get an error calculation here
+        alpha = np.mean(Pc) + N*np.mean(Z)
+        # Error based on vertical distance from line only
+        Pc_err = np.sum((Pc - ((-N)*Z + alpha))**2.)
+        sigN = np.sqrt(Pc_err/Szz/(len(Z)-2))
+        tscore = stats.t.ppf(1.-(1.-Cint)/2., len(Z)-2)
+        Nerr = tscore*sigN
     else:
-        # Deming regression after Casella and Berger (2002) section 12.3
+        # Deming regression after Casella and Berger (2002) section 12.2
         lam = (sigZ**2.)/(sigPc**2.)
-        # Regression slope, eq. 12.3.16
+        # Regression slope, eq. 12.2.16
         N = -(-Szz+lam*Spp+np.sqrt((Szz-lam*Spp)**2.+4.*lam*Szp**2.))/(2.*lam*Szp)
-        # Standard deviation in slope 12.3.22
+        alpha = np.mean(Pc) + N*np.mean(Z)
+        # Standard deviation in slope 12.2.22
         sigN = np.sqrt(((1.+lam*N**2.)**2.*(Szz*Spp-Szp**2.))/((Szz-lam*Spp)**2.+4.*lam*Szp**2.))
-        tscore = stats.t.ppf(1.-(1.-Cint)/2., len(Z))
+        tscore = stats.t.ppf(1.-(1.-Cint)/2., len(Z)-2)
         # Error using Gleser's Modification with 95% confidence interval
         Nerr = tscore*sigN/(np.sqrt(len(Z)-2))
 
@@ -286,15 +292,21 @@ def attenuation_method5(dat,picknums,win=1,sigPc=0,sigZ=0,Cint=.95,u=1.69e8,*arg
             if sigZ == 0 and sigPc == 0:
                 # Simple regression
                 N = -(Szp)/Szz
-                Nerr = np.nan #TODO: get an error calculation here
+                alpha = np.mean(pc) + N*np.mean(z)
+                # Error based on vertical distance from line only
+                pc_err = np.sum((pc - ((-N)*z + alpha))**2.)
+                sigN = np.sqrt(pc_err/Szz/(len(z)-2))
+                tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z)-2)
+                Nerr = tscore*sigN
             else:
-                # Deming regression after Casella and Berger (2002) section 12.3
+                # Deming regression after Casella and Berger (2002) section 12.2
                 lam = (sigZ**2.)/(sigPc**2.)
-                # Regression slope, eq. 12.3.16
+                # Regression slope, eq. 12.2.16
                 N = -(-Szz+lam*Spp+np.sqrt((Szz-lam*Spp)**2.+4.*lam*Szp**2.))/(2.*lam*Szp)
-                # Standard deviation in slope 12.3.22
+                alpha = np.mean(pc) + N*np.mean(z)
+                # Standard deviation in slope 12.2.22
                 sigN = np.sqrt(((1.+lam*N**2.)**2.*(Szz*Spp-Szp**2.))/((Szz-lam*Spp)**2.+4.*lam*Szp**2.))
-                tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z))
+                tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z)-2)
                 # Error using Gleser's Modification with 95% confidence interval
                 Nerr = tscore*sigN/(np.sqrt(len(z)-2))
 
@@ -383,15 +395,21 @@ def attenuation_method6a(dat,picknums,att_ds,win=500.,sigPc=0,sigZ=0,Cint=.95,u=
         if sigZ == 0 and sigPc == 0:
             # Simple regression
             N = -(Szp)/Szz
-            Nerr = np.nan #TODO: get an error calculation here
+            alpha = np.mean(pc) + N*np.mean(z)
+            # Error based on vertical distance from line only
+            pc_err = np.sum((pc - ((-N)*z + alpha))**2.)
+            sigN = np.sqrt(pc_err/Szz/(len(z)-2))
+            tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z)-2)
+            Nerr = tscore*sigN
         else:
-            # Deming regression after Casella and Berger (2002) section 12.3
+            # Deming regression after Casella and Berger (2002) section 12.2
             lam = (sigZ**2.)/(sigPc**2.)
-            # Regression slope, eq. 12.3.16
+            # Regression slope, eq. 12.2.16
             N = -(-Szz+lam*Spp+np.sqrt((Szz-lam*Spp)**2.+4.*lam*Szp**2.))/(2.*lam*Szp)
-            # Standard deviation in slope 12.3.22
+            alpha = np.mean(pc) + N*np.mean(z)
+            # Standard deviation in slope 12.2.22
             sigN = np.sqrt(((1.+lam*N**2.)**2.*(Szz*Spp-Szp**2.))/((Szz-lam*Spp)**2.+4.*lam*Szp**2.))
-            tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z))
+            tscore = stats.t.ppf(1.-(1.-Cint)/2., len(z)-2)
             # Error using Gleser's Modification with 95% confidence interval
             Nerr = tscore*sigN/(np.sqrt(len(z)-2))
 
