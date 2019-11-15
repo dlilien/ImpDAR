@@ -172,7 +172,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     else:
         im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
 
-    if pick_colors is not None:
+    if (pick_colors is not None) and pick_colors:
         plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
     if not return_plotinfo:
         return fig, ax
@@ -369,7 +369,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
                 cl = colors
             else:
                 cl = ('none', colors, 'none')
-        elif type(colors) == bool and colors:
+        elif (type(colors) == bool) and colors:
             colors = [None for i in range(rd.picks.samp1.shape[0])]
             variable_colors = True
         elif not len(colors) == rd.picks.samp1.shape[0]:

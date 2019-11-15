@@ -95,7 +95,8 @@ def _get_args():
     parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
     parser_convert.add_argument('-in_fmt', type=str, default=None,
                                 choices=load.FILETYPE_OPTIONS,
-                                help='Input format type. If none, guess from extension')
+                                help='Input format type. If none, guess from extension, but \
+                                        be warned, we are bad at guessing!')
     parser_convert.add_argument('-t_srs', type=int, default=4326,
                                 help='Target spatial reference system (only used if out_fmt==shp). \
                                         Give as EPSG number.')
