@@ -129,21 +129,29 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
 def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     """
-    # r = fmcw_phase2range(phi,lambdac,rc,K,ci)
-    #
-    # Convert phase difference to range for FMCW radar
-    #
-    # args:
-    # phi: phase (radians), must be of spectrum after bin centre correction
-    # lambdac: wavelength (m) at centre frequency
-    #
-    # optional args: (used for precise method)
-    # rc: coarse range of bin centre (m)
-    # K = chirp gradient (rad/s/s)
-    # ci = propagation velocity (m/s)
-    #
-    # Craig Stewart
-    # 2014/6/10
+    Convert phase difference to range for FMCW radar
+
+    Parameters
+    ---------
+    phi: float or array
+        phase (radians), must be of spectrum after bin center correction
+    lambdac: float
+        wavelength (m) at center frequency
+    rc: float; optional
+        coarse range of bin center (m)
+    K:  float; optional
+        chirp gradient (rad/s/s)
+    ci: float; optional
+        propagation velocity (m/s)
+
+    Output
+    --------
+    r: float or array
+        range (m)
+
+    ### Original Matlab File Notes ###
+    Craig Stewart
+    2014/6/10
     """
 
     if not all([K,ci]) or rc is None:
@@ -156,8 +164,65 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
 # --------------------------------------------------------------------------------------------
 
+def range_diff(self,acq1,acq2,win,step):
+    """
+    Calculate the vertical motion using a correlation coefficient.
+
+    Parameters
+    ---------
+    self: class
+        data object
+    acq1: array
+        first acquisition for comparison
+    acq2: array
+        second acquisition for comparison
+    win: int
+        window size over which to do the correlation coefficient calculation
+    step: int
+        step size for the window to move between calculations
+
+    Output
+    --------
+    ds: array
+        depths at which the correlation coefficient is calculated
+    phase_diff: array
+        correlation coefficient between acquisitions
+        amplitude indicates how well reflection packets match between acquisitions
+        phase is a measure of the vertical motion
+    range_diff: array
+        vertical motion in meters
+    """
+
+    if np.shape(acq1) != np.shape(acq2):
+        raise TypeError('Acquisition inputs must be of the same shape.')
+
+    idxs = np.arange(0,(len(acq1)-win),step)
+    ds = self.Rcoarse[idxs]
+    phase_diff = np.empty_like(ds)
+    for i,idx in enumerate(idxs):
+        # index two sub_arrays to compare
+        arr1 = acq1[idx:idx+win]
+        arr2 = acq2[idx:idx+win]
+        # correlation coefficient to get the motion
+        # the amplitude indicates how well the reflections match between acquisitions
+        # the phase is a measure of the offset
+        phase_diff[i] = np.corrcoef(arr1,arr2)[1,0]
+
+    # convert the phase offset to a distance vector
+    range_diff = phase2range(np.angle(phase_diff),
+            self.header.lambdac,
+            self.Rcoarse,
+            self.header.chirp_grad,
+            self.header.ci)
+
+    return ds, phase_diff, range_diff
+
+# --------------------------------------------------------------------------------------------
+
 def stacking(self,num_chirps=None):
     """
+    Stack traces/chirps together to beat down the noise.
+
     Parameters
     ---------
     num_chirps: int
@@ -181,6 +246,5 @@ def stacking(self,num_chirps=None):
         self.data = np.array([np.mean(data_hold,axis=1)])
         self.bnum = 1
         self.cnum = 1
-
 
     self.flags.stack = num_chirps
