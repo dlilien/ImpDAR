@@ -31,7 +31,54 @@ from . import ApresData
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
+def load_apres(fns_apres,burst=1,fs=40000, *args, **kwargs):
+    """Load and concatenate all apres data from several files
+
+    Parameters
+    ----------
+    fns_apres: list of file names for ApresData
+        each loads object to concatenate
+
+    Returns
+    -------
+    RadarData
+        A single, concatenated output.
+    """
+
+    apres_data = []
+    for fn in fns_apres:
+        try:
+            apres_data.append(load_apres_single_file(fn,burst=burst,fs=fs,*args,**kwargs))
+        except:
+            Warning('Cannot load file: '+fn)
+
+    from copy import deepcopy
+    out = deepcopy(apres_data[0])
+
+    for dat in apres_data[1:]:
+        if out.snum != dat.snum:
+            raise ValueError('Need the same number of vertical samples in each file')
+        if out.cnum != dat.cnum:
+            raise ValueError('Need the same number of chirps in each file')
+        if not np.all(out.travel_time == dat.travel_time):
+            raise ValueError('Need matching travel time vectors')
+        if not np.all(out.frequencies == dat.frequencies):
+            raise ValueError('Need matching frequency vectors')
+
+    out.data = np.vstack([[dat.data] for dat in apres_data])
+    out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
+    out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
+    out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
+    out.time_stamp = np.hstack([dat.time_stamp for dat in apres_data])
+    out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
+    out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
+    out.battery_voltage = np.hstack([dat.battery_voltage for dat in apres_data])
+    out.bnum = np.shape(out.data)[0]
+
+    return out
+
+
+def load_apres_single_file(fn_apres,burst=1,fs=40000, *args, **kwargs):
     """
     Load ApRES data
     This function calls the load_burst function below
@@ -102,7 +149,7 @@ def load_apres(fn_apres,burst=1,fs=40000, *args, **kwargs):
                 data_load[chirp,:] = apres_data.data[start_ind[chirp]:end_ind[chirp]]
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]             # attenuator setting for chirp
                 apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)  # time of chirp
-            apres_data.data = np.transpose(data_load)
+            apres_data.data = data_load
 
     # Create time and frequency stamp for samples
     apres_data.travel_time = apres_data.dt*np.arange(apres_data.snum) # sampling times (rel to first)
@@ -249,8 +296,9 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     # Only if all the bursts were read
     if burst_count != burst+1:
         # too few bursts in file
-        self.bnum = burst_count - 1
         self.flags.file_read_code = 'Burst' + str(self.bnum) + 'not found in file' + self.header.fn
+        self.bnum = burst_count - 1
+        raise TypeError('Burst ' + str(self.bnum) + ' not found in file ' + self.header.fn)
     else:
         # TODO: Check the other readers for average == 1 or average == 2
         if self.average == 2:
@@ -283,3 +331,4 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     self.flags.file_read_code = 'Successful Read'
 
     return start_ind,end_ind
+

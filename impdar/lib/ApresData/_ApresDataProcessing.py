@@ -21,7 +21,7 @@ Sept 23 2019
 
 import numpy as np
 
-def apres_range(self,p,max_range=2000,winfun='blackman'):
+def apres_range(self,p,max_range=4000,winfun='blackman'):
     """
 
     Parameters
@@ -89,35 +89,38 @@ def apres_range(self,p,max_range=2000,winfun='blackman'):
     # --- Loop through for each chirp in burst --- #
 
     # preallocate
-    spec = np.zeros((nf,self.cnum)).astype(np.cdouble)
-    spec_cor = np.zeros((nf,self.cnum)).astype(np.cdouble)
+    spec = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
+    spec_cor = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
 
-    for ii in range(self.cnum):
-        # isolate the chirp and preprocess before transform
-        chirp = self.data[:,ii].copy()
-        chirp = chirp-np.mean(chirp) # de-mean
-        chirp *= win # windowed
+    for ib in range(self.bnum):
+        for ic in range(self.cnum):
+            # isolate the chirp and preprocess before transform
+            chirp = self.data[ib,ic,:].copy()
+            chirp = chirp-np.mean(chirp) # de-mean
+            chirp *= win # windowed
 
-        # fourier transform
-        fft_chirp = (np.sqrt(2.*p)/len(chirp))*np.fft.fft(chirp,p*self.snum) # fft and scale for padding
-        fft_chirp /= np.sqrt(np.mean(win**2.)) # scale with rms of window
+            # fourier transform
+            fft_chirp = (np.sqrt(2.*p)/len(chirp))*np.fft.fft(chirp,p*self.snum) # fft and scale for padding
+            fft_chirp /= np.sqrt(np.mean(win**2.)) # scale with rms of window
 
-        # output
-        spec[:,ii] = fft_chirp[:nf] # positive frequency half of spectrum up to (nyquist minus deltaf)
-        comp = np.exp(-1j*(self.phiref)) # unit phasor with conjugate of phiref phase
-        spec_cor[:,ii] = comp*fft_chirp[:nf] # positive frequency half of spectrum with ref phase subtracted
+            # output
+            spec[ib,ic,:] = fft_chirp[:nf] # positive frequency half of spectrum up to (nyquist minus deltaf)
+            comp = np.exp(-1j*(self.phiref)) # unit phasor with conjugate of phiref phase
+            spec_cor[ib,ic,:] = comp*fft_chirp[:nf] # positive frequency half of spectrum with ref phase subtracted
 
     self.data = spec_cor.copy()
+    self.spec = spec.copy()
 
     self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
-            np.transpose(np.tile(self.Rcoarse,(self.cnum,1))),
+            np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
             self.header.chirp_grad,self.header.ci)
 
     # Crop output variables to useful depth range only
     n = np.argmin(self.Rcoarse<=max_range)
     self.Rcoarse = self.Rcoarse[:n]
-    self.Rfine = self.Rfine[:n,:]
-    self.data = self.data[:n,:]
+    self.Rfine = self.Rfine[:,:,:n]
+    self.data = self.data[:,:,:n]
+    self.spec = self.spec[:,:,:n]
     self.snum = n
 
     self.flags.range = max_range
@@ -149,7 +152,6 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     else:
         # Precise
         r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2.))
-
     return r
 
 # --------------------------------------------------------------------------------------------
@@ -159,26 +161,26 @@ def stacking(self,num_chirps=None):
     Parameters
     ---------
     num_chirps: int
-        number of chirps to average
+        number of chirps to average over
     """
 
-    #TODO: update for stacking across multiple bursts
-
     if num_chirps == None:
-        num_chirps = self.cnum
-    elif num_chirps > self.cnum:
-        Warning('Number of chirps given for average is greater than the number of chirps in the burst.\
-                reducing to self.cnum.')
-        num_chirps = self.cnum
+        num_chirps = self.cnum*self.bnum
+
+    num_chirps = int(num_chirps)
 
     if num_chirps == self.cnum:
-        self.data = np.reshape(np.mean(self.data,axis=1),(self.snum,1))
+        self.data = np.reshape(np.mean(self.data,axis=1),(self.bnum,1,self.snum))
+        self.cnum = 1
     else:
-        data_hold = np.empty((self.cnum//num_chirps,self.snum))
-        for i in range(self.cnum//num_chirps):
-            data_hold[i,:] = np.mean(np.real(self.data[:,i*num_chirps:(i+1)*num_chirps]),axis=1)
-        self.data = data_hold
+        # reshape to jump across bursts
+        data_hold = np.reshape(self.data,(1,self.cnum*self.bnum,self.snum))
+        # take only the first set of chirps
+        data_hold = data_hold[:,:num_chirps,:]
 
-    self.cnum = np.shape(self.data)[1]
+        self.data = np.array([np.mean(data_hold,axis=1)])
+        self.bnum = 1
+        self.cnum = 1
+
 
     self.flags.stack = num_chirps
