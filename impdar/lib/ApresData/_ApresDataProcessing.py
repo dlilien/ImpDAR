@@ -66,25 +66,29 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     # Processing settings
     nf = int(np.floor(p*self.snum/2))    # number of frequencies to recover
-    # TODO: implement all the other window functions
+    # window for fft
     if winfun not in ['blackman','bartlett','hamming','hanning','kaiser']:
         raise TypeError('Window must be in: blackman, bartlett, hamming, hanning, kaiser')
     elif winfun == 'blackman':
         win = np.blackman(self.snum)
+    elif winfun == 'bartlett':
+        win = np.bartlett(self.snum)
+    elif winfun == 'hamming':
+        win = np.hamming(self.snum)
+    elif winfun == 'hanning':
+        win = np.hanning(self.snum)
+    elif winfun == 'kaiser':
+        win = np.kaiser(self.snum)
+
+    # round-trip delay Brennan et al. (2014) eq. 18
+    tau = np.arange(nf)/(self.header.bandwidth*p)
 
     # Get the coarse range
-    self.Rcoarse = np.arange(nf)*self.header.ci/(2*self.header.bandwidth*p)
+    self.Rcoarse = tau*self.header.ci/2.
 
-    # Calculate phase of each range bin centre for correction
-    # eq 17: phase for each range bin centre (measured at t=T/2), given that tau = n/(B*p)
-    self.phiref = 2.*np.pi*self.header.fc*np.arange(nf)/(self.header.bandwidth*p) - \
-            (self.header.chirp_grad*np.arange(nf)**2)/(2*self.header.bandwidth**2*p**2)
-
-    # Measure the sampled IF signal: FFT to measure frequency and phase of IF
-    #deltaf = 1/(T*p); # frequency step of FFT
-    #f = [0:deltaf:fs/2-deltaf]; # frequencies measured by the fft - changed 16 April 2014, was #f = [0:deltaf:fs/2];
-    #Rcoarse = f*ci*T/(2*B); # Range at the centre of each range bin: eq 14 (rearranged) (p is accounted for inf)
-    #Rcoarse = [0:1/p:T*fs/2-1/p]*ci/(2*B); # Range at the centre of each range bin: eq 14 (rearranged) (p is accounted for inf)
+    # Calculate phase of each range bin center for correction
+    # Brennan et al. (2014) eq. 17 measured at t=T/2
+    self.phiref = 2.*np.pi*self.header.fc*tau -(self.header.chirp_grad*tau**2.)/2
 
     # --- Loop through for each chirp in burst --- #
 
@@ -111,6 +115,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.data = spec_cor.copy()
     self.spec = spec.copy()
 
+    # precise range measurement
     self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
             np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
             self.header.chirp_grad,self.header.ci)
@@ -156,6 +161,7 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
     if not all([K,ci]) or rc is None:
         # First order method
+        # Brennan et al. (2014) eq 15
         r = lambdac*phi/(4.*np.pi)
     else:
         # Precise
@@ -198,7 +204,7 @@ def range_diff(self,acq1,acq2,win,step):
 
     idxs = np.arange(0,(len(acq1)-win),step)
     ds = self.Rcoarse[idxs]
-    phase_diff = np.empty_like(ds)
+    phase_diff = np.empty_like(ds).astype(np.complex)
     for i,idx in enumerate(idxs):
         # index two sub_arrays to compare
         arr1 = acq1[idx:idx+win]
@@ -211,7 +217,7 @@ def range_diff(self,acq1,acq2,win,step):
     # convert the phase offset to a distance vector
     range_diff = phase2range(np.angle(phase_diff),
             self.header.lambdac,
-            self.Rcoarse,
+            ds,
             self.header.chirp_grad,
             self.header.ci)
 
