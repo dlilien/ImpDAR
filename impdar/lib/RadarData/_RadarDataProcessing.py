@@ -232,7 +232,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     return depth
 
 
-def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
+def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=False):
     """Crop the radar data in the vertical. We can take off the top or bottom.
 
     This will affect data, travel_time, and snum.
@@ -282,7 +282,9 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
-        self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
+        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        if rezero:
+            self.travel_time = self.travel_time - self.travel_time[0]
         self.snum = self.data.shape[0]
     else:
         # pretrig, vector input
@@ -396,7 +398,8 @@ def restack(self, traces):
                          'x_coord',
                          'y_coord',
                          'elev',
-                         'decday']
+                         'decday',
+                         'trig']
     oned_newdata = {key: np.zeros((tnum, )) if getattr(self, key) is not None else None for key in oned_restack_vars}
     for j in range(tnum):
         stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],

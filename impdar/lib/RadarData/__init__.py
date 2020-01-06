@@ -57,7 +57,7 @@ class RadarData(object):
         traveltime_to_depth
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, _get_pick_targ_info
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
-        winavg_hfilt, hfilt, vertical_band_pass, denoise, migrate
+        winavg_hfilt, hfilt, vertical_band_pass, denoise, migrate, horizontal_band_pass, lowpass
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
@@ -183,8 +183,8 @@ class RadarData(object):
         # Do some shape checks, but we need to be careful since variable-surface will screw this up
         if (self.data.shape != (self.snum, self.tnum)) and (self.elev is None):
             raise ImpdarError('The data shape does not match the snum and tnum values!!!')
-        if (self.travel_time.shape[0] != self.snum) and (self.elev is None):
-            raise ImpdarError('The travel_time shape does not match the tnum value!!!')
+        #if (self.travel_time.shape[0] != self.snum) and (self.elev is None):
+        #    raise ImpdarError('The travel_time shape does not match the tnum value!!!')
         if hasattr(self, 'nmo_depth') and (self.nmo_depth is not None):
             if (self.nmo_depth.shape[0] != self.snum) and (self.elev is None):
                 raise ImpdarError('The nmo_depth shape does not match the tnum value!!!')

@@ -72,6 +72,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.pick_mode = 'select'
         #: A string holding information about whether to reverse the colormap (either '' or '_r')
         self.color_reversal = ''
+        #: Sometimes we like to plot distorted to a layer; None if normal, else a layer number
+        self.flatten_layer = None
 
         # line is the matplotlib object of the current pick
         #: That matplotlib line objects for the central picks, retained in this way for select mode
@@ -91,7 +93,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.current_pick = None
         self._pick_ind = 0
 
-        # For loading cross profiles, we want to use multiple symbols
+        # For loading cross profiles, we want to use multiple symbols, so need to index
         self.cross_profile = 0
 
         # Check if we need to plot some picks
