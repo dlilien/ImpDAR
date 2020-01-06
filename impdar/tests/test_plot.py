@@ -50,21 +50,21 @@ class TestPlot(unittest.TestCase):
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotPLOTARGS(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='twtt', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], yd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='depth', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True, yd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
         mock_plot_rad.reset_called()
 
         # Check that we can save
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True, yd=True, s=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
         mock_plot_rad.reset_called()
 
     @patch('impdar.lib.plot.plot_traces', returns=[DummyFig(), None])
@@ -80,17 +80,20 @@ class TestPlot(unittest.TestCase):
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADGSSI(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], filetype='gssi')
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
 
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADPE(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None)
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
 
 
     def test_plotBADINPUT(self):
         with self.assertRaises(ValueError):
             plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], tr=0, power=1)
+
+    def tearDown(self):
+        plt.close('all')
 
 
 class TestPlotTraces(unittest.TestCase):
@@ -120,6 +123,8 @@ class TestPlotTraces(unittest.TestCase):
         dat.data[:, 1] = -10
         fig, ax = plot.plot_traces(dat, (0, 2))
 
+    def tearDown(self):
+        plt.close('all')
 
 class TestPlotPower(unittest.TestCase):
     
@@ -144,6 +149,8 @@ class TestPlotPower(unittest.TestCase):
         dat.picks.power[:, 0] = 1
         fig, ax = plot.plot_power(dat, 10)
 
+    def tearDown(self):
+        plt.close('all')
 
 class TestPlotRadargram(unittest.TestCase):
     
@@ -157,6 +164,8 @@ class TestPlotRadargram(unittest.TestCase):
         fig, ax = plt.subplots()
         fig, ax = plot.plot_radargram(dat, fig=fig)
 
+    def tearDown(self):
+        plt.close('all')
 
 class TestPlotPicks(unittest.TestCase):
     
@@ -180,6 +189,8 @@ class TestPlotPicks(unittest.TestCase):
         with self.assertRaises(ValueError):
             fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'])
 
+    def tearDown(self):
+        plt.close('all')
 
 class TestPlotSpectral(unittest.TestCase):
     def test_plot_specdense(self):
@@ -227,6 +238,9 @@ class TestPlotSpectral(unittest.TestCase):
         dat.picks.samp3 = np.ones((2, len(dat.lat)))
         with self.assertRaises(AttributeError):
             plot.plot_specdense(dat, 'bad')
+
+    def tearDown(self):
+        plt.close('all')
 
 
 if __name__ == '__main__':
