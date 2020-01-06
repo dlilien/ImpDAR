@@ -21,7 +21,7 @@ from ..RadarData import RadarData
 FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi']
 
 
-def load(filetype, fns_in, channel=1):
+def load(filetype, fns_in, channel=1, *args, **kwargs):
     """Load a list of files of a certain type
 
     Parameters
@@ -79,7 +79,11 @@ def load(filetype, fns_in, channel=1):
     elif filetype == 'mcords_mat':
         dat = [load_mcords.load_mcords_mat(fn) for fn in fns_in]
     elif filetype == 'UoA_mat':
-        dat = [load_UoA_mat.load_UoA_mat(fn) for fn in fns_in]
+        if 'gps_offset' in kwargs:
+            gps_offset = kwargs['gps_offset']
+        else:
+            gps_offset = 0.0
+        dat = [load_UoA_mat.load_UoA_mat(fn, gps_offset=gps_offset) for fn in fns_in]
     elif filetype == 'ramac':
         dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     else:
@@ -131,7 +135,7 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
                 os.rename(fn,'../'+fn)
         return
     else:
-        dat = load(filetype, fns_in, channel=channel)
+        dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
 
     if 'o' in kwargs and kwargs['o'] is not None:
         if len(fns_in) > 1:

@@ -15,7 +15,7 @@ from ..gpslib import nmea_info
 import h5py
 
 
-def load_UoA_mat(fn_mat):
+def load_UoA_mat(fn_mat, gps_offset=0.0):
     """Load MCoRDS data in .mat format downloaded from the CReSIS ftp client
 
     Parameters
@@ -26,9 +26,10 @@ def load_UoA_mat(fn_mat):
     UoA_data = RadarData(None)
     UoA_data.fn = fn_mat
 
-    with h5py.File(fn_mat) as fin:
+    with h5py.File(fn_mat, 'r') as fin:
         UoA_data.data = fin['Data']['channel'][:, :].T
-        if type(UoA_data) in [np.complex64, np.complex128]:
+        # complex data
+        if len(UoA_data.data.dtype) == 2:
             UoA_data.data = 10*np.log10(np.sqrt(UoA_data.data['real'] ** 2.0 + UoA_data.data['imag'] ** 2.0))
         else:
             UoA_data.data = 10*np.log10(UoA_data.data)
@@ -37,21 +38,21 @@ def load_UoA_mat(fn_mat):
         UoA_data.travel_time = fin['Data']['fast_time'][:].flatten() * 1.0e6
         UoA_data.dt = np.mean(np.diff(UoA_data.travel_time)) * 1.0e-6
         nminfo = nmea_info()
-        nminfo.time = fin['INS_GPS']['POSIX_time'][:].flatten() / (24. * 60. * 60.)  # Stored in seconds
-        nminfo.ppstime = fin['INS_GPS']['POSIX_time'][:].flatten()
+        nminfo.time = (fin['INS_GPS']['POSIX_time'][:].flatten() + gps_offset) / (24. * 60. * 60.)  # Stored in seconds
+        nminfo.ppstime = fin['INS_GPS']['POSIX_time'][:].flatten() + gps_offset
         nminfo.lat = fin['INS_GPS']['latitude'][:].flatten()
         nminfo.lon = fin['INS_GPS']['longitude'][:].flatten()
         nminfo.elev = fin['INS_GPS']['altitude_MSL'][:].flatten()
         nminfo.get_utm()
         nminfo.get_dist()
 
-        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.x_coord = interp1d(nminfo.ppstime, nminfo.x)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.y_coord = interp1d(nminfo.ppstime, nminfo.y)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.dist = interp1d(nminfo.ppstime, nminfo.dist)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev)(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time)(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.x_coord = interp1d(nminfo.ppstime, nminfo.x, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.y_coord = interp1d(nminfo.ppstime, nminfo.y, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.dist = interp1d(nminfo.ppstime, nminfo.dist, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
         UoA_data.trace_int = UoA_data.decday[1] - UoA_data.decday[0]
         UoA_data.pressure = np.zeros_like(UoA_data.decday)
         UoA_data.trig = np.zeros_like(UoA_data.decday).astype(int)
