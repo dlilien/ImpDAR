@@ -168,10 +168,15 @@ def migrationSeisUnix(dat,
             pass
 
     dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
-    os.remove(bin_fn)
-    os.remove('header')
-    os.remove('binary')
-    os.remove(segy_name + '.sgy')
+
+    # Cleanup but don't worry if we fail
+    try:
+        os.remove(bin_fn)
+        os.remove('header')
+        os.remove('binary')
+        os.remove(segy_name + '.sgy')
+    except FileNotFoundError:
+        pass
     return dat
 
 
