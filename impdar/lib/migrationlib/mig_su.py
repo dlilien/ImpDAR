@@ -120,7 +120,6 @@ def migrationSeisUnix(dat,
                        stderr=stderr,
                        stdin=ps2.stdout)
 
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE, stderr=stderr)
     # Fourier Finite Difference
     elif mtype == 'sumigffd':
         if vel_fn is None:
@@ -134,7 +133,6 @@ def migrationSeisUnix(dat,
                        stdout=sp.PIPE,
                        stderr=stderr,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stdout=sp.PIPE, stderr=stderr)
     # Stolt
     elif mtype == 'sustolt':
         ps3 = sp.Popen(['sustolt',
@@ -149,7 +147,6 @@ def migrationSeisUnix(dat,
                        stdout=sp.PIPE,
                        stderr=stderr,
                        stdin=ps2.stdout)
-        ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stderr=stderr, stdout=sp.PIPE)
     # Stolt
     else:
         ps1.stdout.close()
@@ -157,9 +154,8 @@ def migrationSeisUnix(dat,
 
         raise ValueError('The SeisUnix migration routine', mtype, 'has not been implemented in ImpDAR. Optionally, use ImpDAR to convert to SegY and run the migration in the command line.')
 
-    ps1.wait()
-    ps2.wait()
-    ps3.wait()
+
+    ps4 = sp.Popen(['sustrip', segy_name + '_' + mtype + '.sgy'], stdin=ps3.stdout, stderr=stderr, stdout=sp.PIPE)
     with open(bin_fn, 'wb') as fout:
         fout.write(ps4.communicate()[0])
     with open(bin_fn, 'rb') as fid:
@@ -172,10 +168,15 @@ def migrationSeisUnix(dat,
             pass
 
     dat.data = np.transpose(np.reshape(data_flat, (dat.tnum, dat.snum)))
-    os.remove(bin_fn)
-    os.remove('header')
-    os.remove('binary')
-    os.remove(segy_name + '.sgy')
+
+    # Cleanup but don't worry if we fail
+    try:
+        os.remove(bin_fn)
+        os.remove('header')
+        os.remove('binary')
+        os.remove(segy_name + '.sgy')
+    except FileNotFoundError:
+        pass
     return dat
 
 

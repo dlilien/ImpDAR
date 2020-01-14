@@ -183,6 +183,9 @@ def highpass(self, wavelength):
     if self.flags.interp is None or not self.flags.interp[0]:
         raise ImpdarError('This method can only be used on constantly spaced data')
 
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+
     tracespace = self.flags.interp[1]
 
     # Convert wavelength to meters.
@@ -193,6 +196,8 @@ def highpass(self, wavelength):
     nsamp = int(wavelength / tracespace)
     if nsamp < 1:
         raise ValueError('wavelength is too small, causing no samples per wavelength')
+    if nsamp > self.tnum:
+        raise ValueError('wavelength is too large, bigger than the whole radargram')
     print('Sample resolution = {:d}'.format(nsamp))
     # The high corner frequency is the ratio of the sampling frequency (in MHz)
     # and the number of samples per wavelength (unitless).
@@ -211,6 +216,143 @@ def highpass(self, wavelength):
     b, a = butter(5, corner_freq, 'high')
 
     self.data = filtfilt(b, a, self.data)
+
+    # set flags structure components
+    self.flags.hfilt = np.ones((2,))
+    self.flags.hfilt[1] = 3
+
+    print('Highpass filter complete.')
+
+
+def lowpass(self, wavelength):
+    """Low pass in the horizontal for a given wavelength.
+
+    This only works if the data have constant trace spacing;
+    we check the processing flags to enforce this.
+
+    Parameters
+    ----------
+    wavelength: int
+        The wavelength to pass, in meters.
+
+
+    Original StoDeep Documentation:
+        HIGHPASSDEEP - This is NOT a highpass frequency filter--rather it is a
+        horizontal filter to be used after interpolation because our data now has
+        constant spacing and a constant time.  Note that this horizontal filter
+        requires constant trace-spacing in order to be effective.
+
+        You will want to experiment with the creation of the average trace.
+        Ideally choose an area where all reflectors are sloped and relatively
+        dim so that they average out while the horizontal noise is amplified.
+        Note that generally there is no perfect horizontal filter that will
+        work at all depths.  You will have to experiment to get the best
+        results for your area of interest.
+
+
+        WARNING: Do not use highpassdeep on elevation-corrected data!!!
+
+
+        Created by L. Smith and modified by
+        A. Hagen, 6/15/04. B. Welch, 5/3/06. J. Werner, 6/30/08. J. Olson, 7/10/08
+    """
+    if self.flags.interp is None or not self.flags.interp[0]:
+        raise ImpdarError('This method can only be used on constantly spaced data')
+
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+
+    tracespace = self.flags.interp[1]
+
+    # Convert wavelength to meters.
+    wavelength = int(wavelength)
+    # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
+    fsamp = 100.
+    # Calculate the number of samples per wavelength.
+    nsamp = int(wavelength / tracespace)
+    if nsamp < 1:
+        raise ValueError('wavelength is too small, causing no samples per wavelength')
+    if nsamp > self.tnum:
+        raise ValueError('wavelength is too large, bigger than the whole radargram')
+    print('Sample resolution = {:d}'.format(nsamp))
+    # The high corner frequency is the ratio of the sampling frequency (in MHz)
+    # and the number of samples per wavelength (unitless).
+    high_corner_freq = fsamp / float(nsamp)
+    print('Low cutoff at {:4.2f} MHz...'.format(high_corner_freq))
+
+    sample_freq = 1. / self.dt
+
+    nyquist_freq = sample_freq / 2.0
+    # Convert High_Corner_Freq to Hz.
+    high_corner_freq = high_corner_freq * 1.0e6
+
+    # Corner_Freq is used in the olaf_butter routine.
+    corner_freq = high_corner_freq / nyquist_freq
+
+    b, a = butter(3, corner_freq, 'low')
+
+    self.data = filtfilt(b, a, self.data)
+
+    # set flags structure components
+    self.flags.hfilt = np.ones((2,))
+    self.flags.hfilt[1] = 3
+
+    print('Lowpass filter complete.')
+
+
+def horizontal_band_pass(self, low, high):
+    """Bandpass in the horizontal for a given pair of wavelengths
+
+    This only works if the data have constant trace spacing;
+    we check the processing flags to enforce this.
+
+    Parameters
+    ----------
+    low: float
+        The minimum wavelength to pass, in meters.
+    high: float
+        The maximum wavelength to pass, in meters.
+
+    """
+    if self.flags.interp is None or not self.flags.interp[0]:
+        raise ImpdarError('This method can only be used on constantly spaced data')
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+    if low >= high:
+        raise ValueError('Low must be less than high')
+
+    tracespace = self.flags.interp[1]
+
+    # Convert wavelength to meters.
+    wavelength_high = high
+    wavelength_low = low
+    # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
+    fsamp = 100.
+    # Calculate the number of samples per wavelength.
+    nsamp_high = int(wavelength_high / tracespace)
+    nsamp_low = int(wavelength_low / tracespace)
+    if nsamp_low < 1:
+        raise ValueError('Minimum wavelength is too small, causing no samples per wavelength')
+    if nsamp_high > self.tnum:
+        raise ValueError('Maximum wavelength is too long, causing more samples per wavelength than tnum, use lowpass instead?')
+    print('Sample resolution high = {:d}'.format(nsamp_high))
+    print('Sample resolution low = {:d}'.format(nsamp_low))
+    # The high corner frequency is the ratio of the sampling frequency (in MHz)
+    # and the number of samples per wavelength (unitless).
+    high_corner_freq = fsamp / float(nsamp_high)
+    low_corner_freq = fsamp / float(nsamp_low)
+
+    nyquist_freq = fsamp / 2.0
+    high_corner_freq = high_corner_freq
+    low_corner_freq = low_corner_freq
+
+    corner_freq = np.zeros((2,))
+    corner_freq[0] = low_corner_freq / nyquist_freq
+    corner_freq[1] = high_corner_freq / nyquist_freq
+
+    b, a = butter(5, corner_freq, 'bandpass')
+
+    self.data = filtfilt(b, a, self.data, axis=1)
 
     # set flags structure components
     self.flags.hfilt = np.ones((2,))
@@ -441,7 +583,7 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
         else:
             self.data = wiener(self.data, mysize=(vert_win, hor_win), noise=noise)
     else:
-        raise TypeError('Only the wiener filter has been implemented for denoising.')
+        raise ValueError('Only the wiener filter has been implemented for denoising.')
 
 
 def migrate(self,

@@ -65,6 +65,15 @@ def _get_args():
     parser_vbp.add_argument('high_MHz', type=float, help='Highest frequency passed (in MHz)')
     add_def_args(parser_vbp)
 
+    parser_hbp = add_procparser(subparsers, 'hbp', 'Horizontally bandpass the data', hbp, defname='hbp')
+    parser_hbp.add_argument('low', type=float, help='Lowest frequency passed (in wavelength)')
+    parser_hbp.add_argument('high', type=float, help='Highest frequency passed (in wavelength)')
+    add_def_args(parser_hbp)
+
+    parser_lp = add_procparser(subparsers, 'lp', 'Horizontally lowpass the data', lp, defname='lp')
+    parser_lp.add_argument('low', type=float, help='Lowest frequency passed (in wavelength)')
+    add_def_args(parser_lp)
+
     # Crop in the vertical
     parser_crop = add_procparser(subparsers, 'crop', 'Crop the data in the vertical', crop, defname='cropped')
     parser_crop.add_argument('top_or_bottom', choices=['top', 'bottom'], help='Remove from the top or bottom')
@@ -204,6 +213,14 @@ def elev(dat, **kwargs):
 
 def vbp(dat, low_MHz=1, high_MHz=10000, **kwargs):
     dat.vertical_band_pass(low_MHz, high_MHz)
+
+
+def hbp(dat, low=1, high=10, **kwargs):
+    dat.horizontal_band_pass(low, high)
+
+
+def lp(dat, low=1, **kwargs):
+    dat.lowpass(low)
 
 
 def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):

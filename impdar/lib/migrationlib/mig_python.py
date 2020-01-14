@@ -113,7 +113,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     return dat
 
 
-def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
+def migrationStolt_nonconstant(dat,vel=1.68e8,htaper=100,vtaper=1000):
     """Stolt Migration (Stolt, 1978, Geophysics)
 
     This is by far the fastest migration method. It is a simple transformation from
@@ -193,8 +193,93 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
 
     # this changes the vertical scale
     print('Rescaling TWTT')
-    dat.travel_time = np.arange(dat.travel_time[0], dat.travel_time[-1], dat.data.shape[0])
+    dat.travel_time = dat.travel_time[::2]
     dat.dt = dat.dt * 2.
+    dat.snum = dat.data.shape[0]
+
+    # print the total time
+    print('')
+    print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
+          %(dat.tnum,dat.snum,time.time()-start))
+    return dat
+
+
+def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
+    """Stolt Migration (Stolt, 1978, Geophysics)
+
+    This is by far the fastest migration method. It is a simple transformation from
+    frequency-wavenumber (FKx) to wavenumber-wavenumber (KzKx) space.
+
+    Parameters
+    ---------
+    dat: data as a class in the ImpDAR format
+    vel: wave velocity, default is for ice
+    htaper: number of traces for the linear horizontal taper from the edges of the domain
+    vtaper: number of samples for the vertical taper from the top and bottom.
+
+    Output
+    ---------
+    dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
+
+    """
+
+    print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    # check that the arrays are compatible
+    _check_data_shape(dat)
+
+    # save the start time
+    start = time.time()
+
+    # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
+    FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))
+    # get the temporal frequencies
+    ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)
+    # get the horizontal wavenumbers
+    if np.mean(dat.trace_int) <= 0:
+        Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
+        trace_int = np.gradient(dat.dist)
+    else:
+        trace_int = dat.trace_int
+    kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(trace_int))
+    # interpolate from frequency (ws) into wavenumber (kz)
+    interp_real = interp2d(kx,ws,FK.real)
+    interp_imag = interp2d(kx,ws,FK.imag)
+    # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
+    KK = FK.copy()
+    print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
+    print('Interpolating:')
+    # for all temporal frequencies
+    for zj in range(dat.snum):
+        kzj = ws[zj]*2./vel
+        if zj%100 == 0:
+            print(int(ws[zj]/1e6/2/np.pi), 'MHz, ', end='')
+            sys.stdout.flush()
+        # for all horizontal wavenumbers
+        for xi in range(len(kx)):
+            kxi = kx[xi]
+            # migration conversion to wavenumber (Yilmaz equation C.53)
+            wsj = vel/2.*np.sqrt(kzj**2.+kxi**2.)
+            # get the interpolated FFT values, real and imaginary, S(kx,kz,t=0)
+            KK[zj,xi] = interp_real(kxi,wsj) + 1j*interp_imag(kxi,wsj)
+    # all vertical wavenumbers
+    kz = ws*2./vel
+    # grid wavenumbers for scaling calculation
+    kX,kZ = np.meshgrid(kx,kz)
+    # scaling for obliquity factor (Yilmaz equation C.56)
+    with np.errstate(invalid='ignore'):
+        scaling = kZ/np.sqrt(kX**2.+kZ**2.)
+    KK *= scaling
+    # the DC frequency should be 0.
+    KK[0,0] = 0.+0j
+    # 2D Inverse Fourier Transform to get back to distance spce, D(x,z,t=0)
+    dat.data = np.real(np.fft.ifft2(KK))
+    # Cut array to input matrix dimensions
+    dat.data = dat.data[:dat.snum,:dat.tnum]
+
+    # this changes the vertical scale
+    print('Rescaling TWTT')
+    # dat.travel_time = dat.travel_time[::2]
+    # dat.dt = dat.dt * 2.
     dat.snum = dat.data.shape[0]
 
     # print the total time

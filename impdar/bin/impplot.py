@@ -20,10 +20,12 @@ def _get_args():
 
     rg_parser = add_simple_procparser(subparsers, 'rg', 'Plot radargram', plot_radargram, defname='radargram', xd=True, yd=True)
     rg_parser.add_argument('-picks', action='store_true', help='Plot picks')
+    rg_parser.add_argument('-clims', nargs=2, type=float, help='Color limits')
+    rg_parser.add_argument('-cmap', type=str, help='Color map name', default='gray')
 
     add_simple_procparser(subparsers, 'ft', 'Plot ft', plot_ft, defname='spec', xd=True, yd=True)
 
-    add_simple_procparser(subparsers, 'ft', 'Plot ft', plot_ft, defname='spec', xd=True, yd=True)
+    add_simple_procparser(subparsers, 'hft', 'Plot ft', plot_hft, defname='spec', xd=True, yd=True)
 
     trace_parser = add_simple_procparser(subparsers, 'traces', 'Plot traces vs depth', plot_traces, defname='traces', xd=False, yd=True)
     trace_parser.add_argument('t_start', type=int, help='Starting trace number')
@@ -66,16 +68,16 @@ def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
                             choices=FILETYPE_OPTIONS)
 
 
-def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', picks=False, **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, pick_colors=picks)
+def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', picks=False, clims=None, cmap='gray', **kwargs):
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims)
 
 
 def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
     plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, ft=True)
 
 
-def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, ft=True)
+def plot_hft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, hft=True)
 
 
 def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):

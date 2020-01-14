@@ -8,12 +8,8 @@
 
 """
 Test the machinery of impplot.
-<<<<<<< HEAD
 This is broken up to match where it would likely fail;
 tests process wrappers of various methods are with the tests of those methods
-=======
-This is broken up to match where it would likely fail; tests process wrappers of various methods are with the tests of those methods
->>>>>>> master
 """
 import sys
 import unittest
@@ -38,12 +34,16 @@ class TestMain(unittest.TestCase):
                 impplot.main()
 
         impplot.sys.argv = ['dummy', 'dummy']
-        with self.assertRaises(BaseException):
-            impplot.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                impplot.main()
 
         impplot.sys.argv = ['dummy', 'rg']
-        with self.assertRaises(BaseException):
-            impplot.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(BaseException):
+                impplot.main()
 
         impplot.sys.argv = ['dummy', 'dummy', 'fn']
 

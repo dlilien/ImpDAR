@@ -16,7 +16,7 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', pick_colors=None, ft=False, *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', pick_colors=None, ft=False, hft=False, clims=None, cmap=plt.cm.gray, *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -55,8 +55,10 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         figs = [plot_specdense(dat, freq_limit, window, scaling) for dat in radar_data]
     elif ft:
         figs = [plot_ft(dat) for dat in radar_data]
+    elif hft:
+        figs = [plot_hft(dat) for dat in radar_data]
     else:
-        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None, pick_colors=pick_colors) for dat in radar_data]
+        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None, pick_colors=pick_colors, clims=clims, cmap=cmap) for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
         if dat.fn is not None:
@@ -69,7 +71,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         plt.show()
 
 
-def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None):
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None, clims=None, flatten_layer=None):
     """This is the function to plot the normal radargrams that we are used to.
 
     This function is a little weird since I want to be able to plot on top of existing figures/axes or on new figures an axes. There is therefore an argument `return_plotinfo` that funnels between these options and changes the return types
@@ -79,7 +81,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
     xdat: str, optional
-        The horizontal axis units. Either tnum or distance.
+        The horizontal axis units. Either tnum or dist(ance).
     ydat: str, optional
         The vertical axis units. Either twtt or or depth. Default twtt.
     x_range: 2-tuple, optional
@@ -118,8 +120,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     """
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
-    if ydat not in ['twtt', 'depth', 'elev']:
-        raise ValueError('y axis choices are twtt, depth, or elev')
 
     if x_range is None:
         x_range = (0, -1)
@@ -128,10 +128,11 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
 
     if y_range is None:
         y_range = (0, -1)
-    if y_range[-1] == -1:
+    elif y_range[-1] == -1:
         y_range = (y_range[0], dat.data.shape[0])
 
-    lims = np.percentile(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])], (10, 90))
+    if clims is None:
+        clims = np.percentile(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])], (10, 90))
 
     if fig is not None:
         if ax is None:
@@ -156,7 +157,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
                 yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * 1.69e8 * 1.0e-6
             ax.set_ylabel('Depth (m)')
         else:
-            raise ValueError('Unrecognized ydat')
+            raise ValueError('Unrecognized ydat, choices are elev, twtt, or depth')
 
     if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
@@ -165,23 +166,47 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         xd = dat.dist[x_range[0]:x_range[-1]]
         ax.set_xlabel('Distance (km)')
 
-    if hasattr(dat.flags, 'elev') and dat.flags.elev:
-        print(dat.data[:, x_range[0]:x_range[-1]])
-        print(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])
-        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
-    else:
-        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+    if flatten_layer is not None:
+        if flatten_layer not in dat.picks.picknums:
+            raise ValueError('That layer is not in existence, cannot flatten')
+        layer_ind = dat.picks.picknums.index(flatten_layer)
+        layer_depth = dat.picks.samp2[layer_ind, :]
+        zero_offset = int(np.nanmean(layer_depth))
+        offset = zero_offset - layer_depth
 
-    if pick_colors is not None:
+        # Now construct the data matrix
+        tmp_data = np.zeros_like(dat.data)
+        tmp_data[:, :] = np.nan
+        for j in range(tmp_data.shape[1]):
+            if np.isnan(offset[j]):
+                continue
+            if int(offset[j]) == 0:
+                tmp_data[:, j] = dat.data[:, j]
+            # We have a weird error here with max size ints?
+            elif offset[j] < 0 and (abs(offset[j]) < dat.snum):
+                tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
+            elif (abs(offset[j]) < dat.snum) and offset[j]:
+                tmp_data[int(offset[j]):, j] = dat.data[:-int(offset[j]), j]
+
+        im = ax.imshow(tmp_data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=clims[0], vmax=clims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+    elif hasattr(dat.flags, 'elev') and dat.flags.elev:
+        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=clims[0], vmax=clims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
+    else:
+        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=clims[0], vmax=clims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+
+    if (pick_colors is not None) and pick_colors:
         plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
     if not return_plotinfo:
         return fig, ax
     else:
-        return im, xd, yd, x_range, lims
+        return im, xd, yd, x_range, clims
 
 
 def plot_ft(dat, fig=None, ax=None):
-    """Plot the Fourier spectrum of the data; we first fft, then average the fft"""
+    """Plot the Fourier spectrum of the data in the vertical.
+
+    This will give the power spectral density in terms of the
+    frequency (in MHz). We first fft, then average the fft"""
     fft = np.fft.fft(dat.data, axis=0)
     fft_dat = np.mean(np.abs(fft) ** 2.0, axis=1)
     freq = np.fft.fftfreq(dat.snum) / dat.dt
@@ -192,6 +217,29 @@ def plot_ft(dat, fig=None, ax=None):
         fig, ax = plt.subplots(figsize=(12, 8))
     ax.plot(freq[freq >= 0] / 1.0e6, fft_dat[freq >= 0])
     ax.set_xlabel('Freq (MHz)')
+    ax.set_ylabel('Power spectral density')
+    return fig, ax
+
+
+def plot_hft(dat, fig=None, ax=None):
+    """Plot the Fourier spectrum of the data in the horizontal
+
+    This will give the power spectral density as a function of the
+    horizontal wavelength (in meters). We first fft, then average the fft"""
+    fft = np.fft.fft(dat.data, axis=1)
+    fft_dat = np.mean(np.abs(fft) ** 2.0, axis=0)
+
+    # approximate as with the hbp
+    freq = np.fft.fftfreq(dat.tnum)
+    wavelength = dat.flags.interp[1] / freq
+
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(wavelength[freq >= 0], fft_dat[freq >= 0])
+    ax.set_xlabel('Wavelength')
     ax.set_ylabel('Power spectral density')
     return fig, ax
 
@@ -260,7 +308,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyl
     return fig, ax
 
 
-def plot_power(dats, idx, fig=None, ax=None):
+def plot_power(dats, idx, fig=None, ax=None, clims=None):
     """Make a plot of the reflected power along a given pick
 
 
@@ -305,7 +353,7 @@ def plot_power(dats, idx, fig=None, ax=None):
         fig, ax = plt.subplots(figsize=(8, 12))
 
     # Attempt to plot in projected coordinates
-    if dats[0].x_coord is not None:
+    if (dats[0].x_coord is not None) and (dats[0].y_coord is not None):
         if len(dats) > 1:
             lons = np.hstack([dat.x_coord for dat in dats])
             lats = np.hstack([dat.y_coord for dat in dats])
@@ -323,12 +371,14 @@ def plot_power(dats, idx, fig=None, ax=None):
     pick_power = np.hstack([dat.picks.power[dat.picks.picknums.index(idx)].flatten() for dat in dats])
 
     c = 10 * np.log10(pick_power)
-    clims = np.percentile(c[~np.isnan(c)], (1, 99))
 
-    # I think we throw an error if vmin=vmax, but we still want a plot of constant power
-    if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
-        clims[0] = 0.99 * clims[0]
-        clims[1] = 1.01 * clims[1]
+    if clims is None:
+        clims = np.percentile(c[~np.isnan(c)], (1, 99))
+
+        # I think we throw an error if vmin=vmax, but we still want a plot of constant power
+        if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
+            clims[0] = 0.99 * clims[0]
+            clims[1] = 1.01 * clims[1]
 
     img = ax.scatter(lons.flatten(), lats.flatten(), c=c.flatten(), vmin=clims[0], vmax=clims[1])
     h = fig.colorbar(img)
@@ -361,7 +411,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         return fig, ax
 
     variable_colors = False
-    if colors is None:
+    if not colors:  # may be False or None
         cl = 'mgm'
     else:
         if type(colors) == str:
@@ -369,7 +419,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
                 cl = colors
             else:
                 cl = ('none', colors, 'none')
-        elif type(colors) == bool and colors:
+        elif (type(colors) == bool) and colors:
             colors = [None for i in range(rd.picks.samp1.shape[0])]
             variable_colors = True
         elif not len(colors) == rd.picks.samp1.shape[0]:
@@ -487,7 +537,7 @@ def plot_specdense(dat, freq_limit, window='hanning', scaling='spectrum', fig=No
 
     # set title
     title = 'Power Spectral Density as a Function of Trace Number and Frequency'
-    # add space between the title and the plot
-    ax.set_title(title, pad=20)
+    # add space between the title and the plot -DL deleted due to incompatibility with some mpl versions
+    ax.set_title(title)
 
     return fig, ax

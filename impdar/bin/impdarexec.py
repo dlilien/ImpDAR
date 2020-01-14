@@ -25,6 +25,7 @@ def _get_args():
     parser_load.add_argument('-channel', type=int, default=1,
                              help='Receiver channel to load, \
                                      this is primarily for the St. Olaf HF data.')
+    parser_load.add_argument('-gps_offset', type=float, help='Offset of GPS and data times for UoA_mat', default=0.0)
     parser_load.add_argument('-o', type=str, help='Write to this filename')
 
     # Options for processing data
@@ -95,7 +96,8 @@ def _get_args():
     parser_convert.add_argument('out_fmt', type=str, choices=['shp', 'mat', 'segy'])
     parser_convert.add_argument('-in_fmt', type=str, default=None,
                                 choices=load.FILETYPE_OPTIONS,
-                                help='Input format type. If none, guess from extension')
+                                help='Input format type. If none, guess from extension, but \
+                                        be warned, we are bad at guessing!')
     parser_convert.add_argument('-t_srs', type=int, default=4326,
                                 help='Target spatial reference system (only used if out_fmt==shp). \
                                         Give as EPSG number.')

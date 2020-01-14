@@ -28,9 +28,12 @@ def load_segy(fn_sgy, *args, **kwargs):
     segy_data = RadarData(None)
     segy_data.fn = fn_sgy
     f = segyio.open(fn_sgy, ignore_geometry=True)
-    where_good = np.where(f.attributes(
-        segyio.TraceField.SourceX)[:] == f.attributes(segyio.TraceField.SourceX)[0])[0]
-    segy_data.data = segyio.tools.collect(f.trace[where_good[0]:where_good[-1] + 1]).transpose()
+
+    # this next line is not good for real radar data, only really works if we have no geometry
+    # or we are dealing with seismic gathers
+    # where_good = np.where(f.attributes(
+    #    segyio.TraceField.SourceX)[:] == f.attributes(segyio.TraceField.SourceX)[0])[0]
+    segy_data.data = segyio.tools.collect(f.trace).transpose()
     segy_data.snum = f.bin[segyio.BinField.Samples]
     segy_data.tnum = segy_data.data.shape[1]
     segy_data.dt = f.bin[segyio.BinField.Interval] * 1.0e-12
@@ -42,12 +45,17 @@ def load_segy(fn_sgy, *args, **kwargs):
     # + segy_data.dt
 
     #TODO  these next ones are filler
+    # right now, they are selected so that they read in the delores data
     segy_data.trace_int = 1
     segy_data.chan = 1
-    segy_data.trig = 1
+    segy_data.trig = np.zeros((segy_data.tnum, ))
     segy_data.decday = np.zeros((segy_data.tnum, ))
+    segy_data.x_coord = f.attributes(segyio.TraceField.CDP_X)[:] / 10.0
+    segy_data.y_coord = f.attributes(segyio.TraceField.CDP_Y)[:] / 10.0
+    segy_data.dist = np.hstack(([0], np.cumsum(np.sqrt(np.diff(segy_data.x_coord)**2.0 + np.diff(segy_data.y_coord)**2.0)))) / 1000.
     segy_data.long = np.zeros((segy_data.tnum, ))
     segy_data.lat = np.zeros((segy_data.tnum, ))
+    segy_data.elev = np.zeros((segy_data.tnum, ))
     segy_data.trig_level = np.zeros((segy_data.tnum, ))
     segy_data.pressure = np.zeros((segy_data.tnum, ))
 
