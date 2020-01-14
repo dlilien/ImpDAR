@@ -19,7 +19,7 @@ except ImportError:
     raise ImportError('Numpy is required during build. Install numpy, then retry')
 
 # For now, this should just run on my computer and I'll distribute the c code
-if socket.gethostname() == 'berens':
+if socket.gethostname() == 'hozideh':
     CYTHON = True
 else:
     CYTHON = False

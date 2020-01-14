@@ -81,7 +81,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
     xdat: str, optional
-        The horizontal axis units. Either tnum or distance.
+        The horizontal axis units. Either tnum or dist(ance).
     ydat: str, optional
         The vertical axis units. Either twtt or or depth. Default twtt.
     x_range: 2-tuple, optional
@@ -120,8 +120,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     """
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
-    if ydat not in ['twtt', 'depth', 'elev']:
-        raise ValueError('y axis choices are twtt, depth, or elev')
 
     if x_range is None:
         x_range = (0, -1)
@@ -130,7 +128,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
 
     if y_range is None:
         y_range = (0, -1)
-    if y_range[-1] == -1:
+    elif y_range[-1] == -1:
         y_range = (y_range[0], dat.data.shape[0])
 
     if clims is None:
@@ -159,7 +157,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
                 yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * 1.69e8 * 1.0e-6
             ax.set_ylabel('Depth (m)')
         else:
-            raise ValueError('Unrecognized ydat')
+            raise ValueError('Unrecognized ydat, choices are elev, twtt, or depth')
 
     if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
@@ -174,7 +172,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         layer_ind = dat.picks.picknums.index(flatten_layer)
         layer_depth = dat.picks.samp2[layer_ind, :]
         zero_offset = int(np.nanmean(layer_depth))
-        offset = (zero_offset - layer_depth).astype(int)
+        offset = zero_offset - layer_depth
 
         # Now construct the data matrix
         tmp_data = np.zeros_like(dat.data)
@@ -182,13 +180,13 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         for j in range(tmp_data.shape[1]):
             if np.isnan(offset[j]):
                 continue
-            if offset[j] == 0:
+            if int(offset[j]) == 0:
                 tmp_data[:, j] = dat.data[:, j]
             # We have a weird error here with max size ints?
-            elif offset[j] < 0 and (abs(offset[j]) < dat.snum) and offset[j] > -9223372036854775808:
-                tmp_data[:offset[j], j] = dat.data[-offset[j]:, j]
-            elif (abs(offset[j]) < dat.snum) and offset[j] > -9223372036854775808:
-                tmp_data[offset[j]:, j] = dat.data[:-offset[j], j]
+            elif offset[j] < 0 and (abs(offset[j]) < dat.snum):
+                tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
+            elif (abs(offset[j]) < dat.snum) and offset[j]:
+                tmp_data[int(offset[j]):, j] = dat.data[:-int(offset[j]), j]
 
         im = ax.imshow(tmp_data[:, x_range[0]:x_range[-1]], cmap=cmap, vmin=clims[0], vmax=clims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
     elif hasattr(dat.flags, 'elev') and dat.flags.elev:
@@ -205,7 +203,10 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
 
 
 def plot_ft(dat, fig=None, ax=None):
-    """Plot the Fourier spectrum of the data; we first fft, then average the fft"""
+    """Plot the Fourier spectrum of the data in the vertical.
+
+    This will give the power spectral density in terms of the
+    frequency (in MHz). We first fft, then average the fft"""
     fft = np.fft.fft(dat.data, axis=0)
     fft_dat = np.mean(np.abs(fft) ** 2.0, axis=1)
     freq = np.fft.fftfreq(dat.snum) / dat.dt
@@ -221,7 +222,10 @@ def plot_ft(dat, fig=None, ax=None):
 
 
 def plot_hft(dat, fig=None, ax=None):
-    """Plot the Fourier spectrum of the data; we first fft, then average the fft"""
+    """Plot the Fourier spectrum of the data in the horizontal
+
+    This will give the power spectral density as a function of the
+    horizontal wavelength (in meters). We first fft, then average the fft"""
     fft = np.fft.fft(dat.data, axis=1)
     fft_dat = np.mean(np.abs(fft) ** 2.0, axis=0)
 
@@ -349,7 +353,7 @@ def plot_power(dats, idx, fig=None, ax=None, clims=None):
         fig, ax = plt.subplots(figsize=(8, 12))
 
     # Attempt to plot in projected coordinates
-    if dats[0].x_coord is not None:
+    if (dats[0].x_coord is not None) and (dats[0].y_coord is not None):
         if len(dats) > 1:
             lons = np.hstack([dat.x_coord for dat in dats])
             lats = np.hstack([dat.y_coord for dat in dats])
@@ -407,7 +411,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         return fig, ax
 
     variable_colors = False
-    if colors is None:
+    if not colors:  # may be False or None
         cl = 'mgm'
     else:
         if type(colors) == str:
