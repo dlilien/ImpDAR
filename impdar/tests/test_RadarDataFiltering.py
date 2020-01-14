@@ -48,7 +48,6 @@ class TestAdaptive(unittest.TestCase):
         self.assertTrue(np.all(radardata.data <= 1.))
 
 
-
 class TestHfilt(unittest.TestCase):
 
     def test_horizontalfilt(self):
@@ -56,7 +55,6 @@ class TestHfilt(unittest.TestCase):
         radardata.horizontalfilt(0, 100)
         # We taper in the hfilt, so this is not just zeros
         self.assertTrue(np.all(radardata.data == radardata.hfilt_target_output))
-
 
 
 class TestHighPass(unittest.TestCase):
@@ -249,7 +247,7 @@ class TestRadarDataHfiltWrapper(unittest.TestCase):
         radardata = NoInitRadarData()
         radardata.adaptivehfilt = MagicMock()
         radardata.hfilt(ftype='adaptive')
-        radardata.adaptivehfilt.assert_called()
+        radardata.adaptivehfilt.assert_called_with()
 
     def test_horizontalfilt(self):
         radardata = NoInitRadarData()
@@ -268,7 +266,7 @@ class TestProcessWrapper(unittest.TestCase):
         radardata = NoInitRadarData()
         radardata.adaptivehfilt = MagicMock()
         process.process([radardata], ahfilt=True)
-        radardata.adaptivehfilt.assert_called()
+        radardata.adaptivehfilt.assert_called_with()
 
     def test_process_hfilt(self):
         radardata = NoInitRadarData()
