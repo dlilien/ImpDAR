@@ -101,7 +101,7 @@ class TestMigration(unittest.TestCase):
 
     def test_Stolt(self):
         data = NoInitRadarData(big=True)
-        data = migrationlib.migrationStolt(data)
+        data = mig_python.migrationStolt(data)
 
     def test_Kirchhoff(self):
         data = NoInitRadarData(big=True)
@@ -109,24 +109,24 @@ class TestMigration(unittest.TestCase):
 
     def test_TimeWavenumber(self):
         data = NoInitRadarData(big=True)
-        data = migrationlib.migrationTimeWavenumber(data)
+        data = mig_python.migrationTimeWavenumber(data)
 
     def test_PhaseShiftConstant(self):
         data = NoInitRadarData(big=True)
-        data = migrationlib.migrationPhaseShift(data)
+        data = mig_python.migrationPhaseShift(data)
 
     def test_PhaseShiftVariable(self):
         data = NoInitRadarData(big=True)
         data.travel_time = data.travel_time / 10.
-        data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
+        data = mig_python.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
 
         data = NoInitRadarData(big=True)
         with self.assertRaises(TypeError):
-            data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'notafile.txt'))
+            data = mig_python.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'notafile.txt'))
 
     def test_PhaseShiftLateral(self):
         data = NoInitRadarData(big=True)
-        data = migrationlib.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
+        data = mig_python.migrationPhaseShift(data, vel_fn=os.path.join(THIS_DIR, 'input_data', 'velocity_lateral.txt'))
 
     @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY) or (sys.version_info[0] < 3), 'SeisUnix not found')
     def test_sumigtk(self):
