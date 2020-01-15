@@ -94,44 +94,31 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
     processed: bool
         If True, we did something, if False we didn't
     """
+    done_stuff = False
 
     # first some argument checking so we don't crash later
     if crop is not None:
         try:
-            if crop[1] not in ['top', 'bottom']:
-                raise ValueError('First element of crop must be in ["top", "bottom"]')
-            if crop[2] not in ['snum', 'twtt', 'depth']:
-                raise ValueError('Second element of crop must be in ["snum", "twtt", "depth"]')
-            try:
-                crop = (float(crop[0]), crop[1], crop[2])
-            except ValueError:
-                raise ValueError('Third element of crop must be convertible to a float')
+            crop = (float(crop[0]), crop[1], crop[2])
+        except ValueError:
+            raise ValueError('First element of crop must be convertible to a float')
         except TypeError:
             raise TypeError('Crop must be subscriptible')
 
     if hcrop is not None:
         try:
-            if crop[1] not in ['left', 'right']:
-                raise ValueError('First element of crop must be in ["left", "right"]')
-            if crop[2] not in ['tnum', 'dist']:
-                raise ValueError('Second element of crop must be in ["tnum", "dist"]')
-            try:
-                crop = (float(crop[0]), crop[1], crop[2])
-            except ValueError:
-                raise ValueError('Third element of crop must be convertible to a float')
+            hcrop = (float(hcrop[0]), hcrop[1], hcrop[2])
+        except ValueError:
+            raise ValueError('First element of hcrop must be convertible to a float')
         except TypeError:
-            raise TypeError('Crop must be subscriptible')
-
-    done_stuff = False
-    # hcrop first to reduce computation
-    if hcrop is not None:
+            raise TypeError('hcrop must be subscriptible')
         for dat in RadarDataList:
             dat.hcrop(*hcrop)
         done_stuff = True
 
     if restack is not None:
         for dat in RadarDataList:
-            if type(restack) in [list, tuple]:
+            if isinstance(restack, (list, tuple)):
                 restack = int(restack[0])
             dat.restack(restack)
         done_stuff = True
@@ -142,6 +129,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         done_stuff = True
 
     if vbp is not None:
+        if not hasattr(vbp, '__iter__'):
+            raise TypeError('vbp must be a tuple with first two elements [low] [high] MHz')
         for dat in RadarDataList:
             dat.vertical_band_pass(*vbp)
         done_stuff = True
@@ -157,7 +146,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         done_stuff = True
 
     if nmo is not None:
-        if type(nmo) == float:
+        if isinstance(nmo, (float, int)):
             print('One nmo value given. Assuming that this is the separation. Uice=1.6')
             nmo = (nmo, 1.6)
         for dat in RadarDataList:
@@ -180,7 +169,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         done_stuff = True
 
     if migrate is not None:
-        dat.migrate(mtype='stolt')
+        for dat in RadarDataList:
+            dat.migrate(mtype='stolt')
         done_stuff = True
 
     if not done_stuff:

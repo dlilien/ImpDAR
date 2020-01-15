@@ -13,7 +13,6 @@ import os
 import unittest
 import numpy as np
 from impdar.lib.RadarData import RadarData
-from impdar.lib import process
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,15 +48,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
         self.assertTrue(np.allclose(self.data.x_coord, np.arange(39, -1, -1)))
         self.data.reverse()
-        self.assertTrue(np.allclose(self.data.data, data_unrev))
-        self.assertTrue(np.allclose(self.data.x_coord, np.arange(40)))
-
-    def test_process_Reverse(self):
-        data_unrev = self.data.data.copy()
-        process.process([self.data], rev=True)
-        self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
-        self.assertTrue(np.allclose(self.data.x_coord, np.arange(39, -1, -1)))
-        process.process([self.data], rev=True)
         self.assertTrue(np.allclose(self.data.data, data_unrev))
         self.assertTrue(np.allclose(self.data.x_coord, np.arange(40)))
 
@@ -109,20 +99,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.crop(0.165, 'bottom', dimension='depth')
         self.assertTrue(self.data.data.shape == (17, 40))
         self.data.crop(0.055, 'top', dimension='depth')
-        self.assertTrue(self.data.data.shape == (11, 40))
-
-    def test_process_Crop(self):
-        with self.assertRaises(TypeError):
-            process.process([self.data], crop=True)
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=(1.0, 'top', 'dum'))
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=(1.0, 'bot', 'snum'))
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=('ugachacka', 'top', 'snum'))
-        process.process([self.data], crop=(17, 'bottom', 'snum'))
-        self.assertTrue(self.data.data.shape == (17, 40))
-        process.process([self.data], crop=(6, 'top', 'snum'))
         self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_HCropTnum(self):
@@ -195,17 +171,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertEqual(self.data.flags.nmo.shape, (2,))
         self.assertTrue(self.data.flags.nmo[0])
 
-    def test_process_NMO(self):
-        # If velocity is 2
-        process.process([self.data], nmo=(0., 2.0, 2.0))
-        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
-        # shouldn't care about uair if offset=0
-        process.process([self.data], nmo=(0., 2.0, 200.0))
-        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
-
-        # Just make sure we can use one arg
-        process.process([self.data], nmo=0.)
-
     def test_restack_odd(self):
         self.data.restack(5)
         self.assertTrue(self.data.data.shape == (20, 8))
@@ -213,12 +178,6 @@ class TestRadarDataMethods(unittest.TestCase):
     def test_restack_even(self):
         self.data.restack(4)
         self.assertTrue(self.data.data.shape == (20, 8))
-
-    def test_process_restack(self):
-        process.process([self.data], restack=3)
-        self.assertTrue(self.data.data.shape == (20, 13))
-        process.process([self.data], restack=[3])
-        self.assertTrue(self.data.data.shape == (20, 4))
 
     def test_elev_correct(self):
         self.data.elev = np.arange(self.data.data.shape[1]) * 0.002
