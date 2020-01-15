@@ -22,11 +22,11 @@ class PickParameters():
     dt: float
         Time between acquisitions
     plength: float
-        Some function of dt and freq
+        The total packet to search for peaks
     FWW: float
-        Some function of dt and freq
+        The width of the center portion which we are going to search
     scst: float
-        Some function of plength and FWW
+        The offset which we will search at
     pol: int
         Polarity of the picks
     apickflag: int
@@ -73,20 +73,22 @@ class PickParameters():
             Target pick frequency.
         """
         self.freq = freq
-        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
-        self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
-        self.scst = int(round((self.plength - self.FWW) / 2))
+        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt))) - 1
         if self.plength < 3:
             print('Warning: high freq compared to sampling rate. Forcing a minimum plength')
             self.plength = 3
-        if self.FWW == 0:
-            self.FWW = 1
+        self.FWW = int(round(2. / 3. * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
+        if self.FWW % 2 == 0:
+            self.FWW += 1
+        self.scst = (self.plength - self.FWW) // 2
 
         # Guard against tiny datasets in this check...
         if self.plength > self.radardata.snum and self.radardata.snum >= 3:
             print('Warning: Low freq compared to sampling rate. Forcing a maximum plength')
             self.plength = self.radardata.snum
             self.FWW = self.radardata.snum // 2
+            if self.FWW % 2 == 0:
+                self.FWW += 1
 
     def to_struct(self):
         """Return attributes as a dictionary for saving

@@ -112,7 +112,7 @@ def packet_pick(trace, pickparams, midpoint):
         raise ValueError('Your choice of frequency (too low) is causing the pick window to be too large')
 
     # Find the center peak
-    cpeak = int(np.argmax(powerpacket[pickparams.scst: pickparams.scst + pickparams.FWW] * pickparams.pol) + pickparams.scst)
+    cpeak = int(np.argmax(powerpacket[pickparams.scst + 1: pickparams.scst + pickparams.FWW + 1] * pickparams.pol) + pickparams.scst + 1)
 
     # Find a peak with opposite polarity higher up
     if cpeak > pickparams.FWW:
@@ -124,12 +124,11 @@ def packet_pick(trace, pickparams, midpoint):
 
     # Find a peak with opposite polarity lower down
     if cpeak + pickparams.FWW < pickparams.plength:
-        bpeak = int(np.argmin(powerpacket[cpeak:cpeak + pickparams.FWW] * pickparams.pol)) + cpeak
+        bpeak = int(np.argmin(powerpacket[cpeak + 1:cpeak + pickparams.FWW + 1] * pickparams.pol)) + cpeak + 1
     elif cpeak >= pickparams.plength - 1:
         bpeak = pickparams.plength - 1
     else:
-        # I can't seem to hit this line in tests. Might be due to offset between matlab and python
-        bpeak = int(np.argmin(powerpacket[cpeak:] * pickparams.pol)) + cpeak
+        bpeak = int(np.argmin(powerpacket[cpeak + 1:] * pickparams.pol)) + cpeak + 1
     power = np.sum(powerpacket[tpeak:bpeak + 1] ** 2.) / (bpeak - tpeak + 1)
 
     return [tpeak + topsnum, cpeak + topsnum, bpeak + topsnum, np.nan, power]
@@ -170,7 +169,7 @@ def get_intersection(data_main, data_cross, return_nans=False):
     tree = KDTree(np.vstack((data_main.x_coord.flatten(), data_main.y_coord.flatten())).transpose())
     for i in range(len(out_tnums)):
         if return_nans:
-            np.ones_like(data_cross.picks.samp1[i], dtype=bool)
+            mask_pick_not_nan = np.ones_like(data_cross.picks.samp1[i], dtype=bool)
         else:
             mask_pick_not_nan = ~np.isnan(data_cross.picks.samp1[i])
         closest_dist, closest_inds = tree.query(np.vstack((data_cross.x_coord[mask_pick_not_nan].flatten(), data_cross.y_coord[mask_pick_not_nan].flatten())).transpose())

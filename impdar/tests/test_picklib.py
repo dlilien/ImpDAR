@@ -65,20 +65,32 @@ class TestPickLib(unittest.TestCase):
         with self.assertRaises(ValueError):
             picklib.packet_pick(traces[:, 0], data.picks.pickparams, 100)
 
+        # We should be able to pick within 3
+        # for a variety of frequency this is how the discrete rounding works out
         data = BareRadarData()
-        data.picks.pickparams.freq_update(1.0)
-        pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, 100)
-        self.assertEqual(pickout[0], 95)
-        self.assertEqual(pickout[1], 101)
-        self.assertEqual(pickout[2], 107)
+        for freq in [0.85, 0.9, 0.95]:
+            data.picks.pickparams.freq_update(freq)
+            for pick in [98, 101, 104]:
+                pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, pick)
+                self.assertEqual(pickout[0], 95)
+                self.assertEqual(pickout[1], 101)
+                self.assertEqual(pickout[2], 107)
 
-        # Move the peak around within the window to make sure that we hit contingencies on finding the window
-        data = BareRadarData()
-        data.picks.pickparams.freq_update(1.0)
-        pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, 105)
-        self.assertEqual(pickout[0], 95)
+        # and now we should be able to pick slightly wider
+        data.picks.pickparams.freq_update(0.8)
+        for pick in [97, 101, 105]:
+            pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, pick)
+            self.assertEqual(pickout[0], 95)
+            self.assertEqual(pickout[1], 101)
+            self.assertEqual(pickout[2], 107)
+
+        # if our plength is really short we should still hit the middle
+        # sides are undefined
+        data.picks.pickparams.freq_update(4.0)
+        pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, 101)
         self.assertEqual(pickout[1], 101)
-        self.assertEqual(pickout[2], 107)
+        pickout = picklib.packet_pick(easy_pick_trace, data.picks.pickparams, 102)
+        self.assertEqual(pickout[1], 101)
 
     def test_pick(self):
         easy_pick_traces = np.zeros((traces.shape[1], 10))
@@ -111,8 +123,11 @@ class TestPickLib(unittest.TestCase):
         self.assertTrue(len(sn) == len(thatdata.picks.picknums))
         tnum, sn = picklib.get_intersection(thatdata, thisdata)
         self.assertTrue(len(sn) == len(thisdata.picks.picknums))
+        tnum, sn = picklib.get_intersection(thatdata, thisdata, return_nans=True)
+        self.assertTrue(len(sn) == len(thisdata.picks.picknums))
         with self.assertRaises(AttributeError):
             tnum, sn = picklib.get_intersection(thisdata, nopickdata)
+
 
 
 if __name__ == '__main__':
