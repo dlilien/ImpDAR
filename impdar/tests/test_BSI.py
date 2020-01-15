@@ -7,20 +7,20 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-Make sure that we can successfully read gssi input files
+Make sure that we can successfully read BSI input files
 """
 
 import os
 import unittest
-from impdar.lib.load import load_pulse_ekko
+from impdar.lib.load import load_bsi
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestPE(unittest.TestCase):
+class TestBSI(unittest.TestCase):
 
     def test_load_pe(self):
-        load_pulse_ekko.load_pe(os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))
+        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'))
 
 
 if __name__ == '__main__':

@@ -59,7 +59,7 @@ def load_bsi(fn_h5, *args, **kwargs):
     h5_data_list = []
 
     # open the h5 file
-    with h5py.File(fn_h5) as f_in:
+    with h5py.File(fn_h5, 'r') as f_in:
         dset_names = [key for key in f_in.keys()]
         for dset_name in dset_names:
             # Just in case there is something else that can be in these structures
