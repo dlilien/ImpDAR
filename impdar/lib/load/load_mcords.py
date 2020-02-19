@@ -37,9 +37,10 @@ def load_mcords_nc(fn):
     if not NC:
         raise ImportError('Cannot load MCoRDS without netcdf4')
     dst = Dataset(fn, 'r')
-    mcords_data.data = dst.variables['amplitude'][:]
+    mcords_data.data = dst.variables['amplitude'][:].T
     mcords_data.long = dst.variables['lon'][:]
     mcords_data.lat = dst.variables['lat'][:]
+
     # time has units of seconds according to documentation, but this seems wrong
     # numbers are way too big. Leaving it since that is how it is documented though?
     partial_days = dst.variables['time'][:] / (24. * 60. * 60.)
@@ -51,13 +52,14 @@ def load_mcords_nc(fn):
     mcords_data.travel_time = dst.variables['fasttime'][:]
     mcords_data.dt = np.mean(np.diff(mcords_data.travel_time)) * 1.0e-6
     size = dst.variables['amplitude'].matlab_size
-    mcords_data.tnum, mcords_data.snum = int(size[0]), int(size[1])
+    mcords_data.tnum, mcords_data.snum = int(size[1]), int(size[0])
     mcords_data.trace_num = np.arange(mcords_data.tnum) + 1
 
     mcords_data.chan = 0
     mcords_data.pressure = np.zeros_like(dst.variables['lat'][:])
     mcords_data.trig = np.zeros_like(dst.variables['lat'][:]).astype(int)
     mcords_data.trig_level = 0.
+
     mcords_data.check_attrs()
 
     return mcords_data

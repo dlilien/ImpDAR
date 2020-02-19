@@ -120,6 +120,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
     """
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
+    elif (xdat == 'dist') and dat.dist is None:
+        raise ValueError('xdat cannot be dist when the data has no dist')
 
     if x_range is None:
         x_range = (0, -1)
