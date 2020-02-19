@@ -205,9 +205,11 @@ def concat(radar_data):
     tnums = np.hstack((np.array([0]), np.cumsum([dat.tnum for dat in radar_data])))
     out.tnum = out.data.shape[1]
     out.trace_num = np.hstack([dat.trace_num + tnum for dat, tnum in zip(radar_data, tnums)])
-    dists = np.hstack((np.array([0]), np.cumsum([dat.dist[-1] for dat in radar_data])))
-    out.dist = np.hstack([dat.dist + dist for dat, dist in zip(radar_data, dists)])
+    if np.all([dat.dist is not None for dat in radar_data]):
+        dists = np.hstack((np.array([0]), np.cumsum([dat.dist[-1] for dat in radar_data])))
+        out.dist = np.hstack([dat.dist + dist for dat, dist in zip(radar_data, dists)])
     for attr in ['pressure', 'trig', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday', 'trace_int']:
-        setattr(out, attr, np.hstack([getattr(dat, attr) for dat in radar_data]))
+        if np.all([getattr(dat, attr) is not None for dat in radar_data]):
+            setattr(out, attr, np.hstack([getattr(dat, attr) for dat in radar_data]))
     print('Objects concatenated')
     return [out]

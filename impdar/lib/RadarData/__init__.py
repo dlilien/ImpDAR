@@ -30,8 +30,6 @@ class RadarData(object):
                         'data',
                         'decday',
                         'dt',
-                        'lat',
-                        'long',
                         'pressure',
                         'snum',
                         'tnum',
@@ -46,6 +44,8 @@ class RadarData(object):
     #: and they often cannot be set at the initial data load.
     #: If they exist, they all have units of meters.
     attrs_optional = ['nmo_depth',
+                      'lat',
+                      'long',
                       'elev',
                       'dist',
                       'x_coord',
@@ -194,8 +194,12 @@ class RadarData(object):
         for attr in ['lat', 'long', 'pressure', 'trig', 'elev', 'dist', 'x_coord', 'y_coord', 'decday']:
             if hasattr(self, attr) and getattr(self, attr) is not None:
                 if (not hasattr(getattr(self, attr), 'shape')) or (len(getattr(self, attr).shape) < 1):
-                    raise ImpdarError('{:s} needs to be a vector'.format(attr))
-                if getattr(self, attr).shape[0] != self.tnum:
+                    if getattr(self, attr) == 0:
+                        # This is just caused by None being weird with matlab
+                        setattr(self, attr, None)
+                    else:
+                        raise ImpdarError('{:s} needs to be a vector'.format(attr))
+                elif getattr(self, attr).shape[0] != self.tnum:
                     raise ImpdarError('{:s} needs length tnum {:d}'.format(attr, self.tnum))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
