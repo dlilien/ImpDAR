@@ -170,7 +170,7 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
 # --------------------------------------------------------------------------------------------
 
-def range_diff(self,acq1,acq2,win,step):
+def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
     """
     Calculate the vertical motion using a correlation coefficient.
 
@@ -186,6 +186,8 @@ def range_diff(self,acq1,acq2,win,step):
         window size over which to do the correlation coefficient calculation
     step: int
         step size for the window to move between calculations
+    Rcoarse: array; optional
+        if an external depth array is desired, input here
 
     Output
     --------
@@ -203,7 +205,10 @@ def range_diff(self,acq1,acq2,win,step):
         raise TypeError('Acquisition inputs must be of the same shape.')
 
     idxs = np.arange(0,(len(acq1)-win),step)
-    ds = self.Rcoarse[idxs]
+    if Rcoarse is not None:
+        ds = Rcoarse[idxs]
+    else:
+        ds = self.Rcoarse[idxs]
     phase_diff = np.empty_like(ds).astype(np.complex)
     for i,idx in enumerate(idxs):
         # index two sub_arrays to compare
