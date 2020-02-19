@@ -221,23 +221,27 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.travel_time += pe_data.dt * 1.0e6
 
     # Now deal with the gps info
-    if pe_data.version == '1.0':
-        pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
-        pe_data.lat = pe_data.gps_data.lat
-        pe_data.long = pe_data.gps_data.lon
-        pe_data.x_coord = pe_data.gps_data.x
-        pe_data.y_coord = pe_data.gps_data.y
-        pe_data.dist = pe_data.gps_data.dist.flatten()
-        pe_data.elev = pe_data.gps_data.z
-        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
-        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
-        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
-        pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
-        pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
-                                       np.diff(pe_data.dist)))
-        pe_data.check_attrs()
-    elif pe_data.version == '1.5.340':
-        print('GPS not implemented for version 1.5.340 yet.')
-        #pe_data.check_attrs()
+    if os.path.exists(gps_fn):
+        with open(gps_fn, 'rU') as fin:
+            if pe_data.version == '1.0':
+                pe_data.gps_data = _get_gps_data(gps_fn, pe_data.trace_num)
+                pe_data.lat = pe_data.gps_data.lat
+                pe_data.long = pe_data.gps_data.lon
+                pe_data.x_coord = pe_data.gps_data.x
+                pe_data.y_coord = pe_data.gps_data.y
+                pe_data.dist = pe_data.gps_data.dist.flatten()
+                pe_data.elev = pe_data.gps_data.z
+                day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+                tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
+                tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
+                pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
+                pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
+                                               np.diff(pe_data.dist)))
+                pe_data.check_attrs()
+            elif pe_data.version == '1.5.340':
+                print('GPS not implemented for version 1.5.340 yet.')
+                #pe_data.check_attrs()
+    else:
+        print('Unable to locate GPS file: {}'.format(gps_fn))
 
     return pe_data
