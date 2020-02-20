@@ -237,6 +237,9 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
         print('CC search')
         for i in range(5):
             for j, dat in enumerate(dats):
+                if abs(max(lon)-min(dat.long)) > 360. or abs(max(dat.long)-min(lon)) > 360.:
+                    raise IndexError('The radar data object has different longitude than the input interpolation dataset.')
+
                 if offsets[j] != 0.0:
                     search_vals = np.linspace(-0.1 * abs(offsets[j]), 0.1 * abs(offsets[j]), 1001)
                 else:
