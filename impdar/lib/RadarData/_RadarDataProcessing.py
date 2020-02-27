@@ -363,8 +363,9 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
             setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
 
     # More complex modifications for these two
-    self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
-    self.travel_time = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
+    if self.dist is not None:
+        self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
+    self.trace_num = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
 
     # Finally tnum
     self.tnum = self.data.shape[1]
