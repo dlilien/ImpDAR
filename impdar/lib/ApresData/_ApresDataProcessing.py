@@ -219,6 +219,10 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         # the phase is a measure of the offset
         phase_diff[i] = np.corrcoef(arr1,arr2)[1,0]
 
+    # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
+    cc = np.sqrt(np.real(phase_diff)**2.+np.imag(phase_diff)**2.)
+    sigma = (1./abs(cc))*np.sqrt((1-abs(cc)**2.)/(2.*len(cc)))
+
     # convert the phase offset to a distance vector
     range_diff = phase2range(np.angle(phase_diff),
             self.header.lambdac,
@@ -226,7 +230,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
             self.header.chirp_grad,
             self.header.ci)
 
-    return ds, phase_diff, range_diff
+    return ds, phase_diff, range_diff, sigma
 
 # --------------------------------------------------------------------------------------------
 
