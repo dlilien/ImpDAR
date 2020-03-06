@@ -6,9 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Define generic processing functions to ease calls from executables.
-"""
+"""Define generic processing functions to ease calls from executables."""
 import os.path
 import numpy as np
 
@@ -17,20 +15,20 @@ from .gpslib import interp as interpdeep
 
 
 def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
-    """Perform one or more processing steps, save, and exit
+    """Perform one or more processing steps, save, and exit.
 
     Parameters
     ----------
     fn: list of strs
-        The filename(s) to process. Assumed to be .mat files unless gssi or pe is True.
+        The filename(s) to process.
     cat: bool, optional
-        If True, concatenate files before processing rather than running through each individually
+        If True, concatenate files before processing rather than running
+        through each individually.
     filetype: str, optional
         The type of input file. Default is .mat.
     kwargs:
         These are the processing arguments for `process`
     """
-
     radar_data = load(filetype, fn)
 
     # first we do the quirky one
@@ -69,8 +67,10 @@ def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
             d.save(out_fn)
 
 
-def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None, denoise=None, migrate=None, **kwargs):
-    """Perform one or more processing steps on a list of RadarData objects
+def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
+            ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None,
+            denoise=None, migrate=None, **kwargs):
+    """Perform one or more processing steps on a list of RadarData .
 
     Parameters
     ----------
@@ -79,9 +79,11 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
     rev: bool, optional
         Reverse the profile orientation. Default is False.
     vbp: 2-tuple, optional
-        Vertical bandpass between (vbp1, vbp2) MHz. Default None (no filtering).
+        Vertical bandpass between (vbp1, vbp2) MHz.
+        Default None (no filtering).
     hfilt: 2-tuple, optional
-        Horizontal filter subtracting average trace between (hfilt1, hfilt2). Default is None (no hfilt).
+        Horizontal filter subtracting average trace between (hfilt1, hfilt2).
+        Default is None (no hfilt).
     ahfilt: bool, optional
         Adaptively horizontally filter the data.
     denoise: bool, optional
@@ -101,7 +103,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         try:
             crop = (float(crop[0]), crop[1], crop[2])
         except ValueError:
-            raise ValueError('First element of crop must be convertible to a float')
+            raise ValueError('First element of crop must be a float')
         except TypeError:
             raise TypeError('Crop must be subscriptible')
 
@@ -109,7 +111,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         try:
             hcrop = (float(hcrop[0]), hcrop[1], hcrop[2])
         except ValueError:
-            raise ValueError('First element of hcrop must be convertible to a float')
+            raise ValueError('First element of hcrop must be a float')
         except TypeError:
             raise TypeError('hcrop must be subscriptible')
         for dat in RadarDataList:
@@ -130,7 +132,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
 
     if vbp is not None:
         if not hasattr(vbp, '__iter__'):
-            raise TypeError('vbp must be a tuple with first two elements [low] [high] MHz')
+            raise TypeError('vbp must be a tuple with first two elements \
+                            [low] [high] MHz')
         for dat in RadarDataList:
             dat.vertical_band_pass(*vbp)
         done_stuff = True
@@ -147,7 +150,8 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
 
     if nmo is not None:
         if isinstance(nmo, (float, int)):
-            print('One nmo value given. Assuming that this is the separation. Uice=1.6')
+            print('One nmo value given. Assuming that this is the separation. \
+                  Uice=1.6')
             nmo = (nmo, 1.6)
         for dat in RadarDataList:
             dat.nmo(*nmo)
@@ -162,7 +166,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
         interpdeep(RadarDataList, float(interp[0]), interp[1])
         done_stuff = True
 
-    # Crop after nmo so that we have nmo_depth available for cropping if desired
+    # Crop after nmo so that we have nmo_depth available
     if crop is not None:
         for dat in RadarDataList:
             dat.crop(*crop)
@@ -179,7 +183,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None, ahfilt=
 
 
 def concat(radar_data):
-    """Concatenate all radar data input
+    """Concatenate all radar data input.
 
     Parameters
     ----------
@@ -197,19 +201,25 @@ def concat(radar_data):
 
     for dat in radar_data[1:]:
         if out.snum != dat.snum:
-            raise ValueError('Need the same number of vertical samples in each file')
+            raise ValueError('Need the same number of samples in each file')
         if not np.all(out.travel_time == dat.travel_time):
             raise ValueError('Need matching travel time vectors')
 
     out.data = np.hstack([dat.data for dat in radar_data])
-    tnums = np.hstack((np.array([0]), np.cumsum([dat.tnum for dat in radar_data])))
+    tnums = np.hstack((np.array([0]),
+                       np.cumsum([dat.tnum for dat in radar_data])))
     out.tnum = out.data.shape[1]
-    out.trace_num = np.hstack([dat.trace_num + tnum for dat, tnum in zip(radar_data, tnums)])
+    out.trace_num = np.hstack([dat.trace_num + tnum for dat, tnum in zip(
+                               radar_data, tnums)])
     if np.all([dat.dist is not None for dat in radar_data]):
-        dists = np.hstack((np.array([0]), np.cumsum([dat.dist[-1] for dat in radar_data])))
-        out.dist = np.hstack([dat.dist + dist for dat, dist in zip(radar_data, dists)])
-    for attr in ['pressure', 'trig', 'lat', 'long', 'x_coord', 'y_coord', 'elev', 'decday', 'trace_int']:
+        dists = np.hstack((np.array([0]),
+                           np.cumsum([dat.dist[-1] for dat in radar_data])))
+        out.dist = np.hstack([dat.dist + dist for dat, dist in zip(
+            radar_data, dists)])
+    for attr in ['pressure', 'trig', 'lat', 'long', 'x_coord', 'y_coord',
+                 'elev', 'decday', 'trace_int']:
         if np.all([getattr(dat, attr) is not None for dat in radar_data]):
-            setattr(out, attr, np.hstack([getattr(dat, attr) for dat in radar_data]))
+            setattr(out, attr, np.hstack([getattr(dat, attr)
+                                          for dat in radar_data]))
     print('Objects concatenated')
     return [out]

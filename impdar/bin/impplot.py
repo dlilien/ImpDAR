@@ -6,7 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 #
-# Legacy header: Created: B. Welch, modified by S. Harris, J. Olson, and B. Youngblood.
+"""The impdar plotter."""
 
 import sys
 import argparse
@@ -18,48 +18,107 @@ def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    rg_parser = add_simple_procparser(subparsers, 'rg', 'Plot radargram', plot_radargram, defname='radargram', xd=True, yd=True)
+    rg_parser = _add_simple_procparser(subparsers,
+                                       'rg',
+                                       'Plot radargram',
+                                       plot_radargram,
+                                       defname='radargram',
+                                       xd=True,
+                                       yd=True)
     rg_parser.add_argument('-picks', action='store_true', help='Plot picks')
     rg_parser.add_argument('-clims', nargs=2, type=float, help='Color limits')
-    rg_parser.add_argument('-cmap', type=str, help='Color map name', default='gray')
+    rg_parser.add_argument('-cmap',
+                           type=str,
+                           default='gray',
+                           help='Color map name')
 
-    add_simple_procparser(subparsers, 'ft', 'Plot ft', plot_ft, defname='spec', xd=True, yd=True)
+    _add_simple_procparser(subparsers,
+                           'ft',
+                           'Plot ft',
+                           plot_ft,
+                           defname='spec',
+                           xd=True,
+                           yd=True)
 
-    add_simple_procparser(subparsers, 'hft', 'Plot ft', plot_hft, defname='spec', xd=True, yd=True)
+    _add_simple_procparser(subparsers,
+                           'hft',
+                           'Plot ft',
+                           plot_hft,
+                           defname='spec',
+                           xd=True,
+                           yd=True)
 
-    trace_parser = add_simple_procparser(subparsers, 'traces', 'Plot traces vs depth', plot_traces, defname='traces', xd=False, yd=True)
-    trace_parser.add_argument('t_start', type=int, help='Starting trace number')
+    trace_parser = _add_simple_procparser(subparsers,
+                                          'traces',
+                                          'Plot traces vs depth',
+                                          plot_traces,
+                                          defname='traces',
+                                          xd=False,
+                                          yd=True)
+    trace_parser.add_argument('t_start',
+                              type=int,
+                              help='Starting trace number')
     trace_parser.add_argument('t_end', type=int, help='Ending trace number')
 
-    power_parser = add_simple_procparser(subparsers, 'power', 'Plot power on a layer', plot_power, defname='power', xd=False, yd=False, other_ftypes=False)
-    power_parser.add_argument('layer', type=int, help='Layer upon which to plot the power')
+    power_parser = _add_simple_procparser(subparsers,
+                                          'power',
+                                          'Plot power on a layer',
+                                          plot_power,
+                                          defname='power',
+                                          xd=False,
+                                          yd=False,
+                                          other_ftypes=False)
+    power_parser.add_argument('layer',
+                              type=int,
+                              help='Layer upon which to plot the power')
     return parser
 
 
-def add_simple_procparser(subparsers, name, helpstr, func, defname='proc', xd=False, yd=False, other_ftypes=True):
-    parser = add_procparser(subparsers, name, helpstr, func, defname=defname)
-    add_def_args(parser, xd=xd, yd=yd)
+def _add_simple_procparser(subparsers, name, helpstr, func, defname='proc',
+                           xd=False, yd=False, other_ftypes=True):
+    """Add a simple subparser."""
+    parser = _add_procparser(subparsers, name, helpstr, func, defname=defname)
+    _add_def_args(parser, xd=xd, yd=yd)
     return parser
 
 
-def add_procparser(subparsers, name, helpstr, func, defname='proc'):
+def _add_procparser(subparsers, name, helpstr, func, defname='proc'):
+    """Add a subparser."""
     parser = subparsers.add_parser(name, help=helpstr)
     parser.set_defaults(func=func, name=defname)
     return parser
 
 
-def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
-    parser.add_argument('fns', type=str, nargs='+', help='The files to process')
-    parser.add_argument('-o', type=str, help='Output to this file (or folder if multiple inputs)')
+def _add_def_args(parser, xd=False, yd=False, other_ftypes=True):
+    """Set up common arguments for different types of commands."""
+    parser.add_argument('fns',
+                        type=str,
+                        nargs='+',
+                        help='The files to process')
+    parser.add_argument('-o',
+                        type=str,
+                        help='Output to this file (folder if multiple inputs)')
 
-    parser.add_argument('-s', action='store_true', help='Save file (do not plt.show())')
-    parser.add_argument('--o_fmt', type=str, default='png', help='Save file with this extension (default png)')
-    parser.add_argument('-dpi', type=int, default=300, help='Save file with this resolution (default 300)')
+    parser.add_argument('-s',
+                        action='store_true',
+                        help='Save file (do not plt.show())')
+    parser.add_argument('--o_fmt',
+                        type=str,
+                        default='png',
+                        help='Save file with this extension (default png)')
+    parser.add_argument('-dpi',
+                        type=int,
+                        default=300,
+                        help='Save file with this resolution (default 300)')
 
     if xd:
-        parser.add_argument('-xd', action='store_true', help='Plot the distance rather than the trace number')
+        parser.add_argument('-xd',
+                            action='store_true',
+                            help='Plot the dist rather than the trace number')
     if yd:
-        parser.add_argument('-yd', action='store_true', help='Plot the depth rather than travel time')
+        parser.add_argument('-yd',
+                            action='store_true',
+                            help='Plot the depth rather than travel time')
 
     if other_ftypes:
         parser.add_argument('--in_fmt', type=str,
@@ -68,27 +127,52 @@ def add_def_args(parser, xd=False, yd=False, other_ftypes=True):
                             choices=FILETYPE_OPTIONS)
 
 
-def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', picks=False, clims=None, cmap='gray', **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims)
+def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
+                   dpi=300, in_fmt='mat', picks=False, clims=None, cmap='gray',
+                   **kwargs):
+    """Plot data as a radio echogram."""
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims)
 
 
-def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, ft=True)
+def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
+            dpi=300, in_fmt='mat', **kwargs):
+    """
+    Plot the fourier spectrum of the data.
+
+    Can be useful if you have mystery data of unknown frequency.
+    """
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt, ft=True)
 
 
-def plot_hft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
-    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt, hft=True)
+def plot_hft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
+             dpi=300, in_fmt='mat', **kwargs):
+    """
+    Plot the fourier spectrum of the data in the horizontal.
+
+    Might be useful for guessing how to horizontally filter.
+    """
+    plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt, hft=True)
 
 
-def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
-    plot.plot(fns, power=layer, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
+def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png',
+               dpi=300, in_fmt='mat', **kwargs):
+    """Plot the return power of a particular layer."""
+    plot.plot(fns, power=layer, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt)
 
 
-def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
-    plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
+def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None,
+                o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    """Plot traces in terms of amplitude vs some vertical variable."""
+    plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt)
 
 
 def main():
+    """Get arguments, plot data."""
     parser = _get_args()
     args = parser.parse_args(sys.argv[1:])
     if not hasattr(args, 'func'):

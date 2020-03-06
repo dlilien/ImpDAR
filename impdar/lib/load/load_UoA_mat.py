@@ -10,7 +10,7 @@ This allows easy colorbar adjustment, interpolation to geospatial coordinates, a
 
 import numpy as np
 from scipy.interpolate import interp1d
-from ..RadarData import RadarData
+from ..RadarData import RadarData, RadarFlags
 from ..gpslib import nmea_info
 import h5py
 
@@ -28,11 +28,14 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
 
     with h5py.File(fn_mat, 'r') as fin:
         UoA_data.data = fin['Data']['channel'][:, :].T
-        # complex data
         if len(UoA_data.data.dtype) == 2:
-            UoA_data.data = 10*np.log10(np.sqrt(UoA_data.data['real'] ** 2.0 + UoA_data.data['imag'] ** 2.0))
-        else:
-            UoA_data.data = 10*np.log10(UoA_data.data)
+            UoA_data.data = UoA_data.data['real'] + 1.j * UoA_data.data['imag']
+
+        # complex data
+        # if len(UoA_data.data.dtype) == 2:
+        #     UoA_data.data = 10*np.log10(np.sqrt(UoA_data.data['real'] ** 2.0 + UoA_data.data['imag'] ** 2.0))
+        # else:
+        #    UoA_data.data = 10*np.log10(UoA_data.data)
         UoA_data.snum, UoA_data.tnum = int(UoA_data.data.shape[0]), int(UoA_data.data.shape[1])
         UoA_data.trace_num = np.arange(UoA_data.tnum) + 1
         UoA_data.travel_time = fin['Data']['fast_time'][:].flatten() * 1.0e6
@@ -57,6 +60,8 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
         UoA_data.pressure = np.zeros_like(UoA_data.decday)
         UoA_data.trig = np.zeros_like(UoA_data.decday).astype(int)
         UoA_data.trig_level = 0.
+        UoA_data.flags = RadarFlags()
+        UoA_data.flags.power = False
         if fn_mat[-10:] == '_files.mat':
             UoA_data.chan = 999
         else:

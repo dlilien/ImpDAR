@@ -6,14 +6,12 @@
 #
 # Distributed under terms of the GNU GPL3 license.
 
-"""
-Skeleton import impdar
-"""
+"""Skeleton import impdar."""
 
-import platform
 import matplotlib
 
-# We are going to do this here so that it comes first. We need Qt5 for the picker
+# We are going to do this here so that it comes first.
+# We need Qt5 for the picker
 # but we can break things with no-qt installations that way
 try:
     import PyQt5

@@ -5,7 +5,4 @@
 # Copyright © 2019 dlilien <dlilien@berens>
 #
 # Distributed under terms of the GNU GPL3.0 license.
-
-"""
-Skeleton import impdar
-"""
+"""Skeleton import impdar.lib."""

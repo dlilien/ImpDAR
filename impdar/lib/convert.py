@@ -5,21 +5,18 @@
 # Copyright © 2019 dlilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 License.
-
-"""
-Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
-"""
+"""Do some filetype conversions. Incomplete."""
 
 import os
 from .RadarData import RadarData
-from .load import load_gssi, load_pulse_ekko, load_segy, load_mcords, load
+from .load import load_gssi, load_pulse_ekko, load_segy, load
 
 
 def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
-    """Convert between formats. Mainly used to create shps and sgy files"""
-
+    """Convert between formats. Mainly used to create shps and sgy files."""
     # Basic check on the conversion being implemented.
-    # This is really simple because I'm not converting from one proprietary form to another
+    # This is really simple because I'm not converting from one proprietary
+    # form to another
     if t_srs == 'wgs84':
         t_srs = 4326
 
@@ -42,10 +39,12 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
                 loaders[i] = load_pulse_ekko.load_pe
             elif f_i[-4:] == '.sgy':
                 if not load_segy.SEGY:
-                    raise ImportError('You cannot use segy without segyio installed!')
+                    raise ImportError('You cannot use segy \
+                                          without segyio installed!')
                 loaders[i] = load_segy.load_segy
             else:
-                raise ValueError('Unrecognized file extension {:s}'.format(f_i[-4:]))
+                raise ValueError('Unrecognized file \
+                                 extension {:s}'.format(f_i[-4:]))
     else:
         loaders = [lambda x: load(in_fmt, x)[0] for i in fns_in]
 

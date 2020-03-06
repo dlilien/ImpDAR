@@ -6,9 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-An executable to start the picker.
-"""
+"""An executable to start the picker."""
 
 import sys
 import argparse
@@ -17,13 +15,13 @@ from PyQt5 import QtWidgets
 from matplotlib import rc
 
 from impdar.gui import pickgui
-
 from impdar.lib import load, Picks
 
 rc('text', usetex=False)
 
 
 def pick(radardata, xd=False, yd=False):
+    """Fire up the picker."""
     if xd:
         x = 'dist'
     else:
@@ -43,6 +41,7 @@ def pick(radardata, xd=False, yd=False):
 
 
 def main():
+    """Get arguments, start picking."""
     parser = _get_args()
     args = parser.parse_args(sys.argv[1:])
     radardata = load.load('mat', [args.fn])[0]
@@ -50,8 +49,11 @@ def main():
 
 
 def _get_args():
+    """Get the parser for arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('fn', type=str, help='The file to pick. At least for now you can only do one at a time.')
+    parser.add_argument('fn',
+                        type=str,
+                        help='The file to pick. One file at a time.')
     parser.add_argument('-xd', action='store_true', help='Distance on the x')
     parser.add_argument('-yd', action='store_true', help='Depth on the y')
     return parser

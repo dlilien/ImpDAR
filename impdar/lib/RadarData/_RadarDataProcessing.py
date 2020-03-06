@@ -509,7 +509,12 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     new_dists = np.arange(np.min(temp_dist),
                           np.max(temp_dist),
                           step=spacing / 1000.0)
-    self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
+
+    # interp1d can only handle real values
+    if self.data.dtype in [np.complex128]:
+        self.data = interp1d(temp_dist, np.real(self.data[:, good_vals]))(new_dists) + 1.j * interp1d(temp_dist, np.imag(self.data[:, good_vals]))(new_dists)
+    else:
+        self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
     for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
         setattr(self,

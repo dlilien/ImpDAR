@@ -6,9 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Install ImpDAR. Try to compile C sources for fast mig, else default to pure python.
-"""
+"""Install ImpDAR, possibly with C sources."""
 import setuptools
 import socket
 
@@ -16,7 +14,7 @@ try:
     import numpy as np
     from numpy.distutils.core import Extension
 except ImportError:
-    raise ImportError('Numpy is required during build. Install numpy, then retry')
+    raise ImportError('Numpy is required during build.')
 
 # For now, this should just run on my computer and I'll distribute the c code
 if socket.gethostname() == 'hozideh':
@@ -33,13 +31,14 @@ if __name__ == '__main__':
 
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
-                             sources=["impdar/lib/migrationlib/_mig_cython" + ext,
+                             sources=["impdar/lib/migrationlib/_mig_cython"
+                                      + ext,
                                       "impdar/lib/migrationlib/mig_cython.c"],
                              include_dirs=[np.get_include()])]
     if CYTHON:
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
-    
+
     version = '0.7a'
     packages = ['impdar',
                 'impdar.lib',
