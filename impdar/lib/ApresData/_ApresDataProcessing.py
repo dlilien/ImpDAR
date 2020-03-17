@@ -204,7 +204,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
     if np.shape(acq1) != np.shape(acq2):
         raise TypeError('Acquisition inputs must be of the same shape.')
 
-    idxs = np.arange(0,(len(acq1)-win),step)
+    idxs = np.arange(win//2,(len(acq1)-win//2),step)
     if Rcoarse is not None:
         ds = Rcoarse[idxs]
     else:
@@ -212,8 +212,8 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
     phase_diff = np.empty_like(ds).astype(np.complex)
     for i,idx in enumerate(idxs):
         # index two sub_arrays to compare
-        arr1 = acq1[idx:idx+win]
-        arr2 = acq2[idx:idx+win]
+        arr1 = acq1[idx-win//2:idx+win//2]
+        arr2 = acq2[idx-win//2:idx+win//2]
         # correlation coefficient to get the motion
         # the amplitude indicates how well the reflections match between acquisitions
         # the phase is a measure of the offset
