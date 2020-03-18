@@ -16,7 +16,7 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=False, freq_limit=None, window=None, scaling='spectrum', filetype='mat', *args, **kwargs):
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=None, window=None, scaling='spectrum', filetype='mat', *args, **kwargs):
     """We have an overarching function here to handle a number of plot types
 
     Parameters
@@ -52,7 +52,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
         # Do it all on one axis if power
         figs = [plot_power(radar_data, power)]
     elif spectra:
-        figs = [plot_specdense(dat, freq_limit, window, scaling) for dat in radar_data]
+        figs = [plot_specdense(dat, spectra, window, scaling) for dat in radar_data]
     else:
         figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
 
@@ -450,14 +450,14 @@ def plot_specdense(dat, freq_limit, window='hanning', scaling='spectrum', fig=No
 
     # check to make sure freq_limit is not <= smallest freq so something appears
     if freq_limit is not None:
-        if freq_limit < np.nanmin(y):
-            raise ValueError('Y-axis limit {} MHz too low.'.format(freq_limit))
-        if freq_limit > np.nanmax(y):
+        if freq_limit[1] < np.nanmin(y):
+            raise ValueError('Y-axis limit {} MHz too low.'.format(freq_limit[1]))
+        if freq_limit[1] > np.nanmax(y):
             print('Warning: y-axis limit large compared to the frequencies plotted')
 
         # limit y-axis to freq_limit, maximum power output
         # else, no need to do anything
-        ax.set_ylim(0, freq_limit)
+        ax.set_ylim(freq_limit[0], freq_limit[1])
 
     # add x and y labels
     ax.set_xlabel('Trace Number')
