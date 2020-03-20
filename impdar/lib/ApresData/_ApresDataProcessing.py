@@ -45,7 +45,6 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
         cross-correlating two shot segements.
 
 
-
     ### Original Matlab File Notes ###
     Phase sensitive processing of FMCW radar data based on Brennan et al. 2013
 
@@ -129,6 +128,49 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.snum = n
 
     self.flags.range = max_range
+
+# --------------------------------------------------------------------------------------------
+
+def phase_uncertainty(self):
+    """
+    Calculate the phase uncertainty using a noise phasor.
+
+    Following Kingslake et al. (2014)
+
+    Parameters
+    ---------
+
+    Output
+    --------
+    phase_uncertainty: array
+        uncertainty in the phase (rad)
+    r_uncertainty: array
+        uncertainty in the range (m) calculated from phase uncertainty
+
+    """
+
+    if self.flags.range == 0:
+        raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
+
+
+    # Get measured phasor from the data class, and use the median magnitude for noise phasor
+    meas_phasor = self.data
+    median_mag = np.nanmedian(abs(meas_phasor))
+    # Noise phasor with random phase and magnitude equal to median of measured phasor
+    noise_phase = np.random.uniform(-np.pi,np.pi,np.shape(meas_phasor))
+    noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
+    noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
+    # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
+    phase_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
+    # Convert phase to range
+    r_uncertainty = phase2range(phase_uncertainty,
+            self.header.lambdac,
+            self.Rcoarse,
+            self.header.chirp_grad,
+            self.header.ci)
+
+    return phase_uncertainty, r_uncertainty
+
 
 # --------------------------------------------------------------------------------------------
 
