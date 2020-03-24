@@ -35,7 +35,7 @@ def load_gprMax(fn_h5, *args, **kwargs):
     h5_data.fn = fn_h5
 
     # open the h5 file
-    with h5py.File(fn_h5) as f_in:
+    with h5py.File(fn_h5,'r') as f_in:
         h5_data.dt = f_in.attrs['dt']
         h5_data.data = np.array(f_in['/rxs/rx1/Ez'])
 

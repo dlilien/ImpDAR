@@ -8,12 +8,8 @@
 
 """
 Test the machinery of impplot.
-<<<<<<< HEAD
 This is broken up to match where it would likely fail;
 tests process wrappers of various methods are with the tests of those methods
-=======
-This is broken up to match where it would likely fail; tests process wrappers of various methods are with the tests of those methods
->>>>>>> master
 """
 import sys
 import unittest

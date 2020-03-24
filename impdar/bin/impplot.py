@@ -31,6 +31,10 @@ def _get_args():
 
     power_parser = add_simple_procparser(subparsers, 'power', 'Plot power on a layer', plot_power, defname='power', xd=False, yd=False, other_ftypes=False)
     power_parser.add_argument('layer', type=int, help='Layer upon which to plot the power')
+
+    spec_parser = add_simple_procparser(subparsers, 'spectrogram', 'Plot spectrogram for all traces', plot_spectrogram, defname='spectrogram', xd=False, yd=False, other_ftypes=False)
+    spec_parser.add_argument('freq_lower', type=float, help='Lower frequency bound')
+    spec_parser.add_argument('freq_upper', type=float, help='Uppwer frequency bound')
     return parser
 
 
@@ -84,6 +88,10 @@ def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png', dpi=300, in_f
 
 def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
     plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
+
+
+def plot_spectrogram(fns=None, freq_lower=None, freq_upper=None, window=None, scaling='spectrum', yd=False, s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    plot.plot(fns, spectra=(freq_lower, freq_upper), window=window, scaling=scaling, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi, filetype=in_fmt)
 
 
 def main():
