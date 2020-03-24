@@ -72,10 +72,10 @@ class TestPlot(unittest.TestCase):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], tr=0)
         mock_plot_tr.assert_called_with(Any(RadarData), 0, ydat='twtt')
 
-    @patch('impdar.lib.plot.plot_specdense', returns=[DummyFig(), None])
+    @patch('impdar.lib.plot.plot_spectrogram', returns=[DummyFig(), None])
     def test_plotPLOTSPECDENSE(self, mock_plot_specdense):
-        plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], spectra=True, freq_limit=0, window=0, scaling=1)
-        mock_plot_specdense.assert_called_with(Any(RadarData), 0, 0, 1)
+        plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], spectra=(0, 1), window=0, scaling=1)
+        mock_plot_specdense.assert_called_with(Any(RadarData), (0, 1), window=0, scaling=1)
 
     @patch('impdar.lib.plot.plot_ft', returns=[DummyFig(), None])
     def test_plotFT(self, mock_plot_ft):
@@ -112,7 +112,7 @@ class TestPlot(unittest.TestCase):
 
 
 class TestPlotTraces(unittest.TestCase):
-    
+
     def test_plot_traces(self):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
@@ -146,7 +146,7 @@ class TestPlotTraces(unittest.TestCase):
 
 
 class TestPlotPower(unittest.TestCase):
-    
+
     def test_plot_power(self):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
@@ -178,7 +178,7 @@ class TestPlotPower(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             fig, ax = plot.plot_power(dat, 0)
-            
+
         # gets ok lims with variable power?
         dat.picks.power[:, 0] = 1
         fig, ax = plot.plot_power(dat, 10)
@@ -188,7 +188,7 @@ class TestPlotPower(unittest.TestCase):
 
 
 class TestPlotRadargram(unittest.TestCase):
-    
+
     def test_plot_radargram_figaxin(self):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
@@ -293,7 +293,6 @@ class TestPlotPicks(unittest.TestCase):
 
         fig, ax = plot.plot_radargram(dat, pick_colors='mgm')
 
-
     def test_plot_picks(self):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
@@ -325,7 +324,7 @@ class TestPlotPicks(unittest.TestCase):
 
 class TestPlotSpectral(unittest.TestCase):
 
-    def test_plot_specdense(self):
+    def test_plot_spectrogram(self):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
 
@@ -334,24 +333,24 @@ class TestPlotSpectral(unittest.TestCase):
         dat.picks.samp2 = np.ones((2, len(dat.lat)))
         dat.picks.samp3 = np.ones((2, len(dat.lat)))
 
-        fig, ax = plot.plot_specdense(dat, 3.0e-7)
-        plot.plot_specdense(dat, 3.0e-7, fig=fig)
-        plot.plot_specdense(dat, 3.0e-7, fig=fig, ax=ax)
-        plot.plot_specdense(dat, 3.0e-7, window='hamming')
-        plot.plot_specdense(dat, 3.0e-7, scaling='density')
+        fig, ax = plot.plot_spectrogram(dat, (0.,5.0))
+        plot.plot_spectrogram(dat, (0.,5.0), fig=fig)
+        plot.plot_spectrogram(dat, (0.,5.0), fig=fig, ax=ax)
+        plot.plot_spectrogram(dat, (0.,5.0), window='hamming')
+        plot.plot_spectrogram(dat, (0.,5.0), scaling='density')
 
         # no error if freq high
-        plot.plot_specdense(dat, 100)
+        plot.plot_spectrogram(dat, 100)
 
         # freq too low
         with self.assertRaises(ValueError):
-            plot.plot_specdense(dat, -100)
+            plot.plot_spectrogram(dat, (0.,-100))
 
         with self.assertRaises(ValueError):
-            plot.plot_specdense(dat, 3.0e-7, scaling='dummy')
+            plot.plot_spectrogram(dat, (0.,5), scaling='dummy')
 
         with self.assertRaises(ValueError):
-            plot.plot_specdense(dat, 3.0e-7, window='dummy')
+            plot.plot_spectrogram(dat, (0.,5), window='dummy')
 
 
     @unittest.skipIf(sys.version_info[0] < 3, 'Att error on 2')

@@ -123,14 +123,10 @@ def _get_args():
                              help='Plot the dist rather than the trace num')
     parser_plot.add_argument('-tr', nargs=2, type=int, default=None,
                              help='Plot the traces in this range (line plot)')
-    parser_plot.add_argument('-power', type=int, default=None,
-                             help='Plot the power on this layer number')
+    parser_plot.add_argument('-power', type=int, default=None, help='Input a picked layer number to plot the RMS power for each trace in map view.')
+    parser_plot.add_argument('-spectra', nargs=2, type=float, default=None,
+                             help='Plot power spectral density across traces of radar profile. Input frequency bounds (MHz).')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
-    parser_plot.add_argument('-spectra',
-                             type=bool,
-                             default=False,
-                             help='Plot power spectral density \
-                                     across traces of radar profile')
     parser_plot.add_argument('-freq_limit',
                              type=float,
                              default=None,

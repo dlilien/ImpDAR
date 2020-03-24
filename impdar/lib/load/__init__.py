@@ -13,12 +13,14 @@ A wrapper around the other loading utilities
 import os.path
 import numpy as np
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_UoA_mat, load_ramac, load_bsi
+from . import load_delores, load_osu, load_ramac
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy',
+                    'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
 def load(filetype, fns_in, channel=1, *args, **kwargs):
@@ -84,6 +86,10 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
         else:
             gps_offset = 0.0
         dat = [load_UoA_mat.load_UoA_mat(fn, gps_offset=gps_offset) for fn in fns_in]
+    elif filetype == 'delores':
+        dat = [load_delores.load_delores(fn, channel=channel) for fn in fns_in]
+    elif filetype == 'osu':
+        dat = [load_osu.load_osu(fns_in)]
     elif filetype == 'ramac':
         dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     else:
@@ -137,11 +143,23 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
     else:
         dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
 
-    if 'o' in kwargs and kwargs['o'] is not None:
+
+    if (filetype == 'gecko' or filetype == 'osu') and len(fns_in) > 1:
+        f_common = fns_in[0]
+        for i in range(1, len(fns_in)):
+            f_common = _common_start(f_common, fns_in[i]).rstrip('[')
+        fn_out = os.path.splitext(f_common)[0] + '_raw.mat'
+        if 'o' in kwargs and kwargs['o'] is not None:
+            fn_out = os.path.join(kwargs['o'], os.path.split(fn_out)[-1])
+        dat[0].save(fn_out)
+    elif 'o' in kwargs and kwargs['o'] is not None:
         if len(fns_in) > 1:
             for d_i in dat:
                 fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(d_i.fn)[0] + '_raw.mat')[-1])
                 d_i.save(fn_out)
+        elif os.path.isdir(kwargs['o']):
+            fn_out = kwargs['o'] + os.path.splitext(fns_in[0])[0] + '_raw.mat'
+            dat[0].save(fn_out)
         else:
             fn_out = kwargs['o']
             dat[0].save(fn_out)
@@ -149,3 +167,17 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
         for d_i in dat:
             fn_out = os.path.splitext(d_i.fn)[0] + '_raw.mat'
             d_i.save(fn_out)
+
+
+def _common_start(string_a, string_b):
+    """ returns the longest common substring from the beginning of sa and sb
+    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
+    """
+    def _iter():
+        for char_a, char_b in zip(string_a, string_b):
+            if char_a == char_b:
+                yield char_a
+            else:
+                return
+
+    return ''.join(_iter())
