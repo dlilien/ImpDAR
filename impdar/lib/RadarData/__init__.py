@@ -120,14 +120,35 @@ class RadarData(object):
 
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
-            if attr not in mat:
+            # Exceptional case for 'data' variable because there are alternative names
+            if attr == 'data':
+                if attr in mat:
+                    setattr(self, 'data', mat[attr])
+                else:
+                    # look for all the other StoDeep data names (this is deprecated but looking for them in case).
+                    data_attrs = ['migdata','interp_data','nmo_data','filtdata','hfilt_data']
+                    for i,data_attr in enumerate(data_attrs):
+                        if data_attr in mat:
+                            print('Warning: Loading variable',data_attr,'as data.')
+                            if len(mat[data_attr].dtype) > 0:
+                                print('Warning: Multiple arrays stored in',data_attr,'taking the first.')
+                                data = mat[data_attr][0][0][0]
+                                setattr(self, 'data', data)
+                            else:
+                                setattr(self, 'data', mat[data_attr])
+                            break
+                        # If we get to the end of the list and have not found anything useful
+                        elif i == len(data_attrs)-1:
+                            raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
+            elif attr not in mat:
                 raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
-            if mat[attr].shape == (1, 1):
-                setattr(self, attr, mat[attr][0][0])
-            elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
-                setattr(self, attr, mat[attr].flatten())
             else:
-                setattr(self, attr, mat[attr])
+                if mat[attr].shape == (1, 1):
+                    setattr(self, attr, mat[attr][0][0])
+                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                    setattr(self, attr, mat[attr].flatten())
+                else:
+                    setattr(self, attr, mat[attr])
         # We may have some additional variables
         for attr in self.attrs_optional:
             if attr in mat:

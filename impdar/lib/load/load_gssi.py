@@ -175,8 +175,14 @@ def load_gssi(fn_dzt, *args, **kwargs):
     #               lines[130 + bytes * Gain + ntext:130 + bytes * Gain + ntext + nproc])[0]
     # else:
     #     processing = ''
-    data = np.array(struct.unpack('<{:d}'.format((len(lines) - 36 * 4096) // n_bytes) + us_dattype,
-                                  lines[36 * 4096:])).reshape((dzt_data.snum, -1), order='F')
+    try:
+        header_len = 32768*n_bytes # TODO: David originally had this as 36*4096, we still need to figure out when it changes
+        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype,
+                                  lines[header_len:])).reshape((dzt_data.snum, -1), order='F')
+    except:
+        header_len = 512*n_bytes
+        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype,
+                                  lines[header_len:])).reshape((dzt_data.snum, -1), order='F')
     data[0, :] = data[2, :]
     data[1, :] = data[2, :]
     data = data + dzt_data.trig

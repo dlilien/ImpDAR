@@ -81,13 +81,10 @@ def _get_args():
                              help='Plot the distance rather than the trace number')
     parser_plot.add_argument('-tr', nargs=2, type=int, default=None,
                              help='Plot the traces in this range (line plot)')
-    parser_plot.add_argument('-power', type=int, default=None,
-                             help='Plot the power on this layer number')
+    parser_plot.add_argument('-power', type=int, default=None, help='Input a picked layer number to plot the RMS power for each trace in map view.')
+    parser_plot.add_argument('-spectra', nargs=2, type=float, default=None,
+                             help='Plot power spectral density across traces of radar profile. Input frequency bounds (MHz).')
     parser_plot.add_argument('-o', type=str, help='Write to this filename')
-    parser_plot.add_argument('-spectra', type=bool, default=False, help='Plot power spectral density across traces of radar profile')
-    parser_plot.add_argument('-freq_limit', type=float, default=None, help='Maximum frequeny to plot power spectral density to')
-    parser_plot.add_argument('-window', type=str, default='hanning', help='Type of window function to be used for the singal.periodogram() method')
-    parser_plot.add_argument('-scaling', type=str, default='spectrum', help='Whether to plot power spectral density or power spectrum: default is spectrum')
 
     parser_convert = subparsers.add_parser('convert', help='Convert filetype (potentially lossy)')
     parser_convert.set_defaults(func=convert.convert)

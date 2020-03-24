@@ -271,7 +271,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
             ind = int(self.trig)
         else:
             ind = self.trig.astype(int)
-        self.trig = 0
+        #self.trig = 0
     else:
         ind = int(lim)
 
@@ -346,7 +346,7 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
             raise ValueError('lim should be at least two to preserve some data')
         if lim > self.tnum:
             raise ValueError('lim should be less than tnum+1 {:d} in order to do anything'.format(self.tnum + 1))
-        if lim == -1 or lim < -self.tnum:
+        if lim == -1 or lim < -int(self.tnum):
             raise ValueError('If negative, lim should be in [-self.tnum; -1)')
         ind = int(lim) - 1
 
@@ -363,8 +363,9 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
             setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
 
     # More complex modifications for these two
-    self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
-    self.travel_time = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
+    if self.dist is not None:
+        self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
+    self.trace_num = self.trace_num[lims[0]:lims[1]] - lims[0] + 1
 
     # Finally tnum
     self.tnum = self.data.shape[1]
@@ -425,7 +426,7 @@ def rangegain(self, slope):
     slope: float
         The slope of the linear range gain to be applied. Maybe try 1.0e-2?
     """
-    if isinstance(self.trig, (float, int)):
+    if isinstance(self.trig, (float, int, np.float, np.int64)):
         gain = self.travel_time[int(self.trig) + 1:] * slope
         self.data[int(self.trig + 1):, :] *= np.atleast_2d(gain).transpose()
     else:

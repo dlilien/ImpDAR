@@ -149,11 +149,18 @@ def nmea_all_info(list_of_sentences):
     """Return an object with the nmea info from a given list of sentences"""
     def _gga_sentence_split(sentence):
         all = sentence.split(',')
-        numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
-        if all[3] == 'S':
-            numbers[2] = -1
-        if all[5] == 'W':
-            numbers[4] = -1
+        if len(all) > 5:
+            numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
+            if all[3] == 'S':
+                numbers[2] = -1
+            if all[5] == 'W':
+                numbers[4] = -1
+        elif len(all) > 2:
+            numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1]))
+            if all[3] == 'S':
+                numbers[2] = -1
+        else:
+            numbers = np.nan
         return numbers
 
     if list_of_sentences[0].split(',')[0] == '$GPGGA':
@@ -230,6 +237,9 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
         print('CC search')
         for i in range(5):
             for j, dat in enumerate(dats):
+                if abs(max(lon)-min(dat.long)) > 360. or abs(max(dat.long)-min(lon)) > 360.:
+                    raise IndexError('The radar data object has different longitude than the input interpolation dataset.')
+
                 if offsets[j] != 0.0:
                     search_vals = np.linspace(-0.1 * abs(offsets[j]), 0.1 * abs(offsets[j]), 1001)
                 else:
@@ -340,4 +350,6 @@ def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1
             raise ValueError('Cannot identify fn filetype, must be mat or csv')
     if spacing is not None:
         for dat in dats:
+            if dat.dist is None:
+                kinematic_gps_control(dat,dat.lat,dat.long,dat.elev,dat.decday,extrapolate=extrapolate,guess_offset=False)
             dat.constant_space(spacing, min_movement=min_movement)
