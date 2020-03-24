@@ -9,28 +9,48 @@
 """
 
 """
-
+import sys
 import unittest
 import numpy as np
 from impdar.lib.NoInitRadarData import NoInitRadarDataFiltering as NoInitRadarData
+from impdar.lib.RadarData import RadarData
 from impdar.lib import process
 from impdar.lib.ImpdarError import ImpdarError
+if sys.version_info[0] >= 3:
+    from unittest.mock import MagicMock, patch
+else:
+    from mock import MagicMock, patch
 
 data_dummy = np.ones((500, 400))
+
+
+def Any(cls):
+    # to mock data argument in tests
+    class Any(cls):
+        def __init__(self):
+            pass
+
+        def __eq__(self, other):
+            return True
+    return Any()
 
 
 class TestAdaptive(unittest.TestCase):
 
     def test_AdaptiveRun(self):
         radardata = NoInitRadarData()
-        radardata.adaptivehfilt()
-        # since we subtract average trace and all traces are identical, we should get zeros out
+        radardata.adaptivehfilt(window_size=radardata.tnum // 10)
+        self.assertTrue(np.all(radardata.data <= 1.))
+
+        # make sure it works with a big window too
+        radardata = NoInitRadarData()
+        radardata.adaptivehfilt(window_size=radardata.tnum * 2)
         self.assertTrue(np.all(radardata.data <= 1.))
 
 
 class TestHfilt(unittest.TestCase):
 
-    def test_HfiltRun(self):
+    def test_horizontalfilt(self):
         radardata = NoInitRadarData()
         radardata.horizontalfilt(0, 100)
         # We taper in the hfilt, so this is not just zeros
@@ -39,31 +59,116 @@ class TestHfilt(unittest.TestCase):
 
 class TestHighPass(unittest.TestCase):
 
-    def test_HighPass(self):
+    def test_highpass_simple(self):
         radardata = NoInitRadarData()
 
         # fails without constant-spaced data
         radardata.flags.interp = np.ones((2,))
-        radardata.highpass(1000.0)
+        radardata.highpass(radardata.tnum * radardata.flags.interp[1] * 0.8)
         # There is no high-frequency variability, so this result should be small
         # We only have residual variability from the quality of the filter
-        print(np.abs((radardata.data - radardata.data[0, 0]) / radardata.data[0, 0]))
-        self.assertTrue(np.all(np.abs((radardata.data - radardata.data[0, 0]) / radardata.data[0, 0]) < 1.0e-3))
+        self.assertTrue(np.all(np.abs((radardata.data - radardata.data[0, 0])) < 1.0e-3))
 
-    def test_HighPassBadcutoff(self):
+    def test_highpass_badcutoff(self):
+        radardata = NoInitRadarData()
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+
+        with self.assertRaises(ValueError):
+            radardata.highpass(radardata.flags.interp[1] * 0.5)
+        with self.assertRaises(ValueError):
+            radardata.highpass(radardata.tnum * radardata.flags.interp[1] * 1.5)
+
+    def test_highpass_errors(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ImpdarError):
+            radardata.highpass(100.0)
+
+        # Elevation corrected data should fail
+        radardata.flags.interp = np.ones((2,))
+        # make sure this throws no error, then
+        radardata.highpass(100.0)
+        with self.assertRaises(ImpdarError):
+            radardata.flags.elev = True
+            radardata.highpass(100.0)
+
+
+class TestHorizontalBandPass(unittest.TestCase):
+
+    def test_hbp_simple(self):
+        radardata = NoInitRadarData()
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+        radardata.horizontal_band_pass(5., radardata.tnum * radardata.flags.interp[1] * 0.9)
+        # We cannot really check this since the filter causes some residual variability as an edge effect
+
+    def test_hbp_badcutoff(self):
         radardata = NoInitRadarData()
 
         # fails without constant-spaced data
         radardata.flags.interp = np.ones((2,))
         with self.assertRaises(ValueError):
-            # We have a screwed up filter here because of sampling vs. frequency used
-            radardata.highpass(1.0e-4)
+            radardata.horizontal_band_pass(0.5, radardata.tnum / 10.)
 
-    def test_HighPassNotspaced(self):
+        with self.assertRaises(ValueError):
+            radardata.horizontal_band_pass(radardata.tnum / 10., radardata.tnum * 2.)
+
+    def test_hbp_errors(self):
         radardata = NoInitRadarData()
         with self.assertRaises(ImpdarError):
             # We have a screwed up filter here because of sampling vs. frequency used
-            radardata.highpass(1000.0)
+            radardata.horizontal_band_pass(1000.0, 2000.0)
+
+        radardata.flags.interp = np.ones((2,))
+        # make sure this throws no error, then
+        radardata.horizontal_band_pass(radardata.tnum / 10., radardata.tnum / 2.)
+        with self.assertRaises(ValueError):
+            radardata.horizontal_band_pass(radardata.tnum / 2., radardata.tnum / 10.)
+
+        # Elevation corrected data should fail
+        with self.assertRaises(ImpdarError):
+            radardata.flags.elev = True
+            radardata.horizontal_band_pass(radardata.tnum / 10., radardata.tnum / 2.)
+
+
+class TestLowPass(unittest.TestCase):
+
+    def test_lowpass_simple(self):
+        radardata = NoInitRadarData()
+
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+        radardata.lowpass(100.0)
+        # There is no high-frequency variability, so this result should be small
+        # We only have residual variability from the quality of the filter
+        self.assertTrue(np.all(np.abs((radardata.data - radardata.data[0, 0]) / radardata.data[0, 0]) < 1.0e-3))
+
+    def test_lowpass_badcutoff(self):
+        # We have a screwed up filter here because of sampling vs. frequency used
+        radardata = NoInitRadarData()
+        # fails without constant-spaced data
+        radardata.flags.interp = np.ones((2,))
+
+        with self.assertRaises(ValueError):
+            radardata.lowpass(radardata.flags.interp[1] * 0.5)
+        with self.assertRaises(ValueError):
+            radardata.lowpass(radardata.tnum * 1.5)
+
+    def test_lowpass_errors(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ImpdarError):
+            # We have a screwed up filter here because of sampling vs. frequency used
+            radardata.lowpass(100.0)
+
+        # Elevation corrected data should fail
+        radardata.flags.interp = np.ones((2,))
+        # make sure this throws no error, then
+        radardata.lowpass(100.0)
+        with self.assertRaises(ImpdarError):
+            radardata.flags.elev = True
+            radardata.lowpass(100.0)
 
 
 class TestWinAvgHfilt(unittest.TestCase):
@@ -122,39 +227,103 @@ class TestVBP(unittest.TestCase):
             radardata.vertical_band_pass(0.1, 100., filttype='dummy')
 
 
+class TestDenoise(unittest.TestCase):
+
+    def test_denoise(self):
+        radardata = NoInitRadarData()
+        radardata.denoise()
+
+        radardata = NoInitRadarData()
+        radardata.denoise(noise=0.1)
+
+    def test_denoise_error(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ValueError):
+            radardata.denoise(ftype='dummy')
+
 class TestRadarDataHfiltWrapper(unittest.TestCase):
 
-    def test_AdaptiveRun(self):
+    def test_adaptive(self):
         radardata = NoInitRadarData()
-        radardata.hfilt('adaptive')
-        # since we subtract average trace and all traces are identical, we should get zeros out
-        self.assertTrue(np.all(radardata.data <= 1.))
+        radardata.adaptivehfilt = MagicMock()
+        radardata.hfilt(ftype='adaptive')
+        radardata.adaptivehfilt.assert_called_with()
 
-    def test_HfiltRun(self):
+    def test_horizontalfilt(self):
         radardata = NoInitRadarData()
-        radardata.hfilt('hfilt', (0, 100))
-        # We taper in the hfilt, so this is not just zeros
-        self.assertTrue(np.all(radardata.data == radardata.hfilt_target_output))
+        radardata.horizontalfilt = MagicMock()
+        radardata.hfilt(ftype='hfilt', bounds=(0, 100))
+        radardata.horizontalfilt.assert_called_with(0, 100)
+
+    def test_badfilter(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ValueError):
+            radardata.hfilt(ftype='dummy')
 
 
 class TestProcessWrapper(unittest.TestCase):
     def test_process_ahfilt(self):
         radardata = NoInitRadarData()
+        radardata.adaptivehfilt = MagicMock()
         process.process([radardata], ahfilt=True)
-        # We taper in the hfilt, so this is not just zeros
-        self.assertTrue(np.all(radardata.data <= 1.))
+        radardata.adaptivehfilt.assert_called_with()
 
     def test_process_hfilt(self):
         radardata = NoInitRadarData()
+        radardata.horizontalfilt = MagicMock()
         process.process([radardata], hfilt=(0, 100))
-        # We taper in the hfilt, so this is not just zeros
-        self.assertTrue(np.all(radardata.data == radardata.hfilt_target_output))
+        radardata.horizontalfilt.assert_called_with(0, 100)
 
     def test_process_vbp(self):
         radardata = NoInitRadarData()
+        radardata.vertical_band_pass = MagicMock()
         process.process([radardata], vbp=(0.1, 100.))
         # The filter is not too good, so we have lots of residual
-        self.assertTrue(np.all(np.abs(radardata.data) < 1.0e-4))
+        radardata.vertical_band_pass.assert_called_with(0.1, 100.)
+
+
+class TestMigrationWrapper(unittest.TestCase):
+    """This is only to make sure the calls are setup correctly. Actual tests are separate"""
+
+    @patch('impdar.lib.migrationlib.migrationKirchhoff')
+    def test_wrap_kirchhoff(self, patch_ob):
+        radardata = NoInitRadarData()
+        radardata.migrate(mtype='kirch', vel=10., nearfield=False)
+        patch_ob.assert_called_with(Any(RadarData), vel=10., nearfield=False)
+
+    @patch('impdar.lib.migrationlib.migrationStolt')
+    def test_wrap_stolt(self, patch_ob):
+        radardata = NoInitRadarData()
+        radardata.migrate(mtype='stolt', htaper=1, vtaper=2, vel=999.)
+        patch_ob.assert_called_with(Any(RadarData), htaper=1, vtaper=2, vel=999.)
+
+    @patch('impdar.lib.migrationlib.migrationPhaseShift')
+    def test_wrap_phaseshift(self, patch_ob):
+        radardata = NoInitRadarData()
+        radardata.migrate(mtype='phsh', vel=1., vel_fn='dummy', htaper=1, vtaper=2)
+        patch_ob.assert_called_with(Any(RadarData), vel=1., vel_fn='dummy', htaper=1, vtaper=2)
+
+    @patch('impdar.lib.migrationlib.migrationTimeWavenumber')
+    def test_wrap_tk(self, patch_ob):
+        radardata = NoInitRadarData()
+        radardata.migrate(mtype='tk', vel=1., vel_fn='dummy', htaper=1, vtaper=2)
+        patch_ob.assert_called_with(Any(RadarData), vel=1., vel_fn='dummy', htaper=1, vtaper=2)
+
+    @patch('impdar.lib.migrationlib.migrationSeisUnix')
+    def test_wrap_seisunix(self, patch_ob):
+        radardata = NoInitRadarData()
+        radardata.migrate(mtype='su_stolt', vtaper=1, htaper=2, tmig=3, vel_fn=None, vel=1.68e7, nxpad=15, verbose=1)
+        patch_ob.assert_called_with(Any(RadarData), vtaper=1, htaper=2, tmig=3, vel_fn=None, vel=1.68e7, nxpad=15, verbose=1, mtype='su_stolt')
+
+    def test_bad_mtype(self):
+        radardata = NoInitRadarData()
+        with self.assertRaises(ValueError):
+            radardata.migrate(mtype='dummy')
+
+        # and spoof the checker for seisunix
+        with self.assertRaises(Exception):
+            radardata.migrate(mtype='su_dummy')
+
 
 
 if __name__ == '__main__':

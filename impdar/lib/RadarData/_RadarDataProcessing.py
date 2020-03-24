@@ -15,6 +15,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 from ..permittivity_models import firn_permittivity
 
+
 def reverse(self):
     """Reverse radar data
 
@@ -99,14 +100,11 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     #       6) Converted flag variables to structure, and updated function I/O
     #       - J. Werner, 7/10/08
 
-
     # need to crop out the pretrigger before doing the move-out
     if np.any(self.trig > 0):
         raise ValueError('Crop out the pretrigger before doing the nmo correction.')
 
-
     # --- Load the velocity profile --- #
-
     if rho_profile is not None:
         try:
             # load the density profile
@@ -121,7 +119,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         # Interpolate velocity profile onto constant depth spacing
         d_interp = np.linspace(np.min(profile_depth, 0), max(profile_depth), self.snum)
         u_interp = interp1d(profile_depth, profile_u)(d_interp)
-
 
     # --- Do the move-out correction --- #
 
@@ -142,7 +139,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         thyp = t+tsep_ice
         # calculate the vertical two-way travel time
         nmotime[i] = np.sqrt((thyp)**2. - tsep_ice**2.)
-
 
     # --- Cleanup --- #
 
@@ -232,7 +228,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     return depth
 
 
-def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
+def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=False):
     """Crop the radar data in the vertical. We can take off the top or bottom.
 
     This will affect data, travel_time, and snum.
@@ -282,7 +278,9 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8):
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
-        self.travel_time = self.travel_time[lims[0]:lims[1]] - self.travel_time[lims[0]]
+        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        if rezero:
+            self.travel_time = self.travel_time - self.travel_time[0]
         self.snum = self.data.shape[0]
     else:
         # pretrig, vector input
@@ -393,18 +391,18 @@ def restack(self, traces):
     trace_int = np.zeros((tnum, ))
     oned_restack_vars = ['dist',
                          'pressure',
-                         'trig_level',
                          'lat',
                          'long',
                          'x_coord',
                          'y_coord',
                          'elev',
-                         'decday']
+                         'decday',
+                         'trig']
     oned_newdata = {key: np.zeros((tnum, )) if getattr(self, key) is not None else None for key in oned_restack_vars}
     for j in range(tnum):
         stack[:, j] = np.mean(self.data[:, j * traces:min((j + 1) * traces, self.data.shape[1])],
                               axis=1)
-        trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
+        # trace_int[j] = np.sum(self.trace_int[j * traces:min((j + 1) * traces, self.data.shape[1])])
         for var, val in oned_newdata.items():
             if val is not None:
                 val[j] = np.mean(getattr(self, var)[j * traces:
@@ -454,7 +452,6 @@ def agc(self, window=50, scaling_factor=50):
     maxamp = np.zeros((self.snum,))
     # In the for loop, old code indexed used range(window // 2). This did not make sense to me.
     for i in range(self.snum):
-        print(i, max(0, i - window // 2), min(i + window // 2, self.snum))
         maxamp[i] = np.max(np.abs(self.data[max(0, i - window // 2):
                                             min(i + window // 2, self.snum), :]))
     maxamp[maxamp == 0] = 1.0e-6
@@ -509,9 +506,14 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     new_dists = np.arange(np.min(temp_dist),
                           np.max(temp_dist),
                           step=spacing / 1000.0)
-    self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
-    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday']:
+    # interp1d can only handle real values
+    if self.data.dtype in [np.complex128]:
+        self.data = interp1d(temp_dist, np.real(self.data[:, good_vals]))(new_dists) + 1.j * interp1d(temp_dist, np.imag(self.data[:, good_vals]))(new_dists)
+    else:
+        self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
+
+    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
         setattr(self,
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))

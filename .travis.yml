@@ -38,17 +38,17 @@ install:
 - pip install mock
 - pip install .
 
+matrix:
+  allow_failures:
+      - python: 2.7
+        env: seisunix_inc=true
+
 cache:
     directories:
       - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1
       - /home/travis/PyQt5_install-5.7.1
       - $CWPROOT
       - $HOME/.cache/pip
-
-matrix:
-    allow_failures:
-        - python: 2.7
-          env: seisunix_inc=true
 
 deploy:
   provider: pypi
@@ -58,7 +58,7 @@ deploy:
   skip_existing: true
   distributions: "sdist bdist_wheel"
 
-script: coverage run --source impdar --omit=impdar/tests/* setup.py test
+script: coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/* setup.py test
 
 
 after_success:

@@ -164,6 +164,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     """Load data from a pulse_ekko file"""
 
     pe_data = RadarData(None)
+    pe_data.fn = fn_dt1
     bn_pe = os.path.splitext(fn_dt1)[0]
     hdname = bn_pe + '.HD'
     true_fn = bn_pe + '.DT1'
@@ -183,7 +184,7 @@ def load_pe(fn_dt1, *args, **kwargs):
             if 'WINDOW' in line or 'TOTAL TIME WINDOW' in line:
                 window = float(line.rstrip('\n\r ').split(' ')[-1])
             if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
-                pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1]))
+                pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1])) * np.ones((pe_data.tnum,))
             if i == 4 and pe_data.version == '1.0':
                 try:
                     doy = (int(line[6:10]),int(line[1:2]),int(line[3:5]))
@@ -220,7 +221,7 @@ def load_pe(fn_dt1, *args, **kwargs):
     # known vars that are not really set
     pe_data.chan = 1
     pe_data.trace_num = np.arange(pe_data.tnum) + 1
-    pe_data.trig_level = np.zeros((pe_data.tnum, ))
+    pe_data.trig_level = 0.
     pe_data.pressure = np.zeros((pe_data.tnum, ))
     pe_data.flags = RadarFlags()
 
@@ -244,7 +245,6 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
         pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
                                        np.diff(pe_data.dist)))
-
     else:
         print('Warning: Cannot find gps file, %s.'%gps_fn)
         pe_data.lat = np.zeros((pe_data.data.shape[1],))

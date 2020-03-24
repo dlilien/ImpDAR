@@ -6,10 +6,8 @@
 #
 # Distributed under terms of the GNU-GPL3.0 license.
 
-"""
-Define an exception class for exceptions that do not fit in other categories
-"""
+"""Define an exception class for exceptions (bad data, etc)."""
 
 
 class ImpdarError(Exception):
-    """Used for exceptions caused by something radar-y"""
+    """Used for exceptions caused by something radar-y."""

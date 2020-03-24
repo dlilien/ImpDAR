@@ -6,16 +6,17 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Flags to keep track of processing steps
-"""
+"""Flags to keep track of processing steps."""
 
 import numpy as np
+
 
 class RadarFlags():
     """Flags that indicate the processing that has been used on the data.
 
-    These are used for figuring out whether different processing steps have been performed. They also contain some information about the input arguments for some (but not all) of the processing steps.
+    These are used for figuring out whether different processing steps have
+    been performed. They also contain some information about the input
+    arguments for some (but not all) of the processing steps.
 
     Attributes
     ----------
@@ -34,10 +35,11 @@ class RadarFlags():
     hfilt: 2x1 :class:`numpy.ndarray`
         Elements: (1) 1 if horizontally filtered; (2) Filter type
     interp: 2x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
+        Elements: (1) 1 if constant distance spacing applied
+        (2) The constant spacing (m)
     mig: 2x1 :class: String
         None if no migration done, mtype if migration done.
-     """
+    """
 
     def __init__(self):
         self.batch = False
@@ -53,12 +55,19 @@ class RadarFlags():
         self.mig = 'none'
         self.elev = 0
         self.elevation = 0
-        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack', 'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
-        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None, None, None, None]
+        self.attrs = ['batch', 'bpass', 'hfilt', 'rgain', 'agc', 'restack',
+                      'reverse', 'crop', 'nmo', 'interp', 'mig', 'elev']
+        self.attr_dims = [None, 3, 2, None, None, None, None, 3, 2, 2, None,
+                          None, None, None]
         self.bool_attrs = ['agc', 'batch', 'restack', 'reverse', 'rgain']
 
     def to_matlab(self):
-        """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
+        """Convert all associated attributes for export.
+
+        Returns
+        -------
+        dict:
+            formatted for use with :func:`scipy.io.savemat`
         """
         outmat = {att: getattr(self, att) for att in self.attrs}
         for attr in self.bool_attrs:
@@ -66,7 +75,15 @@ class RadarFlags():
         return outmat
 
     def from_matlab(self, matlab_struct):
-        """Associate all values from an incoming .mat file (i.e. a dictionary from :func:`scipy.io.loadmat`) with appropriate attributes
+        """Associate all values from an incoming .mat file.
+
+        Input should come from  a dictionary from :func:`scipy.io.loadmat`
+        with appropriate attributes
+
+        Parameters
+        ----------
+        matlab_struct: dict
+            The input data
         """
         for attr, attr_dim in zip(self.attrs, self.attr_dims):
             setattr(self, attr, matlab_struct[attr][0][0][0])
@@ -76,4 +93,6 @@ class RadarFlags():
                 setattr(self, attr, np.zeros((attr_dim, )))
 
         for attr in self.bool_attrs:
-            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)
+            setattr(self,
+                    attr,
+                    True if matlab_struct[attr][0][0][0] == 1 else 0)

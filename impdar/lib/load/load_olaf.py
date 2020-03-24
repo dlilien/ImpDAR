@@ -17,6 +17,21 @@ import numpy as np
 from ..RadarData import RadarData
 
 
+def _common_start(string_a, string_b):
+    """ returns the longest common substring from the beginning of sa and sb
+
+    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
+    """
+    def _iter():
+        for char_a, char_b in zip(string_a, string_b):
+            if char_a == char_b:
+                yield char_a
+            else:
+                return
+
+    return ''.join(_iter())
+
+
 class SInfo:
     """Information about a single profile line"""
 
@@ -325,6 +340,12 @@ def load_olaf(fns_olaf, channel=1):
     # We want to be able to use this step concatenate a series of files numbered by the controller
     if isinstance(fns_olaf, str):
         fns_olaf = [fns_olaf]
+        olaf_data.fn = fns_olaf[0]
+    else:
+        f_common = fns_olaf[0]
+        for i in range(1, len(fns_olaf)):
+            f_common = _common_start(f_common, fns_olaf[i]).rstrip('[')
+        olaf_data.fn = f_common
 
     sinfo = []
     stacks = []
@@ -355,6 +376,13 @@ def load_olaf(fns_olaf, channel=1):
     sinfo = [sinfo[i] for i in sort_idx]
     stacks = [stacks[i] for i in sort_idx]
 
+    # Data and things we derive from it
+    olaf_data.chan = channel
+    olaf_data.data = np.hstack([s_i.data for s_i in stacks])
+    olaf_data.snum = olaf_data.data.shape[0]
+    olaf_data.tnum = olaf_data.data.shape[1]
+    olaf_data.trace_num = np.arange(olaf_data.tnum) + 1
+
     # Now merge the data into the normal format
     olaf_data.dt = 1. / sinfo[0].samp_freq
     olaf_data.fns_in = sinfo[0].fn_in
@@ -362,16 +390,8 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.freq = sinfo[0].nominal_frequency
     olaf_data.travel_time = stacks[0].travel_time * 1.0e6
     olaf_data.trig_level = stacks[0].trigger_level
-    olaf_data.trig = sinfo[0].pre_trigger_depth
-
+    olaf_data.trig = sinfo[0].pre_trigger_depth * np.ones(olaf_data.tnum)
     olaf_data.fnames = [si.fn_in for si in sinfo]
-
-    # Data and things we derive from it
-    olaf_data.chan = channel
-    olaf_data.data = np.hstack([s_i.data for s_i in stacks])
-    olaf_data.snum = olaf_data.data.shape[0]
-    olaf_data.tnum = olaf_data.data.shape[1]
-    olaf_data.trace_num = np.arange(olaf_data.tnum) + 1
 
     # Other variables that need concatenating
     olaf_data.decday = np.hstack([s_i.time for s_i in stacks])

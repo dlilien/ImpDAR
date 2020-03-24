@@ -26,7 +26,6 @@ Easiest is `pip install impdar`. Some explanation of other options is available 
 
 Depending on whether you need migration routines, there may be some external dependencies. ImpDAR is designed to interface with [SeisUnix](http://https://github.com/JohnWStockwellJr/SeisUnix), which contains a number of powerful migration routines. You need to install SeisUnix yourself and get it on your path. If you are running windows, you need to figure out how to use Cygwin as well. However, the pure python migration routines in ImpDAR can work quite well, so don't let the difficulty of installing these compiled routines stop you from using those. ImpDAR searches for SeisUnix at the time of the call to the migration routine, so you can always add this later if you find that you need it.
 
-
 ## Contributing
 
 Support for different radar data types has primarily been added as needed--contributions for data readers for other systems, whether commercial or custom, are always welcome.

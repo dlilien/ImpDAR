@@ -5,28 +5,30 @@
 # Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
+"""Structure with input data for the picking algoriths."""
 
 
 class PickParameters():
-    """Some information used for determining for picks
+    """Some information used for determining for picks.
 
-    This object contains several things that you need to know in order to pick a radar layer,
-    like the frequency of layers you are looking for or the size window in which to search
+    This object contains several things that you need to know in order to
+    pick a radar layer, like the frequency of layers you are looking for and
+    the size window in which to search.
 
     Attributes
     ----------
     apickthresh: float
-        Some kind of auto picking threshold that I have not yet used (default 10)
+        Some kind of auto picking threshold (Unused: default 10)
     freq: float
         Frequency of the layer pick (default 4)
     dt: float
         Time between acquisitions
     plength: float
-        Some function of dt and freq
+        The total packet to search for peaks
     FWW: float
-        Some function of dt and freq
+        The width of the center portion which we are going to search
     scst: float
-        Some function of plength and FWW
+        The offset which we will search at
     pol: int
         Polarity of the picks
     apickflag: int
@@ -36,6 +38,7 @@ class PickParameters():
     radardata: `RadarData`
         A link back up to the RadarData object with which this is affiliated
     """
+
     attrs = ['apickthresh',
              'freq',
              'dt',
@@ -62,10 +65,10 @@ class PickParameters():
         self.freq_update(self.freq)
 
     def freq_update(self, freq):
-        """Update the frequency at which we are looking
+        """Update the frequency at which we are looking.
 
-        This is more complicated than just setting freq because other variables are a
-        function of frequency and if not updated will break.
+        This is more complicated than just setting freq because other variables
+        are a function of frequency and if not updated will break.
 
         Parameters
         ----------
@@ -73,25 +76,36 @@ class PickParameters():
             Target pick frequency.
         """
         self.freq = freq
-        self.plength = 2 * int(round(1. / (self.freq * 1.0e6 * self.radardata.dt)))
-        self.FWW = int(round(0.66 * (1. / (self.freq * 1.0e6 * self.radardata.dt))))
-        self.scst = int(round((self.plength - self.FWW) / 2))
+        self.plength = 2 * int(round(1. / (
+            self.freq * 1.0e6 * self.radardata.dt))) - 1
         if self.plength < 3:
-            print('Warning: high freq compared to sampling rate. Forcing a minimum plength')
+            print('Warning: high freq compared to sampling rate. \
+                  Forcing a minimum plength')
             self.plength = 3
-        if self.FWW == 0:
-            self.FWW = 1
+        self.FWW = int(round(2. / 3. * (1. / (
+            self.freq * 1.0e6 * self.radardata.dt))))
+        if self.FWW % 2 == 0:
+            self.FWW += 1
+        self.scst = (self.plength - self.FWW) // 2
 
         # Guard against tiny datasets in this check...
         if self.plength > self.radardata.snum and self.radardata.snum >= 3:
-            print('Warning: Low freq compared to sampling rate. Forcing a maximum plength')
+            # print('Warning: Low freq compared to sampling rate. \
+            #       Forcing a maximum plength')
             self.plength = self.radardata.snum
             self.FWW = self.radardata.snum // 2
+            if self.FWW % 2 == 0:
+                self.FWW += 1
 
     def to_struct(self):
-        """Return attributes as a dictionary for saving
+        """Return attributes as a dictionary for saving.
 
         Guards against Nones so we can export to matlab
+
+        Returns
+        -------
+        dict:
+            The data for export with scipy.io.savemat
         """
         mat = {}
         for attr in self.attrs:

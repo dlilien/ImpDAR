@@ -117,6 +117,7 @@ def load_gssi(fn_dzt, *args, **kwargs):
     but ImpDAR does not use all this information
     """
     dzt_data = RadarData(None)
+    dzt_data.fn = fn_dzt
     with open(fn_dzt, 'rb') as fid:
         lines = fid.read()
     # tag = struct.unpack('<H', lines[0:2])[0]
@@ -132,7 +133,7 @@ def load_gssi(fn_dzt, *args, **kwargs):
     #     s_dattype = 'i'
     # elif bits == 16:
     #     s_dattype = 'h'
-    dzt_data.trig = struct.unpack('<h', lines[8:10])[0]
+    # dzt_data.trig = struct.unpack('<h', lines[8:10])[0] * np.ones(dzt_data.tnum)
     # sps = struct.unpack('<f', lines[10:14])[0]
     # spm = struct.unpack('<f', lines[14:18])[0]
     # mpm = struct.unpack('<f', lines[18:22])[0]
@@ -185,12 +186,14 @@ def load_gssi(fn_dzt, *args, **kwargs):
                                   lines[header_len:])).reshape((dzt_data.snum, -1), order='F')
     data[0, :] = data[2, :]
     data[1, :] = data[2, :]
-    data = data + dzt_data.trig
+    # data = data + dzt_data.trig
     dzt_data.data = data
 
     dzt_data.tnum = dzt_data.data.shape[1]
     dzt_data.trace_num = np.arange(dzt_data.data.shape[1]) + 1
-    dzt_data.trig_level = np.zeros((dzt_data.tnum, ))
+    dzt_data.trig_level = 0.
+    dzt_data.trig = struct.unpack('<h', lines[8:10])[0] * np.ones(dzt_data.tnum)
+
     dzt_data.pressure = np.zeros((dzt_data.tnum, ))
     dzt_data.flags = RadarFlags()
     dzt_data.dt = dzt_data.range / dzt_data.snum * 1.0e-9
@@ -208,9 +211,8 @@ def load_gssi(fn_dzt, *args, **kwargs):
         dzt_data.elev = dzt_data.gps_data.z
 
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
-        print(dzt_data.create)
         day_offset = dzt_data.create - timezero
-        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime)  + 377.  # matlab compat
+        tmin = day_offset.days + np.min(dzt_data.gps_data.dectime) + 377.  # matlab compat
         tmax = day_offset.days + np.max(dzt_data.gps_data.dectime) + 377.
         dzt_data.decday = np.linspace(tmin, tmax, dzt_data.tnum)
         dzt_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(dzt_data.dist))),

@@ -14,7 +14,7 @@ from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
 
-def adaptivehfilt(self, *args, **kwargs):
+def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     """Adaptively filter to reduce noise in upper layers
 
     This subtracts the average of traces around an individual trace in order to filter it.
@@ -48,20 +48,28 @@ def adaptivehfilt(self, *args, **kwargs):
 
     print('Adaptive filtering')
     # Create average trace for first (rough) scan of data
-    #avg_trace = np.mean(self.data, axis=1)
+    # avg_trace = np.mean(self.data, axis=1)
     # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
     hfiltdata_mass = self.data.copy()
 
     # Preallocate array
-    avg_trace_scale = np.zeros_like(self.travel_time)
+    avg_trace_scale = np.ones_like(self.travel_time)
 
     # create a piecewise scaling function (insures that the filter only affects
     # the top layers of data)
     mask = self.travel_time <= 0.3 * np.max(self.travel_time)
     mtt = np.max(self.travel_time)
     transition = 0.1 * mtt
-    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (self.travel_time[mask] - transition) / mtt ** 2. + 1
-    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (((self.travel_time[~mask] - transition) - 0.2 * mtt) * ((self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
+    #   self.travel_time[mask] - transition) / mtt ** 2. + 1
+    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
+    #   ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
+    #   (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
+        self.travel_time[mask] - transition) / mtt ** 2. + 1
+    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
+        ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
+            (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
 
     # preallocate array
     hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
@@ -69,12 +77,12 @@ def adaptivehfilt(self, *args, **kwargs):
     # begin looping through data
     for i in range(int(self.tnum)):
         # build a packet of 100 traces around the trace in question
-        if i <= 50:
-            scpacket = hfiltdata_mass[:, 0:100 - i]
-        elif i >= self.tnum - 50:
-            scpacket = hfiltdata_mass[:, int(self.tnum) - 100:int(self.tnum)]
+        if i <= window_size // 2:
+            scpacket = hfiltdata_mass[:, 0:window_size // 2 + i]
+        elif i >= self.tnum - window_size // 2:
+            scpacket = hfiltdata_mass[:, int(self.tnum) - window_size:int(self.tnum)]
         else:
-            scpacket = hfiltdata_mass[:, i - 49:i + 50]
+            scpacket = hfiltdata_mass[:, i - window_size // 2 + 1:i + window_size // 2]
 
         # average the packet horizontally and double filter it (allows the
         # program to maintain small horizontal artifacts that are likely real)
@@ -175,6 +183,9 @@ def highpass(self, wavelength):
     if self.flags.interp is None or not self.flags.interp[0]:
         raise ImpdarError('This method can only be used on constantly spaced data')
 
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+
     tracespace = self.flags.interp[1]
 
     # Convert wavelength to meters.
@@ -185,6 +196,8 @@ def highpass(self, wavelength):
     nsamp = int(wavelength / tracespace)
     if nsamp < 1:
         raise ValueError('wavelength is too small, causing no samples per wavelength')
+    if nsamp > self.tnum:
+        raise ValueError('wavelength is too large, bigger than the whole radargram')
     print('Sample resolution = {:d}'.format(nsamp))
     # The high corner frequency is the ratio of the sampling frequency (in MHz)
     # and the number of samples per wavelength (unitless).
@@ -203,6 +216,143 @@ def highpass(self, wavelength):
     b, a = butter(5, corner_freq, 'high')
 
     self.data = filtfilt(b, a, self.data)
+
+    # set flags structure components
+    self.flags.hfilt = np.ones((2,))
+    self.flags.hfilt[1] = 3
+
+    print('Highpass filter complete.')
+
+
+def lowpass(self, wavelength):
+    """Low pass in the horizontal for a given wavelength.
+
+    This only works if the data have constant trace spacing;
+    we check the processing flags to enforce this.
+
+    Parameters
+    ----------
+    wavelength: int
+        The wavelength to pass, in meters.
+
+
+    Original StoDeep Documentation:
+        HIGHPASSDEEP - This is NOT a highpass frequency filter--rather it is a
+        horizontal filter to be used after interpolation because our data now has
+        constant spacing and a constant time.  Note that this horizontal filter
+        requires constant trace-spacing in order to be effective.
+
+        You will want to experiment with the creation of the average trace.
+        Ideally choose an area where all reflectors are sloped and relatively
+        dim so that they average out while the horizontal noise is amplified.
+        Note that generally there is no perfect horizontal filter that will
+        work at all depths.  You will have to experiment to get the best
+        results for your area of interest.
+
+
+        WARNING: Do not use highpassdeep on elevation-corrected data!!!
+
+
+        Created by L. Smith and modified by
+        A. Hagen, 6/15/04. B. Welch, 5/3/06. J. Werner, 6/30/08. J. Olson, 7/10/08
+    """
+    if self.flags.interp is None or not self.flags.interp[0]:
+        raise ImpdarError('This method can only be used on constantly spaced data')
+
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+
+    tracespace = self.flags.interp[1]
+
+    # Convert wavelength to meters.
+    wavelength = int(wavelength)
+    # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
+    fsamp = 100.
+    # Calculate the number of samples per wavelength.
+    nsamp = int(wavelength / tracespace)
+    if nsamp < 1:
+        raise ValueError('wavelength is too small, causing no samples per wavelength')
+    if nsamp > self.tnum:
+        raise ValueError('wavelength is too large, bigger than the whole radargram')
+    print('Sample resolution = {:d}'.format(nsamp))
+    # The high corner frequency is the ratio of the sampling frequency (in MHz)
+    # and the number of samples per wavelength (unitless).
+    high_corner_freq = fsamp / float(nsamp)
+    print('Low cutoff at {:4.2f} MHz...'.format(high_corner_freq))
+
+    sample_freq = 1. / self.dt
+
+    nyquist_freq = sample_freq / 2.0
+    # Convert High_Corner_Freq to Hz.
+    high_corner_freq = high_corner_freq * 1.0e6
+
+    # Corner_Freq is used in the olaf_butter routine.
+    corner_freq = high_corner_freq / nyquist_freq
+
+    b, a = butter(3, corner_freq, 'low')
+
+    self.data = filtfilt(b, a, self.data)
+
+    # set flags structure components
+    self.flags.hfilt = np.ones((2,))
+    self.flags.hfilt[1] = 3
+
+    print('Lowpass filter complete.')
+
+
+def horizontal_band_pass(self, low, high):
+    """Bandpass in the horizontal for a given pair of wavelengths
+
+    This only works if the data have constant trace spacing;
+    we check the processing flags to enforce this.
+
+    Parameters
+    ----------
+    low: float
+        The minimum wavelength to pass, in meters.
+    high: float
+        The maximum wavelength to pass, in meters.
+
+    """
+    if self.flags.interp is None or not self.flags.interp[0]:
+        raise ImpdarError('This method can only be used on constantly spaced data')
+    if self.flags.elev:
+        raise ImpdarError('This will not work with elevation corrected data')
+    if low >= high:
+        raise ValueError('Low must be less than high')
+
+    tracespace = self.flags.interp[1]
+
+    # Convert wavelength to meters.
+    wavelength_high = high
+    wavelength_low = low
+    # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
+    fsamp = 100.
+    # Calculate the number of samples per wavelength.
+    nsamp_high = int(wavelength_high / tracespace)
+    nsamp_low = int(wavelength_low / tracespace)
+    if nsamp_low < 1:
+        raise ValueError('Minimum wavelength is too small, causing no samples per wavelength')
+    if nsamp_high > self.tnum:
+        raise ValueError('Maximum wavelength is too long, causing more samples per wavelength than tnum, use lowpass instead?')
+    print('Sample resolution high = {:d}'.format(nsamp_high))
+    print('Sample resolution low = {:d}'.format(nsamp_low))
+    # The high corner frequency is the ratio of the sampling frequency (in MHz)
+    # and the number of samples per wavelength (unitless).
+    high_corner_freq = fsamp / float(nsamp_high)
+    low_corner_freq = fsamp / float(nsamp_low)
+
+    nyquist_freq = fsamp / 2.0
+    high_corner_freq = high_corner_freq
+    low_corner_freq = low_corner_freq
+
+    corner_freq = np.zeros((2,))
+    corner_freq[0] = low_corner_freq / nyquist_freq
+    corner_freq[1] = high_corner_freq / nyquist_freq
+
+    b, a = butter(5, corner_freq, 'bandpass')
+
+    self.data = filtfilt(b, a, self.data, axis=1)
 
     # set flags structure components
     self.flags.hfilt = np.ones((2,))
@@ -429,14 +579,23 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
     """
     if ftype == 'wiener':
         if noise is None:
-            self.data = wiener(self.data,mysize=(vert_win,hor_win))
+            self.data = wiener(self.data, mysize=(vert_win, hor_win))
         else:
-            self.data = wiener(self.data,mysize=(vert_win,hor_win),noise=noise)
+            self.data = wiener(self.data, mysize=(vert_win, hor_win), noise=noise)
     else:
-        raise TypeError('Only the wiener filter has been implemented for denoising.')
+        raise ValueError('Only the wiener filter has been implemented for denoising.')
 
 
-def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=1.68e8, nxpad=10, nearfield=False, verbose=0):
+def migrate(self,
+            mtype='stolt',
+            vtaper=10,
+            htaper=10,
+            tmig=0,
+            vel_fn=None,
+            vel=1.68e8,
+            nxpad=10,
+            nearfield=False,
+            verbose=0):
     """Migrate the data.
 
     This is a wrapper around all the migration routines in migration_routines.py.
@@ -454,9 +613,21 @@ def migrate(self, mtype='stolt', vtaper=10, htaper=10, tmig=0, vel_fn=None, vel=
     elif mtype == 'phsh':
         migrationlib.migrationPhaseShift(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
     elif mtype == 'tk':
-        migrationlib.migrationTimeWavenumber(self, vel=vel, vel_fn=vel_fn, htaper=htaper, vtaper=vtaper)
+        migrationlib.migrationTimeWavenumber(self,
+                                             vel=vel,
+                                             vel_fn=vel_fn,
+                                             htaper=htaper,
+                                             vtaper=vtaper)
     elif mtype[:2] == 'su':
-        migrationlib.migrationSeisUnix(self, mtype=mtype, vel=vel, vel_fn=vel_fn, tmig=tmig, verbose=verbose, nxpad=nxpad, htaper=htaper, vtaper=vtaper)
+        migrationlib.migrationSeisUnix(self,
+                                       mtype=mtype,
+                                       vel=vel,
+                                       vel_fn=vel_fn,
+                                       tmig=tmig,
+                                       verbose=verbose,
+                                       nxpad=nxpad,
+                                       htaper=htaper,
+                                       vtaper=vtaper)
     else:
         raise ValueError('Unrecognized migration routine')
 

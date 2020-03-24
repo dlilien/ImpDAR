@@ -56,6 +56,7 @@ def load_delores(fn_del, channel=1, *args, **kwargs):
         raise ImportError('You need H5 to load gprMax')
 
     del_data = RadarData(None)
+    self.fn = fn_del
 
     # Pull from the file
     with h5py.File(fn_del) as f_in:

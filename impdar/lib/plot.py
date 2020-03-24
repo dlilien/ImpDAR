@@ -6,9 +6,7 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-
-"""
+"""Plotting functions for radar data."""
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,21 +14,25 @@ import scipy.signal as signal
 from .load import load
 
 
-def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_range=(0, -1), power=None, spectra=None, window=None, scaling='spectrum', filetype='mat', *args, **kwargs):
-    """We have an overarching function here to handle a number of plot types
-
+def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
+         x_range=(0, -1), power=None, spectra=None, freq_limit=None,
+         window=None, scaling='spectrum', filetype='mat', pick_colors=None,
+         ft=False, hft=False, clims=None, cmap=plt.cm.gray, *args, **kwargs):
+    """We have an overarching wrapper here to handle a number of plot types.
     Parameters
     ----------
     fns: list of strs
         A list of filenames to plot individually.
     tr: tuple or int, optional
-        Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram. Default is None (plot radargram)
+        Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram.
+        Default is None (plot radargram)
     power: int, optional
         If not None, then plot power returned from this layer
     filetype: str, optional
         Type of input file. Default mat.
     x_range: tuple, optional
-        The range of traces to plot in the radargram. Default is (0, -1) (plot all traces)
+        The range of traces to plot in the radargram.
+        Default is (0, -1) (plot all traces)
     """
     radar_data = load(filetype, fns)
 
@@ -51,39 +53,59 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False, x_rang
     elif power is not None:
         # Do it all on one axis if power
         figs = [plot_power(radar_data, power)]
-    elif spectra is not None:
+    elif ft:
+        figs = [plot_ft(dat) for dat in radar_data]
+    elif hft:
+        figs = [plot_hft(dat) for dat in radar_data]
+    elif spectra:
         figs = [plot_spectrogram(dat, spectra, window=window, scaling=scaling) for dat in radar_data]
     else:
-        figs = [plot_radargram(dat, xdat=xdat, ydat=ydat, x_range=None) for dat in radar_data]
+        figs = [plot_radargram(dat,
+                               xdat=xdat,
+                               ydat=ydat,
+                               x_range=None,
+                               pick_colors=pick_colors,
+                               clims=clims,
+                               cmap=cmap)
+                for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
         if dat.fn is not None:
             fig[0].canvas.set_window_title(dat.fn)
 
     if s:
-        [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi) for f, fn0 in zip(figs, fns)]
+        [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi)
+         for f, fn0 in zip(figs, fns)]
     else:
         plt.tight_layout()
         plt.show()
 
 
-def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None, return_plotinfo=False, pick_colors=None):
-    """This is the function to plot the normal radargrams that we are used to.
+def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
+                   y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None,
+                   return_plotinfo=False, pick_colors=None, clims=None,
+                   flatten_layer=None):
+    """Plot a radio echogram.
 
-    This function is a little weird since I want to be able to plot on top of existing figures/axes or on new figures an axes. There is therefore an argument `return_plotinfo` that funnels between these options and changes the return types
+    This function is a little weird since I want to be able to plot on top of
+    existing figures/axes or on new figures an axes. There is therefore an
+    argument `return_plotinfo` that funnels between these options and changes
+    the return types.
 
     Parameters
     ----------
     dat: impdar.lib.RadarData.Radardata
         The RadarData object to plot.
     xdat: str, optional
-        The horizontal axis units. Either tnum or distance.
+        The horizontal axis units. Either tnum or dist(ance).
     ydat: str, optional
         The vertical axis units. Either twtt or or depth. Default twtt.
     x_range: 2-tuple, optional
-        The range of values to plot, in tnum space. Default is plot everything (0, -1)
+        The range of values to plot, in tnum space.
+        Default is plot everything (0, -1)
     y_range: 2-tuple, optional
-        The range of values to plot, in snum space. Default is plot everything (0, -1)
+        The range of values to plot, in snum space.
+        Default is plot everything (0, -1)
     cmap: matplotlib.pyplot.cm, optional
         The colormap to use
     fig: matplotlib.pyplot.Figure
@@ -109,15 +131,15 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         yd: np.ndarray
             The y values of the plot
         x_range: 2-tuple
-            The limits of the x range, after modification to remove negative indices
+            The limits of the x range,
+            after modification to remove negative indices
         clims: 2-tuple
             The limits of the colorbar
-
     """
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
-    if ydat not in ['twtt', 'depth', 'elev']:
-        raise ValueError('y axis choices are twtt, depth, or elev')
+    elif (xdat == 'dist') and dat.dist is None:
+        raise ValueError('xdat cannot be dist when the data has no dist')
 
     if x_range is None:
         x_range = (0, -1)
@@ -126,10 +148,24 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
 
     if y_range is None:
         y_range = (0, -1)
-    if y_range[-1] == -1:
+    elif y_range[-1] == -1:
         y_range = (y_range[0], dat.data.shape[0])
 
-    lims = np.percentile(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])], (10, 90))
+    if dat.data.dtype in [np.complex128]:
+        def norm(x):
+            return 10.0 * np.log10(np.absolute(x))
+    else:
+        def norm(x):
+            return x
+
+    if clims is None:
+        clims = np.percentile(norm(dat.data[y_range[0]:y_range[-1],
+                                            x_range[0]:x_range[-1]])[~np.isnan(
+                                                dat.data[y_range[0]:
+                                                         y_range[-1],
+                                                         x_range[0]:
+                                                             x_range[-1]])],
+                              (10, 90))
 
     if fig is not None:
         if ax is None:
@@ -151,10 +187,12 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
             if dat.nmo_depth is not None:
                 yd = dat.nmo_depth[y_range[0]:y_range[-1]]
             else:
-                yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * 1.69e8 * 1.0e-6
+                yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * (
+                    1.69e8 * 1.0e-6)
             ax.set_ylabel('Depth (m)')
         else:
-            raise ValueError('Unrecognized ydat')
+            raise ValueError('Unrecognized ydat, choices are elev, twtt, \
+                             or depth')
 
     if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
@@ -163,23 +201,138 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1), y_range=(0, -
         xd = dat.dist[x_range[0]:x_range[-1]]
         ax.set_xlabel('Distance (km)')
 
-    if hasattr(dat.flags, 'elev') and dat.flags.elev:
-        print(dat.data[:, x_range[0]:x_range[-1]])
-        print(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])
-        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)], aspect='auto')
-    else:
-        im = ax.imshow(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]], cmap=cmap, vmin=lims[0], vmax=lims[1], extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)], aspect='auto')
+    if flatten_layer is not None:
+        if flatten_layer not in dat.picks.picknums:
+            raise ValueError('That layer is not in existence, cannot flatten')
+        layer_ind = dat.picks.picknums.index(flatten_layer)
+        layer_depth = dat.picks.samp2[layer_ind, :]
+        zero_offset = int(np.nanmean(layer_depth))
+        offset = zero_offset - layer_depth
 
-    if pick_colors is not None:
+        # Now construct the data matrix
+        tmp_data = np.zeros_like(dat.data)
+        tmp_data[:, :] = np.nan
+        for j in range(tmp_data.shape[1]):
+            if np.isnan(offset[j]):
+                continue
+            if int(offset[j]) == 0:
+                tmp_data[:, j] = dat.data[:, j]
+            # We have a weird error here with max size ints?
+            elif offset[j] < 0 and (abs(offset[j]) < dat.snum):
+                tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
+            elif (abs(offset[j]) < dat.snum) and offset[j]:
+                tmp_data[int(offset[j]):, j] = dat.data[:-int(offset[j]), j]
+
+        im = ax.imshow(norm(tmp_data[:, x_range[0]:x_range[-1]]),
+                       cmap=cmap,
+                       vmin=clims[0],
+                       vmax=clims[1],
+                       extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)],
+                       aspect='auto')
+    elif hasattr(dat.flags, 'elev') and dat.flags.elev:
+        im = ax.imshow(norm(dat.data[y_range[0]:y_range[-1],
+                                     x_range[0]:x_range[-1]]),
+                       cmap=cmap,
+                       vmin=clims[0],
+                       vmax=clims[1],
+                       extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)],
+                       aspect='auto')
+    else:
+        im = ax.imshow(norm(dat.data[y_range[0]:y_range[-1],
+                                     x_range[0]:x_range[-1]]),
+                       cmap=cmap,
+                       vmin=clims[0],
+                       vmax=clims[1],
+                       extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)],
+                       aspect='auto')
+
+    if (pick_colors is not None) and pick_colors:
         plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
     if not return_plotinfo:
         return fig, ax
     else:
-        return im, xd, yd, x_range, lims
+        return im, xd, yd, x_range, clims
 
 
-def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyle='solid'):
-    """Plot power vs depth or twtt in a trace
+def plot_ft(dat, fig=None, ax=None):
+    """Plot the Fourier spectrum of the data in the vertical.
+
+    This will give the power spectral density in terms of the
+    frequency (in MHz). We first fft, then average the fft.
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
+    fft = np.fft.fft(dat.data, axis=0)
+    fft_dat = np.mean(np.abs(fft) ** 2.0, axis=1)
+    freq = np.fft.fftfreq(dat.snum) / dat.dt
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(freq[freq >= 0] / 1.0e6, fft_dat[freq >= 0])
+    ax.set_xlabel('Freq (MHz)')
+    ax.set_ylabel('Power spectral density')
+    return fig, ax
+
+
+def plot_hft(dat, fig=None, ax=None):
+    """Plot the Fourier spectrum of the data in the horizontal.
+
+    This will give the power spectral density as a function of the
+    horizontal wavelength (in meters). We first fft, then average the fft
+
+    Parameters
+    ----------
+    dat: impdar.lib.RadarData.Radardata
+        The RadarData object to plot.
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that should be plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that should be plotted upon
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.Figure
+        Figure canvas that was plotted upon
+    ax: matplotlib.pyplot.Axes
+        Axes that were plotted upon
+    """
+    fft = np.fft.fft(dat.data, axis=1)
+    fft_dat = np.mean(np.abs(fft) ** 2.0, axis=0)
+
+    # approximate as with the hbp
+    freq = np.fft.fftfreq(dat.tnum)
+    wavelength = dat.flags.interp[1] / freq
+
+    if fig is not None:
+        if ax is None:
+            ax = plt.gca()
+    else:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(wavelength[freq >= 0], fft_dat[freq >= 0])
+    ax.set_xlabel('Wavelength')
+    ax.set_ylabel('Power spectral density')
+    return fig, ax
+
+
+def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
+                linestyle='solid'):
+    """Plot power vs depth or twtt in a trace.
 
     Parameters
     ----------
@@ -204,7 +357,8 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyl
     # Two options of trace input, a single trace or multiple
     if hasattr(tr, '__iter__'):
         if not len(tr) == 2:
-            raise ValueError('tr must either be a 2-tuple of bounds for the traces or a single trace index')
+            raise ValueError('tr must either be a 2-tuple of bounds for the \
+                             traces or a single trace index')
     if type(tr) == int:
         tr = (tr, tr + 1)
     elif tr[0] == tr[1]:
@@ -241,11 +395,8 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0, linestyl
     return fig, ax
 
 
-def plot_power(dats, idx, fig=None, ax=None):
-    """
-
-    Plot reflected power along a given pick
-
+def plot_power(dats, idx, fig=None, ax=None, clims=None):
+    """Make a plot of the reflected power along a given pick.
 
     Parameters
     ----------
@@ -276,10 +427,12 @@ def plot_power(dats, idx, fig=None, ax=None):
 
     for dat in dats:
         if (dat.picks is None) or (dat.picks.picknums is None):
-            raise ValueError('There are no picks on this radardata, cannot plot return power')
+            raise ValueError('There are no picks on this radardata, \
+                             cannot plot return power')
 
         if idx not in dat.picks.picknums:
-            raise ValueError('Pick number {:d} not found in your file'.format(idx))
+            raise ValueError('Pick number {:d} not found in your file'.format(
+                idx))
 
     if fig is not None:
         if ax is None:
@@ -288,7 +441,7 @@ def plot_power(dats, idx, fig=None, ax=None):
         fig, ax = plt.subplots(figsize=(8, 12))
 
     # Attempt to plot in projected coordinates
-    if dats[0].x_coord is not None:
+    if (dats[0].x_coord is not None) and (dats[0].y_coord is not None):
         if len(dats) > 1:
             lons = np.hstack([dat.x_coord for dat in dats])
             lats = np.hstack([dat.y_coord for dat in dats])
@@ -303,17 +456,25 @@ def plot_power(dats, idx, fig=None, ax=None):
             lons = dats[0].long
             lats = dats[0].lat
 
-    pick_power = np.hstack([dat.picks.power[dat.picks.picknums.index(idx)].flatten() for dat in dats])
+    pick_power = np.hstack([dat.picks.power[dat.picks.picknums.index(idx)
+                                            ].flatten() for dat in dats])
 
     c = 10 * np.log10(pick_power)
-    clims = np.percentile(c[~np.isnan(c)], (1, 99))
 
-    # I think we throw an error if vmin=vmax, but we still want a plot of constant power
-    if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
-        clims[0] = 0.99 * clims[0]
-        clims[1] = 1.01 * clims[1]
+    if clims is None:
+        clims = np.percentile(c[~np.isnan(c)], (1, 99))
 
-    img = ax.scatter(lons.flatten(), lats.flatten(), c=c.flatten(), vmin=clims[0], vmax=clims[1])
+        # I think we throw an error if vmin=vmax
+        # but we still want a plot of constant power
+        if (clims[0] - clims[1]) / clims[0] < 1.0e-8:
+            clims[0] = 0.99 * clims[0]
+            clims[1] = 1.01 * clims[1]
+
+    img = ax.scatter(lons.flatten(),
+                     lats.flatten(),
+                     c=c.flatten(),
+                     vmin=clims[0],
+                     vmax=clims[1])
     h = fig.colorbar(img)
     h.set_label('dB')
     ax.set_ylabel('Northing')
@@ -328,11 +489,15 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     Parameters
     ----------
     colors: str
-        You have choices here. This can be a npicksx3 list, an npicks list of 3-letter strings, a 3 letter string, a single string, or a npicks list. Any of the x3 options are interpretted as top, middle, bottom colors. The others are
+        You have choices here. This can be a npicksx3 list, an npicks list of
+        3-letter strings, a 3 letter string, a single string, or a npicks list.
+        Any of the x3 options are interpretted as top, middle, bottom colors.
+        If it is a string, the lines are all plotted in this color. If it is
+        a list, the different values are used for the different lines.
     picker:
-        argument to pass to plot of cline (if new) for selection tolerance (use if plotting in select mode)
+        argument to pass to plot of cline (if new) for selection tolerance
+        (use if plotting in select mode)
     """
-
     if ax is None:
         if fig is not None:
             ax = plt.gca()
@@ -344,7 +509,7 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         return fig, ax
 
     variable_colors = False
-    if colors is None:
+    if not colors:  # may be False or None
         cl = 'mgm'
     else:
         if type(colors) == str:
@@ -352,35 +517,42 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
                 cl = colors
             else:
                 cl = ('none', colors, 'none')
+        elif (type(colors) == bool) and colors:
+            colors = [None for i in range(rd.picks.samp1.shape[0])]
+            variable_colors = True
         elif not len(colors) == rd.picks.samp1.shape[0]:
-            raise ValueError('If not a string, must have same length as the picks')
+            raise ValueError('If not a string, \
+                             must have length 3 or length npicks')
         else:
             variable_colors = True
 
     for i in range(rd.picks.samp1.shape[0]):
         if variable_colors:
-            if len(colors[i]) == 3:
+            if hasattr(colors[i], '__len__') and len(colors[i]) == 3:
                 cl = colors[i]
             else:
                 cl = ('none', colors[i], 'none')
         c = np.zeros(xd.shape)
         c[:] = np.nan
-        c[~np.isnan(rd.picks.samp2[i, :])] = yd[rd.picks.samp2[i, :][~np.isnan(rd.picks.samp2[i, :])].astype(int)]
+        c[~np.isnan(rd.picks.samp2[i, :])] = yd[rd.picks.samp2[i, :][
+            ~np.isnan(rd.picks.samp2[i, :])].astype(int)]
         t = np.zeros(xd.shape)
         t[:] = np.nan
-        t[~np.isnan(rd.picks.samp1[i, :])] = yd[rd.picks.samp1[i, :][~np.isnan(rd.picks.samp1[i, :])].astype(int)]
+        t[~np.isnan(rd.picks.samp1[i, :])] = yd[rd.picks.samp1[i, :][
+            ~np.isnan(rd.picks.samp1[i, :])].astype(int)]
         b = np.zeros(xd.shape)
         b[:] = np.nan
-        b[~np.isnan(rd.picks.samp3[i, :])] = yd[rd.picks.samp3[i, :][~np.isnan(rd.picks.samp3[i, :])].astype(int)]
+        b[~np.isnan(rd.picks.samp3[i, :])] = yd[rd.picks.samp3[i, :][
+            ~np.isnan(rd.picks.samp3[i, :])].astype(int)]
         ax.plot(xd, c, color=cl[1])
         ax.plot(xd, t, color=cl[0])
         ax.plot(xd, b, color=cl[2])
     return fig, ax
 
 
-def plot_spectrogram(dat, freq_limit=None, window=None, scaling='spectrum', fig=None, ax=None, **kwargs):
+def plot_spectrogram(dat, freq_limit=None, window=None,
+                     scaling='spectrum', fig=None, ax=None, **kwargs):
     """Make a plot of power spectral density across all traces of a radar profile.
-
 
     Parameters
     ----------
@@ -390,12 +562,14 @@ def plot_spectrogram(dat, freq_limit=None, window=None, scaling='spectrum', fig=
         The minimum and maximum frequency (in MHz) to limit the y-axis to
     window: str, optional
         Type of window to be used for the signal.periodogram() method.
+
         Default hamming.
         `Further information <https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.periodogram.html#scipy.signal.periodogram>`_
     scaling: str, optional
         Whether to plot power spectral density or power spectrum
         'density' or 'spectrum', the default being 'spectrum'.
-        `Further information <https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.periodogram.html#scipy.signal.periodogram>`_
+        `Further information <https://docs.scipy.org/doc/scipy-0.14.0/referenc\
+        e/generated/scipy.signal.periodogram.html#scipy.signal.periodogram>`_
     fig: matplotlib.pyplot.Figure, optional
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes, optional
@@ -423,8 +597,12 @@ def plot_spectrogram(dat, freq_limit=None, window=None, scaling='spectrum', fig=
     powers = []
     for trace in range(traces):
         # get frequency and power information from trace
-        # hanning window will filter out certain frequencies, so it is optional to use it or not
-        freq, power = signal.periodogram(dat.data[:, trace], fs=fs, window=window, scaling=scaling)
+        # hanning window will filter out certain frequencies,
+        # so it is optional to use it or not
+        freq, power = signal.periodogram(dat.data[:, trace],
+                                         fs=fs,
+                                         window=window,
+                                         scaling=scaling)
         powers.append(power)
 
     # extract trace number from matlab file
@@ -447,27 +625,34 @@ def plot_spectrogram(dat, freq_limit=None, window=None, scaling='spectrum', fig=
 
     # set colorbar and colorbar label
     cbarlabel = 'Power (Amplitude **2)'
-    cbar = plt.colorbar(contours, shrink=0.9, orientation='vertical', pad=0.03, ax=ax)
+    cbar = plt.colorbar(contours,
+                        shrink=0.9,
+                        orientation='vertical',
+                        pad=0.03,
+                        ax=ax)
     cbar.set_label(cbarlabel)
 
-    # check to make sure freq_limit is not <= smallest freq so something appears
+    # check to make sure freq_limit is not <= smallest freq
     if freq_limit is not None:
-        if freq_limit[1] < np.nanmin(y):
-            raise ValueError('Y-axis limit {} MHz too low.'.format(freq_limit[1]))
-        if freq_limit[1] > np.nanmax(y):
-            print('Warning: y-axis limit large compared to the frequencies plotted')
+        if hasattr(freq_limit, '__len__'):
+            if freq_limit[1] < np.nanmin(y):
+                raise ValueError('Y-axis limit {} MHz too low.'.format(freq_limit[1]))
+            if freq_limit[1] > np.nanmax(y):
+                print('Warning: y-axis limit large compared to the frequencies plotted')
 
-        # limit y-axis to freq_limit, maximum power output
-        # else, no need to do anything
-        ax.set_ylim(freq_limit[0], freq_limit[1])
+            # limit y-axis to freq_limit, maximum power output
+            # else, no need to do anything
+            ax.set_ylim(freq_limit[0], freq_limit[1])
+        else:
+            print('Frequency limit should be a tuple of low, high. Ignoring.')
 
     # add x and y labels
     ax.set_xlabel('Trace Number')
     ax.set_ylabel('Frequency (MHz)')
 
     # set title
-    title = 'Power Spectral Density'
-    # add space between the title and the plot
-    ax.set_title(title, pad=20)
+    title = 'PSD(tnum, f)'
+    ax.set_title(title)
+
 
     return fig, ax

@@ -5,21 +5,18 @@
 # Copyright © 2019 dlilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 License.
-
-"""
-Do some filetype conversions. Created mainly to have a .DZG to .shp convertsion
-"""
+"""Do some filetype conversions. Incomplete."""
 
 import os
 from .RadarData import RadarData
-from .load import load_gssi, load_pulse_ekko, load_segy
+from .load import load_gssi, load_pulse_ekko, load_segy, load
 
 
 def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
-    """Convert between formats. Mainly used to create shps and sgy files"""
-
+    """Convert between formats. Mainly used to create shps and sgy files."""
     # Basic check on the conversion being implemented.
-    # This is really simple because I'm not converting from one proprietary form to another
+    # This is really simple because I'm not converting from one proprietary
+    # form to another
     if t_srs == 'wgs84':
         t_srs = 4326
 
@@ -42,21 +39,14 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
                 loaders[i] = load_pulse_ekko.load_pe
             elif f_i[-4:] == '.sgy':
                 if not load_segy.SEGY:
-                    raise ImportError('You cannot use segy without segyio installed!')
+                    raise ImportError('You cannot use segy \
+                                          without segyio installed!')
                 loaders[i] = load_segy.load_segy
             else:
-                raise ValueError('Unrecognized file extension {:s}'.format(f_i[-4:]))
+                raise ValueError('Unrecognized file \
+                                 extension {:s}'.format(f_i[-4:]))
     else:
-        if in_fmt == 'mat':
-            loaders = [RadarData for i in fns_in]
-        elif in_fmt == 'gssi':
-            loaders = [load_gssi.load_gssi for i in fns_in]
-        elif in_fmt == 'pe':
-            loaders = [load_pulse_ekko.load_pe for i in fns_in]
-        elif in_fmt == 'sgy':
-            if not load_segy.SEGY:
-                raise ImportError('You cannot use segy without segyio installed!')
-            loaders = [load_segy.load_segy for i in fns_in]
+        loaders = [lambda x: load(in_fmt, x)[0] for i in fns_in]
 
     # Now actually load the data
     data = [loader(f) for loader, f in zip(loaders, fns_in)]
@@ -70,8 +60,8 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
             fn_out = os.path.splitext(f_i)[0] + '.mat'
             dat.save(fn_out)
     elif out_fmt == 'shp':
-        for loader, f_i, dat in zip(loaders, fns_in, data):
-            fn_out = os.path.splitext(f_i)[0] + '.shp'
+        for dat in data:
+            fn_out = os.path.splitext(dat.fn)[0] + '.shp'
             dat.output_shp(fn_out, t_srs=t_srs)
     elif out_fmt == 'sgy':
         if not load_segy.SEGY:

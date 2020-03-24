@@ -5,7 +5,7 @@
 # Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
-
+"""Object to track modifications to data dimensions."""
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class Crop():
     ----------
     radardata: impdar.lib.RadarData.RadarData
         Radardata object for this to be affiliated with
-    
+
     Attributes
     ----------
     tnum: int
@@ -29,6 +29,7 @@ class Crop():
     maxstt: float
         The maximum twtt
     """
+
     attrs = ['tnum', 'maxsnum', 'mintt', 'maxtt']
 
     def __init__(self, radardata):
@@ -38,7 +39,7 @@ class Crop():
         self.maxtt = np.max(radardata.travel_time)
 
     def to_struct(self):
-        """Export to format for matlab
+        """Export to format for matlab.
 
         Returns
         -------

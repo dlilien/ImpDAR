@@ -35,7 +35,7 @@ class TestLoad(unittest.TestCase):
         data = load.load('gecko', [os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd')])
 
     def test_loadgprmax(self):
-        data = load.load('gprMax', os.path.join(THIS_DIR, 'input_data', 'bedslope_gprMax_Bscan.h5'))
+        data = load.load('gprMax', os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
 
     def test_loadbad(self):
         with self.assertRaises(ValueError):
@@ -63,16 +63,6 @@ class TestLoad(unittest.TestCase):
         # We dont have an output folder
         with self.assertRaises(FileNotFoundError):
             load.load_and_exit('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], o='dummy')
-
-    def test_common_start(self):
-        start = load._common_start('abra', 'abracadabra')
-        self.assertEqual('abra', start)
-
-        start = load._common_start('abra', 'abra')
-        self.assertEqual('abra', start)
-
-        start = load._common_start('', 'abra')
-        self.assertEqual('', start)
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')):
