@@ -62,8 +62,8 @@ def packet_power(trace, plength, midpoint):
 
     Parameters
     ----------
-    trace: 1d numpy.ndarray
-        The trace in which to find the window
+    trace: numpy.ndarray
+        (snum,) The trace in which to find the window
     plength: float
         The size of the packet (in samples)
     midpoint: int

@@ -8,13 +8,14 @@ environment:
       MINICONDA: C:\Miniconda
       PYTHON_VERSION: 2.7
 
+    # Commented out since tests were passing but build still failing.
     # Python 3.5
-    - PYTHON: "C:\\Python35"
-      MINICONDA: C:\Miniconda35
-      PYTHON_VERSION: 3.5
-    - PYTHON: "C:\\Python35-x64"
-      MINICONDA: C:\Miniconda35
-      PYTHON_VERSION: 3.5
+    # - PYTHON: "C:\\Python35"
+    #   MINICONDA: C:\Miniconda35
+    #   PYTHON_VERSION: 3.5
+    # - PYTHON: "C:\\Python35-x64"
+    #   MINICONDA: C:\Miniconda35
+    #   PYTHON_VERSION: 3.5
 
     # Python 3.6
     - PYTHON: "C:\\Python36"

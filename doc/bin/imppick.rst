@@ -7,7 +7,7 @@ Command-line call
 .. argparse::
     :module: impdar.bin.imppick
     :func: _get_args
-    :prog: imppick.py
+    :prog: imppick
 
 After calling imppick to bring up the GUI, things should be pretty intuitive, but navigation may seem a bit odd at first. Here is the basic view of the picker on a Mac:
 

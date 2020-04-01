@@ -20,7 +20,7 @@ from ..gpslib import nmea_info, conversions_enabled
 
 
 def load_ramac(ramac_fn):
-    """Return a impdar.lib.RadarData.RadarData object loaded from a Ramac file
+    """Return a impdar.lib.RadarData.RadarData object loaded from a Ramac file.
 
     Parameters
     ----------
@@ -63,7 +63,8 @@ def load_ramac(ramac_fn):
     ramac_data.tnum = int(header[22].rstrip('\n')[11:])
     ramac_data.trace_num = np.arange(ramac_data.tnum) + 1
     # FIX TRACE INT
-    ramac_data.trace_int = float(header[9].rstrip('\n')[14:]) * np.ones((ramac_data.tnum,))
+    ramac_data.trace_int = float(header[9].rstrip('\n')[14:]) * np.ones(
+        (ramac_data.tnum,))
     ramac_data.trig = np.ones((ramac_data.tnum,)) * 36
     ramac_data.trig_level = 0
 
@@ -78,21 +79,29 @@ def load_ramac(ramac_fn):
                                            ('elev', float),
                                            ('el_unit', 'S1'),
                                            ('pdop', float)])
-        datetimes = np.array([d + b'T' + t for d, t in zip(cor['date'], cor['time'])],
-                             dtype=np.datetime64)
-        decdays = datetimes - np.array(datetime.datetime(1, 1, 1, 0, 0, 0), dtype=np.datetime64)
-        cor['lat'][cor['north'] != b'N'] = -1 * cor['lat'][cor['north'] != b'N']
+        datetimes = np.array([d + b'T' + t for d, t in zip(
+            cor['date'], cor['time'])], dtype=np.datetime64)
+        decdays = datetimes - np.array(datetime.datetime(1, 1, 1, 0, 0, 0),
+                                       dtype=np.datetime64)
+        cor['lat'][cor['north'] != b'N'] = -1 * cor[
+            'lat'][cor['north'] != b'N']
         cor['lon'][cor['east'] != b'E'] = -1 * cor['lon'][cor['east'] != b'E']
 
         ramac_data.decday = interp1d(cor['trace_num'],
                                      decdays,
                                      fill_value='extrapolate')(
-                                         ramac_data.trace_num) / (24. * 60. * 60.)
-        ramac_data.lat = interp1d(cor['trace_num'], cor['lat'], fill_value='extrapolate')(
+            ramac_data.trace_num) / (24. * 60. * 60.)
+        ramac_data.lat = interp1d(cor['trace_num'],
+                                  cor['lat'],
+                                  fill_value='extrapolate')(
             ramac_data.trace_num)
-        ramac_data.long = interp1d(cor['trace_num'], cor['lon'], fill_value='extrapolate')(
+        ramac_data.long = interp1d(cor['trace_num'],
+                                   cor['lon'],
+                                   fill_value='extrapolate')(
             ramac_data.trace_num)
-        ramac_data.elev = interp1d(cor['trace_num'], cor['elev'], fill_value='extrapolate')(
+        ramac_data.elev = interp1d(cor['trace_num'],
+                                   cor['elev'],
+                                   fill_value='extrapolate')(
             ramac_data.trace_num)
 
         nminfo = nmea_info()
@@ -109,7 +118,8 @@ def load_ramac(ramac_fn):
         else:
             ramac_data.x_coord = ramac_data.long
             ramac_data.y_coord = ramac_data.lat
-            ramac_data.dist = np.sqrt(ramac_data.x_coord ** 2.0 + ramac_data.y_coord ** 2.0)
+            ramac_data.dist = np.sqrt(
+                ramac_data.x_coord ** 2.0 + ramac_data.y_coord ** 2.0) / 1000.0
 
     else:
         ramac_data.decday = np.arange(ramac_data.tnum)
@@ -123,6 +133,7 @@ def load_ramac(ramac_fn):
         ramac_data.data = np.array(
             struct.unpack('<{:d}h'.format(
                 ramac_data.tnum * ramac_data.snum), f_data.read()[:]),
-            dtype=np.int16).reshape((ramac_data.snum, ramac_data.tnum), order='F')
+            dtype=np.int16).reshape((ramac_data.snum, ramac_data.tnum),
+                                    order='F')
     ramac_data.check_attrs()
     return ramac_data

@@ -6,12 +6,24 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""Define generic processing functions to ease calls from executables."""
+"""This defines generic processing functions to ease calls from executables.
+
+If interacting with the API, most processing steps should probably be called
+by using methods on `RadarData` objects, so see
+:doc:`that documentation<\./RadarData>` for most of your needs.
+However, you may need to concatenate, which is defined separately because it
+acts on multiple objects.
+
+While the ``process`` and ``process_and_exit`` directives can be used, they
+are generally not as useful as the direct calls.
+"""
 import os.path
 import numpy as np
 
 from .load import load
 from .gpslib import interp as interpdeep
+
+from copy import deepcopy
 
 
 def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
@@ -195,7 +207,6 @@ def concat(radar_data):
     RadarData
         A single, concatenated output.
     """
-    from copy import deepcopy
     # let's do some checks to make sure we are consistent here
     out = deepcopy(radar_data[0])
 
