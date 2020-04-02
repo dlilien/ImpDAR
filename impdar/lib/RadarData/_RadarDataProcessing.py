@@ -281,7 +281,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
             lims = [ind, self.data.shape[0]]
             self.trig = self.trig - ind
             if zero_trig:
-                self.trig *= 0.
+                self.trig = np.zeros_like(self.trig)
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
