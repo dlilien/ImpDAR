@@ -228,7 +228,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     return depth
 
 
-def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=False):
+def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=True, zero_trig=True):
     """Crop the radar data in the vertical. We can take off the top or bottom.
 
     This will affect data, travel_time, and snum.
@@ -244,6 +244,11 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         Evaluate in terms of sample (snum), travel time (twtt), or depth (depth).
         If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
         If pretrig, uses the recorded trigger sample to crop.
+    rezero: bool, optional
+        Set the zero on the y axis to the cropped value (if cropping off the top). Default True.
+        This is desirable if you are zeroing to the surface.
+    zero_trig: bool, optional
+        Reset the trigger to zero. Effectively asserts that the crop was to the surface. Default True.
     uice: float, optional
         Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
     """
@@ -275,6 +280,8 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
             self.trig = self.trig - ind
+            if zero_trig:
+                self.trig *= 0.
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
