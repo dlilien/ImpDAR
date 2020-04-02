@@ -161,15 +161,15 @@ def phase_uncertainty(self):
     noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
     noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
     # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
-    phase_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
+    p_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
     # Convert phase to range
-    r_uncertainty = phase2range(phase_uncertainty,
+    r_uncertainty = phase2range(p_uncertainty,
             self.header.lambdac,
             self.Rcoarse,
             self.header.chirp_grad,
             self.header.ci)
 
-    return phase_uncertainty, r_uncertainty
+    return p_uncertainty, r_uncertainty
 
 
 # --------------------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
 # --------------------------------------------------------------------------------------------
 
-def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
+def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertainty='CR'):
     """
     Calculate the vertical motion using a correlation coefficient.
 
@@ -230,6 +230,11 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         step size for the window to move between calculations
     Rcoarse: array; optional
         if an external depth array is desired, input here
+    r_uncertainty: array; optional
+        if unceratinty based on the noise vector is desired input value here
+        this should be the sum of uncertainty from both acquisitions.
+    uncertainty: string;
+        default 'CR' Cramer-Rao bound as in Jordan et al. (2020)
 
     Output
     --------
@@ -261,22 +266,29 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         # the phase is a measure of the offset
         phase_diff[i] = np.corrcoef(arr1,arr2)[1,0]
 
-    # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
-    sigma = (1./abs(phase_diff))*np.sqrt((1.-abs(phase_diff)**2.)/(2.*win))
-
     # convert the phase offset to a distance vector
-    range_diff = phase2range(np.angle(phase_diff),
-            self.header.lambdac,
-            ds,
-            self.header.chirp_grad,
-            self.header.ci)
-    range_diff_err = phase2range(sigma,
+    r_diff = phase2range(np.angle(phase_diff),
             self.header.lambdac,
             ds,
             self.header.chirp_grad,
             self.header.ci)
 
-    return ds, phase_diff, range_diff, range_diff_err
+    if uncertainty == 'CR':
+        # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
+        sigma = (1./abs(phase_diff))*np.sqrt((1.-abs(phase_diff)**2.)/(2.*win))
+        # convert the phase offset to a distance vector
+        r_diff_err = phase2range(sigma,
+                self.header.lambdac,
+                ds,
+                self.header.chirp_grad,
+                self.header.ci)
+
+    elif uncertainty == 'noise_phasor':
+        # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
+        # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
+        r_diff_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
+
+    return ds, phase_diff, r_diff, r_diff_err
 
 # --------------------------------------------------------------------------------------------
 
