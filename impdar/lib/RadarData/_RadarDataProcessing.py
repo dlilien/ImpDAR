@@ -267,7 +267,6 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
             ind = int(self.trig)
         else:
             ind = self.trig.astype(int)
-        #self.trig = 0
     else:
         ind = int(lim)
 
@@ -287,13 +286,18 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         # Need to figure out if we need to do any shifting
         # The extra shift compared to the smallest
         mintrig = np.min(ind)
+        lims = [mintrig, self.data.shape[0]]
+        self.trig = self.trig-ind
         trig_ends = self.data.shape[0] - (ind - mintrig) - 1
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
         self.data[:, :] = np.nan
         for i in range(self.data.shape[1]):
             self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
-        lims = [0, mintrig]
+        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        if rezero:
+            self.travel_time = self.travel_time - self.travel_time[0]
+        self.snum = self.data.shape[0]
 
     try:
         self.flags.crop[0] = 1
