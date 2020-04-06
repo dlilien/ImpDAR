@@ -256,7 +256,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
         ds = Rcoarse[idxs]
     else:
         ds = self.Rcoarse[idxs]
-    phase_diff = np.empty_like(ds).astype(np.complex)
+    co = np.empty_like(ds).astype(np.complex)
     for i,idx in enumerate(idxs):
         # index two sub_arrays to compare
         arr1 = acq1[idx-win//2:idx+win//2]
@@ -264,10 +264,10 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
         # correlation coefficient to get the motion
         # the amplitude indicates how well the reflections match between acquisitions
         # the phase is a measure of the offset
-        phase_diff[i] = np.corrcoef(arr1,arr2)[1,0]
+        co[i] = np.corrcoef(arr1,arr2)[1,0]
 
     # convert the phase offset to a distance vector
-    r_diff = phase2range(np.angle(phase_diff),
+    r_diff = phase2range(np.angle(co),
             self.header.lambdac,
             ds,
             self.header.chirp_grad,
@@ -275,9 +275,9 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
 
     if uncertainty == 'CR':
         # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
-        sigma = (1./abs(phase_diff))*np.sqrt((1.-abs(phase_diff)**2.)/(2.*win))
+        sigma = (1./abs(co))*np.sqrt((1.-abs(co)**2.)/(2.*win))
         # convert the phase offset to a distance vector
-        r_diff_err = phase2range(sigma,
+        r_diff_unc = phase2range(sigma,
                 self.header.lambdac,
                 ds,
                 self.header.chirp_grad,
@@ -286,9 +286,9 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
     elif uncertainty == 'noise_phasor':
         # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
         # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
-        r_diff_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
+        r_diff_unc = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
 
-    return ds, phase_diff, r_diff, r_diff_err
+    return ds, co, r_diff, r_diff_unc
 
 # --------------------------------------------------------------------------------------------
 
