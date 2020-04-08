@@ -32,7 +32,7 @@ from scipy import sparse
 from scipy.interpolate import griddata, interp2d, interp1d
 
 
-def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
+def migrationKirchhoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
     # Loop through all traces
     print('Migrating trace number:')
     for xi in range(tnum):
@@ -40,7 +40,7 @@ def migrationKirchoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel,
         sys.stdout.flush()
         # get the trace distance
         x = dist[xi]
-        dists2 = (dist - x)**2. * 1.0e6
+        dists2 = (dist - x)**2.
         # Loop through all samples
         for ti in range(snum):
             # get the radial distances between input point and output point
@@ -104,7 +104,8 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    migrationKirchoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
+    migrationKirchhoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
+
     dat.data = migdata.copy()
     # print the total time
     print('')

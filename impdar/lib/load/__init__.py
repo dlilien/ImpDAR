@@ -13,13 +13,13 @@ A wrapper around the other loading utilities
 import os.path
 import numpy as np
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_UoA_mat, load_ramac, load_bsi
-from . import load_delores, load_osu, load_ramac
+from . import load_delores, load_osu, load_stomat
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy',
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
                     'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
@@ -49,6 +49,8 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
         dat = [load_pulse_ekko.load_pe(fn) for fn in fns_in]
     elif filetype == 'mat':
         dat = [RadarData(fn) for fn in fns_in]
+    elif filetype == 'stomat':
+        dat = [load_stomat.load_stomat(fn) for fn in fns_in]
     elif filetype == 'gprMax':
         if load_gprMax.H5:
             dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
