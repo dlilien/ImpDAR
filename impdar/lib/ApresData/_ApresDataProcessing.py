@@ -45,7 +45,6 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
         cross-correlating two shot segements.
 
 
-
     ### Original Matlab File Notes ###
     Phase sensitive processing of FMCW radar data based on Brennan et al. 2013
 
@@ -132,6 +131,49 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
 # --------------------------------------------------------------------------------------------
 
+def phase_uncertainty(self):
+    """
+    Calculate the phase uncertainty using a noise phasor.
+
+    Following Kingslake et al. (2014)
+
+    Parameters
+    ---------
+
+    Output
+    --------
+    phase_uncertainty: array
+        uncertainty in the phase (rad)
+    r_uncertainty: array
+        uncertainty in the range (m) calculated from phase uncertainty
+
+    """
+
+    if self.flags.range == 0:
+        raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
+
+
+    # Get measured phasor from the data class, and use the median magnitude for noise phasor
+    meas_phasor = self.data
+    median_mag = np.nanmedian(abs(meas_phasor))
+    # Noise phasor with random phase and magnitude equal to median of measured phasor
+    noise_phase = np.random.uniform(-np.pi,np.pi,np.shape(meas_phasor))
+    noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
+    noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
+    # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
+    p_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
+    # Convert phase to range
+    r_uncertainty = phase2range(p_uncertainty,
+            self.header.lambdac,
+            self.Rcoarse,
+            self.header.chirp_grad,
+            self.header.ci)
+
+    return p_uncertainty, r_uncertainty
+
+
+# --------------------------------------------------------------------------------------------
+
 def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     """
     Convert phase difference to range for FMCW radar
@@ -170,7 +212,7 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
 # --------------------------------------------------------------------------------------------
 
-def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
+def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertainty='CR'):
     """
     Calculate the vertical motion using a correlation coefficient.
 
@@ -188,6 +230,11 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         step size for the window to move between calculations
     Rcoarse: array; optional
         if an external depth array is desired, input here
+    r_uncertainty: array; optional
+        if unceratinty based on the noise vector is desired input value here
+        this should be the sum of uncertainty from both acquisitions.
+    uncertainty: string;
+        default 'CR' Cramer-Rao bound as in Jordan et al. (2020)
 
     Output
     --------
@@ -209,7 +256,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         ds = Rcoarse[idxs]
     else:
         ds = self.Rcoarse[idxs]
-    phase_diff = np.empty_like(ds).astype(np.complex)
+    co = np.empty_like(ds).astype(np.complex)
     for i,idx in enumerate(idxs):
         # index two sub_arrays to compare
         arr1 = acq1[idx-win//2:idx+win//2]
@@ -217,24 +264,31 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None):
         # correlation coefficient to get the motion
         # the amplitude indicates how well the reflections match between acquisitions
         # the phase is a measure of the offset
-        phase_diff[i] = np.corrcoef(arr1,arr2)[1,0]
-
-    # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
-    sigma = (1./abs(phase_diff))*np.sqrt((1.-abs(phase_diff)**2.)/(2.*win))
+        co[i] = np.corrcoef(arr1,arr2)[1,0]
 
     # convert the phase offset to a distance vector
-    range_diff = phase2range(np.angle(phase_diff),
-            self.header.lambdac,
-            ds,
-            self.header.chirp_grad,
-            self.header.ci)
-    range_diff_err = phase2range(sigma,
+    r_diff = phase2range(np.angle(co),
             self.header.lambdac,
             ds,
             self.header.chirp_grad,
             self.header.ci)
 
-    return ds, phase_diff, range_diff, range_diff_err
+    if uncertainty == 'CR':
+        # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
+        sigma = (1./abs(co))*np.sqrt((1.-abs(co)**2.)/(2.*win))
+        # convert the phase offset to a distance vector
+        r_diff_unc = phase2range(sigma,
+                self.header.lambdac,
+                ds,
+                self.header.chirp_grad,
+                self.header.ci)
+
+    elif uncertainty == 'noise_phasor':
+        # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
+        # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
+        r_diff_unc = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
+
+    return ds, co, r_diff, r_diff_unc
 
 # --------------------------------------------------------------------------------------------
 

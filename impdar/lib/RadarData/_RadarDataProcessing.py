@@ -228,7 +228,7 @@ def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_
     return depth
 
 
-def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=False):
+def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=True, zero_trig=True):
     """Crop the radar data in the vertical. We can take off the top or bottom.
 
     This will affect data, travel_time, and snum.
@@ -244,6 +244,11 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         Evaluate in terms of sample (snum), travel time (twtt), or depth (depth).
         If depth, uses nmo_depth if present and use uice with no transmit/receive separation.
         If pretrig, uses the recorded trigger sample to crop.
+    rezero: bool, optional
+        Set the zero on the y axis to the cropped value (if cropping off the top). Default True.
+        This is desirable if you are zeroing to the surface.
+    zero_trig: bool, optional
+        Reset the trigger to zero. Effectively asserts that the crop was to the surface. Default True.
     uice: float, optional
         Speed of light in ice. Used if nmo_depth is None and dimension=='depth'
     """
@@ -267,7 +272,6 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
             ind = int(self.trig)
         else:
             ind = self.trig.astype(int)
-        #self.trig = 0
     else:
         ind = int(lim)
 
@@ -275,6 +279,8 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         if top_or_bottom == 'top':
             lims = [ind, self.data.shape[0]]
             self.trig = self.trig - ind
+            if zero_trig:
+                self.trig = np.zeros_like(self.trig)
         else:
             lims = [0, ind]
         self.data = self.data[lims[0]:lims[1], :]
@@ -287,13 +293,18 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=F
         # Need to figure out if we need to do any shifting
         # The extra shift compared to the smallest
         mintrig = np.min(ind)
+        lims = [mintrig, self.data.shape[0]]
+        self.trig = self.trig-ind
         trig_ends = self.data.shape[0] - (ind - mintrig) - 1
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
         self.data[:, :] = np.nan
         for i in range(self.data.shape[1]):
             self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
-        lims = [0, mintrig]
+        self.travel_time = self.travel_time[lims[0]:lims[1]]
+        if rezero:
+            self.travel_time = self.travel_time - self.travel_time[0]
+        self.snum = self.data.shape[0]
 
     try:
         self.flags.crop[0] = 1

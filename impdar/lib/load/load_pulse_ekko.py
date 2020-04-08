@@ -182,7 +182,7 @@ def load_pe(fn_dt1, *args, **kwargs):
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
             if 'PTS' in line or 'NUMBER OF PTS/TRC' in line:
                 pe_data.snum = int(line.rstrip('\n\r ').split(' ')[-1])
-            if 'WINDOW' in line or 'TOTAL TIME WINDOW' in line:
+            if ('WINDOW' in line and 'AMPLITUDE' not in line) or 'TOTAL TIME WINDOW' in line:
                 window = float(line.rstrip('\n\r ').split(' ')[-1])
             if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
                 pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1])
