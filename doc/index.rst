@@ -26,9 +26,14 @@ To do anything involving geolocation, you will also need `GDAL <http://gdal.org>
 
 .. include:: installation.rst
 
+Examples
+--------
+Check out the :doc:`examples <\examples/index>`, particularly the Jupyter notebook examples beginning with :doc:`getting started <\ImpDAR_tutorials/getting_started/ImpDAR_GettingStarted>`, for an idea of how to run ImpDAR. These should be a good starting point that can be modified for a particular use case. While all of the output and input are on this website, if you actually want to run the code you can download all the notebooks and run them yourself. You can get those `here <https://github.com/Jakidxav/ImpDAR_tutorials>`_.
+
 Contributing
 ------------
 I would be thrilled to get pull requests for any additional functionality. In particular, it is difficult for me to add support for input formats for which I do not have example data--any development of readers for additional data types would be greatly appreciated.
+
 
 .. toctree::
    :maxdepth: 2

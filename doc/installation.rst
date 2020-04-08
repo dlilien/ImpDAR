@@ -11,20 +11,19 @@ However, Anaconda on Windows suggests not putting it on your path and instead us
 The procedure is the same--just open an anaconda prompt window after installation then continue.
 If you are on MacOS or Linux, you will want to restart your terminal after installing Anaconda so you get updated path specs.
 
-Next, we need to install dependencies. These can be done with with
+Next, we need to install dependencies. GDAL is needed for accurate measurement of distance, and for converting coordinate systems.
+I recommend getting it and segyio, used for interacting with the SEGY data format, using,
 
 .. code-block:: bash
 
-    conda install -c conda-forge gdal
+    conda install -c conda-forge gdal segyio
 
-GDAL is technically optional, but is needed for the majority of use cases.
-This step can be really slow (it took my reasonably new laptop 20 minutes), so dont worry if it is a bit painful.
-
-At this point, I also recommend installing segyio and h5py, just so that you are ready for all presently supported formats. This can be done with
+This step can be really slow, so don not worry if it is a bit painful.
+At this point, I also recommend installing h5py, just so that you are ready for all presently supported formats. This can be done with
 
 .. code-block:: bash
 
-    conda install segyio h5py
+    conda install h5py
 
 Now, you are ready to install impdar. You can get a version with
 

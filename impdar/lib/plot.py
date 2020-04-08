@@ -18,14 +18,19 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
          x_range=(0, -1), power=None, spectra=None, freq_limit=None,
          window=None, scaling='spectrum', filetype='mat', pick_colors=None,
          ft=False, hft=False, clims=None, cmap=plt.cm.gray, *args, **kwargs):
-    """We have an overarching wrapper here to handle a number of plot types.
+    """Wrap a number of plot types.
+
+    This should really only be used by the exectuables.
+    If you are plotting yourself, just use the individual plotting
+    functions that are described below.
+
     Parameters
     ----------
     fns: list of strs
         A list of filenames to plot individually.
     tr: tuple or int, optional
         Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram.
-        Default is None (plot radargram)
+        Default is None (plot radargram).
     power: int, optional
         If not None, then plot power returned from this layer
     filetype: str, optional
@@ -371,7 +376,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(8, 12))
-    #ax.set_xscale('symlog')
+    # ax.set_xscale('symlog')
     lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
     ax.invert_yaxis()
 
@@ -653,6 +658,5 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     # set title
     title = 'PSD(tnum, f)'
     ax.set_title(title)
-
 
     return fig, ax

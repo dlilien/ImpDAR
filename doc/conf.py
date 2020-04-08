@@ -168,9 +168,8 @@ texinfo_documents = [
 ]
 
 
-
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None,
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None)}
+                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+                       'np': ('http://docs.scipy.org/doc/numpy/', None)}
