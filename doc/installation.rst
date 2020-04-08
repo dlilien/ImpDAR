@@ -7,7 +7,9 @@ ________
 If you do not have a current (2.7 or 3+) python installation, you will need one to begin.
 I recommend getting python 3 from `anaconda <https://anaconda.org/>`_.
 The Anaconda installer is straightforward to use, and you can let it set up your path, which makes the subsequent commands "just work."
-You will want to restart your terminal after these changes so that you get updated path specs.
+However, Anaconda on Windows suggests not putting it on your path and instead using the Anaconda prompt.
+The procedure is the same--just open an anaconda prompt window after installation then continue.
+If you are on MacOS or Linux, you will want to restart your terminal after installing Anaconda so you get updated path specs.
 
 Next, we need to install dependencies. These can be done with with
 
@@ -15,7 +17,10 @@ Next, we need to install dependencies. These can be done with with
 
     conda install -c conda-forge gdal
 
-GDAL is technically optional, but is needed for the majority of use cases. At this point, I also recommend installing segyio and h5py, just so that you are ready for all presently supported formats. This can be done with
+GDAL is technically optional, but is needed for the majority of use cases.
+This step can be really slow (it took my reasonably new laptop 20 minutes), so dont worry if it is a bit painful.
+
+At this point, I also recommend installing segyio and h5py, just so that you are ready for all presently supported formats. This can be done with
 
 .. code-block:: bash
 
