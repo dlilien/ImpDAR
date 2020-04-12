@@ -1,0 +1,3 @@
+[submodule "doc/ImpDAR_tutorials"]
+	path = doc/ImpDAR_tutorials
+	url = https://github.com/Jakidxav/ImpDAR_tutorials.git

@@ -18,7 +18,7 @@ from ..RadarData import RadarData
 
 
 def _common_start(string_a, string_b):
-    """ returns the longest common substring from the beginning of sa and sb
+    """ returns the longest common substring from the beginning of sa and sb.
 
     from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
     """
@@ -44,7 +44,8 @@ class SInfo:
             The binary data to read
         """
         self.version = struct.unpack('<H', lines[0:2])[0] / 100
-        self.fn_in = b''.join(struct.unpack('<64c', lines[2:66])).rstrip(b'\x00')
+        self.fn_in = b''.join(
+            struct.unpack('<64c', lines[2:66])).rstrip(b'\x00')
         try:
             self.fn_in = self.fn_in.decode('utf-8')
         except UnicodeDecodeError:
@@ -52,7 +53,8 @@ class SInfo:
 
         # get time in useful way
         self.serialtime = struct.unpack('<d', lines[66:74])[0]
-        self.serialtime += datetime.date.toordinal(datetime.date(1970, 1, 1)) + 366.
+        self.serialtime += datetime.date.toordinal(datetime.date(
+            1970, 1, 1)) + 366.
 
         self.timezone = struct.unpack('<H', lines[74:76])[0] / 1440
         self.n_channels = struct.unpack('<B', lines[76:77])[0]
@@ -88,24 +90,28 @@ class SInfo:
         else:
             print('Unknown External Trigger Coupling')
 
-        # track the index we are reading from since can now vary based upon radar version
+        # track the index we are reading from since can now vary on version
         self.offset = 93
 
         # Odometer calibration constant(meters per trigger)
         # (Only available for pre 3.21 version)
         if self.version < 3.21:
-            self.odometer_calibration = struct.unpack('<H', lines[self.offset:self.offset + 2])[0]
+            self.odometer_calibration = struct.unpack('<H', lines[
+                self.offset:self.offset + 2])[0]
             self.offset += 2
 
         # Nominal Frequency (MHz)
         if self.version < 3.8:
-            self.nominal_frequency = struct.unpack('<h', lines[self.offset:self.offset + 2])[0]
+            self.nominal_frequency = struct.unpack('<h', lines[
+                self.offset:self.offset + 2])[0]
             self.offset += 2
         else:
-            self.nominal_frequency = struct.unpack('<f', lines[self.offset:self.offset + 4])[0]
+            self.nominal_frequency = struct.unpack('<f', lines[
+                self.offset:self.offset + 4])[0]
             self.offset += 4
         # Antenna separation (m)
-        self.antenna_separation = struct.unpack('<f', lines[self.offset:self.offset + 4])[0]
+        self.antenna_separation = struct.unpack('<f', lines[
+            self.offset:self.offset + 4])[0]
         self.offset += 4
 
         # Read and toss extra blank space
@@ -119,7 +125,8 @@ class SInfo:
             self.offset += 1
 
             if n_chan != i + 1:
-                raise ValueError('Corrupt Channel header, ({:d} != {:d})'.format(n_chan, i))
+                raise ValueError(
+                    'Corrupt Channel header, ({:d} != {:d})'.format(n_chan, i))
 
             # Construct channel name
             setattr(self,
@@ -135,9 +142,10 @@ class SInfo:
                 trace_record_len = 21552
         else:
             trace_record_len = 21548
-        # define number of samples and traces to preallocate arrays, can change later
+        # define number of samples and traces to preallocate arrays
         self.snum = self.pre_trigger_depth + self.post_trigger_depth
-        self.tnum = (len(lines) - self.offset) // self.n_channels // (2*self.snum)
+        self.tnum = (len(lines) - self.offset
+                     ) // self.n_channels // (2*self.snum)
 
     def get_trigger_source_string(self):
         """Turn an integer source info into a string"""
@@ -172,8 +180,7 @@ class SInfo:
 
 
 class Channel:
-    """Information about a channel"""
-
+    """Information about a channel."""
     def __init__(self, lines, offset, version, n_chan):
         # Full voltage range in mV
         self.volt_range = struct.unpack('<H', lines[offset: offset + 2])[0]
@@ -207,10 +214,10 @@ class Channel:
 
 
 class ChannelData:
-    """Full data for radar channel"""
+    """Full data for radar channel."""
 
     def __init__(self, lines, sinfo):
-        """Read in binary data
+        """Read in binary data.
 
         Parameters
         ----------
@@ -221,9 +228,10 @@ class ChannelData:
         """
         # Travel time
         self.travel_time = np.arange(-sinfo.pre_trigger_depth,
-                                     (sinfo.post_trigger_depth)) * 1. / sinfo.samp_freq
+                                     (sinfo.post_trigger_depth)
+                                     ) * 1. / sinfo.samp_freq
 
-        # I am going to try to preallocate because I think it should be possible
+        # I am going to preallocate because I think it should be possible
         # This is not actually true since we could have comments
         self.n_trace = np.zeros((sinfo.tnum, ))
         self.time = np.zeros((sinfo.tnum, ))
@@ -400,5 +408,9 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.long = np.hstack([s_i.long for s_i in stacks])
     olaf_data.trace_int = np.hstack([s_i.trace_interval for s_i in stacks])
     olaf_data.pressure = np.hstack([s_i.pressure for s_i in stacks])
+    try:
+        olaf_data.get_projected_coords()
+    except ImportError:
+        pass
     olaf_data.check_attrs()
     return olaf_data

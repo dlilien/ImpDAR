@@ -84,6 +84,9 @@
               <height>40</height>
              </size>
             </property>
+            <property name="maximum">
+             <number>1000</number>
+            </property>
            </widget>
           </widget>
          </item>
@@ -324,8 +327,7 @@
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionColor_limits"/>
-    <addaction name="actionColor_map"/>
+    <addaction name="actionFlatten_layer"/>
    </widget>
    <widget class="QMenu" name="menuPick">
     <property name="title">
@@ -456,6 +458,11 @@
   <action name="actioncsv">
    <property name="text">
     <string>csv...</string>
+   </property>
+  </action>
+  <action name="actionFlatten_layer">
+   <property name="text">
+    <string>Flatten layer</string>
    </property>
   </action>
  </widget>

@@ -6,12 +6,25 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""Define generic processing functions to ease calls from executables."""
+"""This defines generic processing functions to ease calls from executables.
+
+If interacting with the API, most processing steps should probably be called
+by using methods on `RadarData` objects, so see
+:doc:`that documentation<\./RadarData>` for most of your needs.
+However, you may need to concatenate, which is defined separately because it
+acts on multiple objects.
+
+While the ``process`` and ``process_and_exit`` directives can be used, they
+are generally not as useful as the direct calls.
+"""
 import os.path
 import numpy as np
 
 from .load import load
 from .gpslib import interp as interpdeep
+from .Picks import Picks
+
+from copy import deepcopy
 
 
 def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
@@ -195,7 +208,6 @@ def concat(radar_data):
     RadarData
         A single, concatenated output.
     """
-    from copy import deepcopy
     # let's do some checks to make sure we are consistent here
     out = deepcopy(radar_data[0])
 
@@ -221,5 +233,37 @@ def concat(radar_data):
         if np.all([getattr(dat, attr) is not None for dat in radar_data]):
             setattr(out, attr, np.hstack([getattr(dat, attr)
                                           for dat in radar_data]))
+
+    # Picks are the most challenging part
+    all_picks = []
+    all_picks = np.unique(all_picks).tolist()
+    for dat in radar_data:
+        if dat.picks is not None and dat.picks.picknums is not None and dat.picks.picknums != 0:
+            all_picks.extend(dat.picks.picknums)
+    out.picks = Picks(out)
+    if len(all_picks) > 0:
+        out.picks.picknums = all_picks
+        out.picks.lasttrace.tnum = [out.tnum for i in all_picks]
+        out.picks.lasttrace.snum = [0 for i in all_picks]
+        pick_attrs = ['samp1', 'samp2', 'samp3', 'power', 'time']
+        for attr in pick_attrs:
+            setattr(out.picks, attr, np.zeros((len(all_picks), out.tnum)) * np.NaN)
+        start_ind = 0
+        for dat in radar_data:
+            if ((not hasattr(dat, 'picks')) or (not hasattr(dat.picks, 'picknums')) or (
+                    len(dat.picks.picknums) == 0)):
+                start_ind += dat.tnum
+                continue
+            for attr in pick_attrs:
+                if hasattr(dat.picks, attr):
+                    in_dat = getattr(dat.picks, attr)
+                    if in_dat is not None:
+                        out_dat = getattr(out.picks, attr)
+                        for pick in dat.picks.picknums:
+                            out_dat[all_picks.index(pick), start_ind:start_ind + dat.tnum] = in_dat[
+                                dat.picks.picknums.index(pick), :]
+                        setattr(out.picks, attr, out_dat)
+            start_ind += dat.tnum
+
     print('Objects concatenated')
     return [out]

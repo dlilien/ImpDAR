@@ -18,6 +18,7 @@ from scipy.io import loadmat
 from ..RadarFlags import RadarFlags
 from ..ImpdarError import ImpdarError
 from ..Picks import Picks
+from .. import gpslib
 
 
 class RadarData(object):
@@ -151,24 +152,7 @@ class RadarData(object):
         for attr in self.attrs_guaranteed:
             # Exceptional case for 'data' variable because there are alternative names
             if attr == 'data':
-                if attr in mat:
-                    setattr(self, 'data', mat[attr])
-                else:
-                    # look for all the other StoDeep data names (this is deprecated but looking for them in case).
-                    data_attrs = ['migdata', 'interp_data', 'nmo_data', 'filtdata', 'hfilt_data']
-                    for i,data_attr in enumerate(data_attrs):
-                        if data_attr in mat:
-                            print('Warning: Loading variable',data_attr,'as data.')
-                            if len(mat[data_attr].dtype) > 0:
-                                print('Warning: Multiple arrays stored in',data_attr,'taking the first.')
-                                data = mat[data_attr][0][0][0]
-                                setattr(self, 'data', data)
-                            else:
-                                setattr(self, 'data', mat[data_attr])
-                            break
-                        # If we get to the end of the list and have not found anything useful
-                        elif i == len(data_attrs)-1:
-                            raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
+                self._parse_stodeepdata(mat)
             elif attr not in mat:
                 raise KeyError('.mat file does not appear to be in the StoDeep/ImpDAR format')
             else:
@@ -202,6 +186,35 @@ class RadarData(object):
             self.picks = Picks(self, mat['picks'])
 
         self.check_attrs()
+
+    def _parse_stodeepdata(self, mat, data_attrs=['data',
+                                                  'migdata',
+                                                  'interp_data',
+                                                  'nmo_data',
+                                                  'filtdata',
+                                                  'hfilt_data']):
+        """Set data attribute in a prioritized order"""
+        data_dict = {}
+        for data_attr in data_attrs:
+            if data_attr in mat:
+                if len(mat[data_attr].dtype) > 0:
+                    print('Warning: Multiple arrays stored in {:s}, taking the first.'.format(data_attr))
+                    data_dict[data_attr] = mat[data_attr][0][0][0]
+                else:
+                    data_dict[data_attr] = mat[data_attr]
+        for i, attr in enumerate(data_attrs):
+            if attr in data_dict:
+                data_dict['data'] = data_dict[attr]
+                if attr != 'data':
+                    del data_dict[attr]
+                if i > 0:
+                    print('First priority data {:s} not in structure, using {:s}'.format(data_attrs[0], attr))
+                    print('(caused a rename of {:s}'.format(attr))
+                break
+        else:
+            raise KeyError('Data do not appear to be in StoDeep format')
+        for attr, val in data_dict.items():
+            setattr(self, attr, val)
 
     def check_attrs(self):
         """Check if required attributes exist.
@@ -255,15 +268,37 @@ class RadarData(object):
                         # This is just caused by None being weird with matlab
                         setattr(self, attr, None)
                     else:
-                        raise ImpdarError('{:s} needs to be a \
-                                          vector'.format(attr))
+                        if attr == 'trig':
+                            self.trig = np.ones((self.tnum,), dtype=int) * int(self.trig)
+                        else:
+                            raise ImpdarError('{:s} needs to be a vector'.format(attr))
                 elif getattr(self, attr).shape[0] != self.tnum:
-                    raise ImpdarError('{:s} needs length tnum \
-                                      {:d}'.format(attr, self.tnum))
+                    raise ImpdarError('{:s} needs length tnum {:d}'.format(attr, self.tnum))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
         return
+
+    def get_projected_coords(self, t_srs=None):
+        """Convert to projected coordinates
+
+        Parameters
+        ----------
+        t_srs: str, optional
+            A text string accepted by GDAL (e.g. EPSG:3031)
+            If None (default) use UTM.
+        """
+        if t_srs is not None:
+            transform, self.t_srs = gpslib.get_conversion(t_srs=t_srs)
+        else:
+            transform, self.t_srs = gpslib.get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.long))
+
+        pts = np.array(transform(np.vstack((self.long, self.lat)).transpose()))
+
+        self.x_coord, self.y_coord = pts[:, 0], pts[:, 1]
+        self.dist = np.zeros((len(self.y_coord), ))
+        self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x_coord) ** 2.0
+            + np.diff(self.y_coord) ** 2.0)) / 1000.0
 
     @property
     def datetime(self):

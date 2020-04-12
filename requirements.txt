@@ -1,5 +1,4 @@
 nose
-h5py
 matplotlib>=2.0.0
-numpy>=1.14.0
-scipy>=1.0.0
+numpy>=1.12.0
+scipy>=0.19.1

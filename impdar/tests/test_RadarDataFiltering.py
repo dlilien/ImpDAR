@@ -231,15 +231,20 @@ class TestDenoise(unittest.TestCase):
 
     def test_denoise(self):
         radardata = NoInitRadarData()
+        with self.assertRaises(ValueError):
+            radardata.denoise()
+        radardata.data = np.random.random(radardata.data.shape)
         radardata.denoise()
 
         radardata = NoInitRadarData()
+        radardata.data = np.random.random(radardata.data.shape)
         radardata.denoise(noise=0.1)
 
-    def test_denoise_error(self):
+    def test_denoise_badftype(self):
         radardata = NoInitRadarData()
         with self.assertRaises(ValueError):
             radardata.denoise(ftype='dummy')
+
 
 class TestRadarDataHfiltWrapper(unittest.TestCase):
 

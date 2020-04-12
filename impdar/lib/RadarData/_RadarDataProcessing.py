@@ -14,7 +14,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 from ..permittivity_models import firn_permittivity
-
+from ..ImpdarError import ImpdarError
 
 def reverse(self):
     """Reverse radar data
@@ -33,6 +33,8 @@ def reverse(self):
     self.lat = np.flip(self.lat, 0)
     self.long = np.flip(self.long, 0)
     self.elev = np.flip(self.elev, 0)
+    if self.picks is not None:
+        self.picks.reverse()
 
     # allow for re-reverasl
     if self.flags.reverse:
@@ -57,7 +59,7 @@ def constant_sample_depth_spacing(self):
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -74,6 +76,9 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8.
     uair: float, optional
         Speed of light in air. Default 3.0e8
+    const_firn_offset: float, optional
+        Offset all depths by this much to account for firn-air. Useful it data start below the
+        surface so you can skip complicated corrections. Default None.
     rho_profile: str,optional
         Filename for a csv file with density profile (depths in first column and densities in second)
         Units should be meters for depth, kgs per meter cubed for density.
@@ -102,7 +107,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
 
     # need to crop out the pretrigger before doing the move-out
     if np.any(self.trig > 0):
-        raise ValueError('Crop out the pretrigger before doing the nmo correction.')
+        raise ImpdarError('Crop out the pretrigger before doing the nmo correction.')
 
     # --- Load the velocity profile --- #
     if rho_profile is not None:
@@ -146,11 +151,15 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
-        self.nmo_depth = self.travel_time / 2. * uice * 1e-6
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
     else:
         self.nmo_depth = traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
     if const_sample:
         constant_sample_depth_spacing(self)
+
+    if const_firn_offset is not None:
+        self.nmo_depth = self.nmo_depth + const_firn_offset
+
     # Set flags
     try:
         self.flags.nmo[0] = 1
@@ -160,9 +169,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         self.flags.nmo[1] = ant_sep
 
 
-def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
-    """
-    For depth optimization in the nmo filter
+def optimize_moveout_depth(d_in, t, ant_sep, profile_depth, profile_u):
+    """Optimize depth in the nmo filter.
 
     In the case of variable velocity, we need to iterate on the depth
     and rms velocity within this function until it converges.
@@ -181,6 +189,8 @@ def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
         velocity
     """
     args = np.argwhere(profile_depth<d_in)
+    if len(args) == 0:
+        raise ValueError('Profile not shallow enough. Extend to cover top')
     vels = profile_u[args][:,0]
     u_rms = np.sqrt(np.mean(vels**2.))
     return abs(np.sqrt((t/2.*u_rms)**2.-ant_sep**2.)-d_in)
@@ -371,6 +381,9 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
         if getattr(self, var) is not None and isinstance(getattr(self, var), np.ndarray):
             setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
 
+    if self.picks is not None:
+        self.picks.hcrop(lims)
+
     # More complex modifications for these two
     if self.dist is not None:
         self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
@@ -498,6 +511,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     show_nomove: bool, optional
         If True, make a plot shading the areas where we think there is no movement.
         This can be really helpful for diagnosing what is wrong if you have lingering stationary traces.
+        Untested.
     """
     # eliminate an interpolation error by masking out little movement
     good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
@@ -508,11 +522,11 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
             self.dist[i:] = self.dist[i:] - (self.dist[i] - self.dist[i - 1])
     temp_dist = self.dist[good_vals]
 
-    if show_nomove:
-        from .. import plot
-        fig, ax = plot.plot_radargram(self)
+    if show_nomove:  # pragma: no cover
+        from ..plot import plot_radargram
+        fig, ax = plot_radargram(self)
         ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
-        plot.plt.show()
+        fig.show()
 
     new_dists = np.arange(np.min(temp_dist),
                           np.max(temp_dist),
@@ -528,6 +542,11 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
         setattr(self,
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
+
+    if self.picks is not None:
+        for attr in ['samp1', 'samp2', 'samp3', 'power', 'time']:
+            if getattr(self.picks, attr) is not None:
+                setattr(self.picks, attr, interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists))
 
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
