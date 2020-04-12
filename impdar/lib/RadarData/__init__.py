@@ -255,11 +255,12 @@ class RadarData(object):
                         # This is just caused by None being weird with matlab
                         setattr(self, attr, None)
                     else:
-                        raise ImpdarError('{:s} needs to be a \
-                                          vector'.format(attr))
+                        if attr == 'trig':
+                            self.trig = np.ones((self.tnum,), dtype=int) * int(self.trig)
+                        else:
+                            raise ImpdarError('{:s} needs to be a vector'.format(attr))
                 elif getattr(self, attr).shape[0] != self.tnum:
-                    raise ImpdarError('{:s} needs length tnum \
-                                      {:d}'.format(attr, self.tnum))
+                    raise ImpdarError('{:s} needs length tnum {:d}'.format(attr, self.tnum))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
