@@ -15,6 +15,7 @@ The code and output can be seen through this website. To truly run the code and 
         Variable permittivity (notebook) <../ImpDAR_tutorials/nmo/ImpDAR_NMO_Tutorial.ipynb>
         Migration (notebook) <../ImpDAR_tutorials/migration/ImpDAR_Migration_Tutorial.ipynb>
         ApRES (notebook) <../ImpDAR_tutorials/apres/ImpDAR_ApRES_Tutorial.ipynb>
+        Plotting power (notebook) <../ImpDAR_tutorials/plot_power/ImpDAR_plot_power_Tutorial.ipynb>
 
 Additional examples
 -------------------
