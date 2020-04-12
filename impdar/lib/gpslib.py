@@ -48,8 +48,22 @@ if conversions_enabled:
 
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
         return transform_WGS84_To_UTM.TransformPoints
+
+    def get_conversion(t_srs):
+        utm_cs = osr.SpatialReference()
+        utm_cs.SetFromUserInput(t_srs)
+
+        wgs84_cs = utm_cs.CloneGeogCS()
+        wgs84_cs.ExportToPrettyWkt()
+
+        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, utm_cs)
+        return transform_WGS84_To_srs.TransformPoints
 else:
     def get_utm_conversion(lat, lon):
+        """Just raise an exception since we cannot really convert."""
+        raise ImportError('Cannot convert coordinates: osr not importable')
+
+    def get_conversion(lat, lon):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 

@@ -259,7 +259,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         return im, xd, yd, x_range, clims
 
 
-def plot_ft(dat, fig=None, ax=None):
+def plot_ft(dat, fig=None, ax=None, **line_kwargs):
     """Plot the Fourier spectrum of the data in the vertical.
 
     This will give the power spectral density in terms of the
@@ -273,6 +273,8 @@ def plot_ft(dat, fig=None, ax=None):
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes
         Axes that should be plotted upon
+    **line_kwargs
+        Arguments passed to the plotting call (e.g. color, linewidth)
 
     Returns
     -------
@@ -289,7 +291,7 @@ def plot_ft(dat, fig=None, ax=None):
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(12, 8))
-    ax.plot(freq[freq >= 0] / 1.0e6, fft_dat[freq >= 0])
+    ax.plot(freq[freq >= 0] / 1.0e6, fft_dat[freq >= 0], **line_kwargs)
     ax.set_xlabel('Freq (MHz)')
     ax.set_ylabel('Power spectral density')
     return fig, ax

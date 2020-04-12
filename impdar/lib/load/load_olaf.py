@@ -408,5 +408,9 @@ def load_olaf(fns_olaf, channel=1):
     olaf_data.long = np.hstack([s_i.long for s_i in stacks])
     olaf_data.trace_int = np.hstack([s_i.trace_interval for s_i in stacks])
     olaf_data.pressure = np.hstack([s_i.pressure for s_i in stacks])
+    try:
+        olaf_data.get_projected_coords()
+    except ImportError:
+        pass
     olaf_data.check_attrs()
     return olaf_data
