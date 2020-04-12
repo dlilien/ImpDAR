@@ -6,7 +6,7 @@ Jupyter notebooks
 
 We have set up several Jupyter notebooks so that you can interactively run through code.
 
-The code and output can be seen through this website. To truly run the code and modify it, you can get the source repository `here <https://github.com/Jakidxav/ImpDAR_tutorials>`_.
+The code and output can be seen through this website. To truly run the code and modify it, you can get the source repository `here <https://github.com/Jakidxav/ImpDAR_tutorials>`_. Some of the data source files are a bit large (~100 Mb) to give realistic examples, so this repository is separated from the main code.
 
 .. toctree::
         :maxdepth: 2
