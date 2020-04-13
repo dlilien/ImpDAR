@@ -529,6 +529,11 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
+    if self.picks is not None:
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            if getattr(self.picks, attr) is not None:
+                setattr(self.picks, attr, interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists))
+
     self.tnum = self.data.shape[1]
     self.trace_num = np.arange(self.tnum).astype(int) + 1
     self.dist = new_dists
