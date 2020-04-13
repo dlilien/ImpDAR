@@ -27,6 +27,7 @@ def _get_args():
                                        yd=True)
     rg_parser.add_argument('-picks', action='store_true', help='Plot picks')
     rg_parser.add_argument('-clims', nargs=2, type=float, help='Color limits')
+    rg_parser.add_argument('-flatten_layer', type=int, default=None, help='Distort plot so this layer is flat')
     rg_parser.add_argument('-cmap',
                            type=str,
                            default='gray',
@@ -140,10 +141,11 @@ def _add_def_args(parser, xd=False, yd=False, other_ftypes=True):
 
 def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
                    dpi=300, in_fmt='mat', picks=False, clims=None, cmap='gray',
-                   **kwargs):
+                   flatten_layer=None, **kwargs):
     """Plot data as a radio echogram."""
     plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
-              filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims)
+              filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims,
+              flatten_layer=flatten_layer)
 
 
 def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',

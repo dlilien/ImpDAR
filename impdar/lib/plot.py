@@ -17,7 +17,8 @@ from .load import load
 def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
          x_range=(0, -1), power=None, spectra=None, freq_limit=None,
          window=None, scaling='spectrum', filetype='mat', pick_colors=None,
-         ft=False, hft=False, clims=None, cmap=plt.cm.gray, *args, **kwargs):
+         ft=False, hft=False, clims=None, cmap=plt.cm.gray, flatten_layer=None,
+         *args, **kwargs):
     """We have an overarching wrapper here to handle a number of plot types.
     Parameters
     ----------
@@ -33,6 +34,8 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
     x_range: tuple, optional
         The range of traces to plot in the radargram.
         Default is (0, -1) (plot all traces)
+    flatten_layer: int, optional
+        Distort the radargram so this layer is flat. Default is None (do not distort).
     """
     radar_data = load(filetype, fns)
 
@@ -66,7 +69,8 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
                                x_range=None,
                                pick_colors=pick_colors,
                                clims=clims,
-                               cmap=cmap)
+                               cmap=cmap,
+                               flatten_layer=flatten_layer)
                 for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
@@ -217,7 +221,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                 continue
             if int(offset[j]) == 0:
                 tmp_data[:, j] = dat.data[:, j]
-            # We have a weird error here with max size ints?
             elif offset[j] < 0 and (abs(offset[j]) < dat.snum):
                 tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
             elif (abs(offset[j]) < dat.snum) and offset[j]:
@@ -247,7 +250,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        aspect='auto')
 
     if (pick_colors is not None) and pick_colors:
-        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
+        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer)
     if not return_plotinfo:
         return fig, ax
     else:
@@ -485,7 +488,7 @@ def plot_power(dats, idx, fig=None, ax=None, clims=None):
     return fig, ax
 
 
-def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
+def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
     """Update the plotting of the current pick.
 
     Parameters
@@ -496,9 +499,9 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Any of the x3 options are interpretted as top, middle, bottom colors.
         If it is a string, the lines are all plotted in this color. If it is
         a list, the different values are used for the different lines.
-    picker:
-        argument to pass to plot of cline (if new) for selection tolerance
-        (use if plotting in select mode)
+    flatten_layer: int, optional
+        Make this layer flat in the plot. Distorts all layers. Default is no
+        distortion.
     """
     if ax is None:
         if fig is not None:
@@ -509,6 +512,19 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     # just do nothing if we have no picks
     if rd.picks is None or rd.picks.samp1 is None:
         return fig, ax
+
+    if flatten_layer is not None:
+        if flatten_layer not in rd.picks.picknums:
+            raise ValueError('That layer is not in existence, cannot flatten')
+        layer_ind = rd.picks.picknums.index(flatten_layer)
+        layer_depth = rd.picks.samp2[layer_ind, :]
+        zero_offset = int(np.nanmean(layer_depth))
+        offset = zero_offset - layer_depth
+        mask = np.isnan(rd.picks.samp2[layer_ind, :])
+    else:
+        offset = np.zeros_like(rd.picks.samp2[0, :])
+        mask = np.zeros_like(rd.picks.samp2[0, :], dtype=bool)
+
 
     variable_colors = False
     if not colors:  # may be False or None
@@ -536,16 +552,14 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
                 cl = ('none', colors[i], 'none')
         c = np.zeros(xd.shape)
         c[:] = np.nan
-        c[~np.isnan(rd.picks.samp2[i, :])] = yd[rd.picks.samp2[i, :][
-            ~np.isnan(rd.picks.samp2[i, :])].astype(int)]
+        comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp2[i, :]))
+        c[~comb_mask] = yd[(rd.picks.samp2[i, :] + offset)[~comb_mask].astype(int)]
         t = np.zeros(xd.shape)
         t[:] = np.nan
-        t[~np.isnan(rd.picks.samp1[i, :])] = yd[rd.picks.samp1[i, :][
-            ~np.isnan(rd.picks.samp1[i, :])].astype(int)]
+        t[~comb_mask] = yd[(rd.picks.samp1[i, :] + offset)[~comb_mask].astype(int)]
         b = np.zeros(xd.shape)
         b[:] = np.nan
-        b[~np.isnan(rd.picks.samp3[i, :])] = yd[rd.picks.samp3[i, :][
-            ~np.isnan(rd.picks.samp3[i, :])].astype(int)]
+        b[~comb_mask] = yd[(rd.picks.samp3[i, :] + offset)[~comb_mask].astype(int)]
         ax.plot(xd, c, color=cl[1])
         ax.plot(xd, t, color=cl[0])
         ax.plot(xd, b, color=cl[2])
