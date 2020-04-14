@@ -18,6 +18,7 @@ from scipy.io import loadmat
 from ..RadarFlags import RadarFlags
 from ..ImpdarError import ImpdarError
 from ..Picks import Picks
+from .. import gpslib
 
 
 class RadarData(object):
@@ -255,15 +256,37 @@ class RadarData(object):
                         # This is just caused by None being weird with matlab
                         setattr(self, attr, None)
                     else:
-                        raise ImpdarError('{:s} needs to be a \
-                                          vector'.format(attr))
+                        if attr == 'trig':
+                            self.trig = np.ones((self.tnum,), dtype=int) * int(self.trig)
+                        else:
+                            raise ImpdarError('{:s} needs to be a vector'.format(attr))
                 elif getattr(self, attr).shape[0] != self.tnum:
-                    raise ImpdarError('{:s} needs length tnum \
-                                      {:d}'.format(attr, self.tnum))
+                    raise ImpdarError('{:s} needs length tnum {:d}'.format(attr, self.tnum))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
         return
+
+    def get_projected_coords(self, t_srs=None):
+        """Convert to projected coordinates
+
+        Parameters
+        ----------
+        t_srs: str, optional
+            A text string accepted by GDAL (e.g. EPSG:3031)
+            If None (default) use UTM.
+        """
+        if t_srs is not None:
+            transform = gpslib.get_conversion(t_srs=t_srs)
+        else:
+            transform = gpslib.get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.long))
+
+        pts = np.array(transform(np.vstack((self.long, self.lat)).transpose()))
+
+        self.x_coord, self.y_coord = pts[:, 0], pts[:, 1]
+        self.dist = np.zeros((len(self.y_coord), ))
+        self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x_coord) ** 2.0
+            + np.diff(self.y_coord) ** 2.0)) / 1000.0
 
     @property
     def datetime(self):
