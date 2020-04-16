@@ -509,10 +509,10 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     temp_dist = self.dist[good_vals]
 
     if show_nomove:
-        from .. import plot
-        fig, ax = plot.plot_radargram(self)
+        from ..plot import plot_radargram
+        fig, ax = plot_radargram(self)
         ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)
-        plot.plt.show()
+        fig.show()
 
     new_dists = np.arange(np.min(temp_dist),
                           np.max(temp_dist),
