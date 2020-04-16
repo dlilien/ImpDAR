@@ -6,6 +6,9 @@ python:
 - '3.6'
 - '3.7'
 
+git:
+    submodules: false
+
 services:
       - xvfb
 
@@ -58,7 +61,7 @@ deploy:
   skip_existing: true
   distributions: "sdist bdist_wheel"
 
-script: coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/* setup.py test
+script: coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* setup.py test
 
 
 after_success:

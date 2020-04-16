@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-Read Pulse Ekko data
+Read Pulse Ekko data.
 
 # Knut Christianson 6 April 2017; 20 May 2017
 # Pythonized by David Lilien, May 2018
@@ -26,10 +26,10 @@ from ..RadarFlags import RadarFlags
 
 
 class TraceHeaders:
-    """Class used internally to handle pulse-ekko headers"""
+    """Class used internally to handle pulse-ekko headers."""
 
     def __init__(self, tnum):
-        """Create a container for all the trace headers"""
+        """Create a container for all the trace headers."""
         self.header_index = 0
         self.trace_numbers = np.zeros((1, tnum))
         self.positions = np.zeros((1, tnum))
@@ -48,9 +48,10 @@ class TraceHeaders:
         self.comment = ['' for i in range(tnum)]
 
     def get_header(self, offset, f_lines):
-        """Get the header information for a single trace"""
+        """Get the header information for a single trace."""
         header = struct.unpack('<25f', f_lines[offset: offset + 25 * 4])
-        comment = struct.unpack('<28c', f_lines[offset + 25 * 4: offset + 25 * 4 + 28])
+        comment = struct.unpack('<28c',
+                                f_lines[offset + 25 * 4: offset + 25 * 4 + 28])
         self.trace_numbers[0, self.header_index] = header[0]
         self.positions[0, self.header_index] = header[1]
         self.points_per_trace[0, self.header_index] = header[2]
@@ -87,7 +88,6 @@ def _get_gps_data(fn_gps, trace_nums):
     -------
     data: :class:`~impdar.lib.gpslib.nmea_info`
     """
-
     with open(fn_gps) as f_in:
         lines = f_in.readlines()
     ggis = []
@@ -101,68 +101,69 @@ def _get_gps_data(fn_gps, trace_nums):
             continue
     if len(gga) == 0:
         raise ValueError('I can only do gga sentences right now')
-    scans = np.array(list(map(lambda x: int(float(x.rstrip('\n\r ').split(' ')[-1])), ggis)))
+    scans = np.array(list(map(lambda x: int(float(
+        x.rstrip('\n\r ').split(' ')[-1])), ggis)))
     data = RadarGPS(gga, scans, trace_nums)
     return data
 
 
 def partition_project_file(fn_project):
-    """
-    The new pulse ekko dvl writes 'project' files with all the profiles stored together
-    We want to break them out into all the .HD header files and .DT1 data files.
+    """Separate profiles.
+
+    The new pulse ekko dvl writes 'project' files with all the profiles stored
+    together. We want to break them out into all the .HD header files and .DT1
+    data files.
 
     Parameters
-    --------
+    ----------
     fn_project: str
         Filename for the .gpz project file
     """
-
     with open(fn_project, 'rb') as fin:
         f = fin.read()
 
     profile_num = 1
-    while f.find(b'line%d'%profile_num) != -1:
+    while f.find(b'line%d' % profile_num) != -1:
         # Get the header file
-        hd_start = f.find(b'line%d.hd'%(profile_num))
-        hd_end = f[hd_start:].find(b'PK')+hd_start
+        hd_start = f.find(b'line%d.hd' % (profile_num))
+        hd_end = f[hd_start:].find(b'PK') + hd_start
         hd_str = str(f[hd_start:hd_end])
         hd_lines = hd_str.split('\\r\\n')
         hd_lines[0] = hd_lines[0][2:]
         hd_lines[-1] = ''
 
         # Get the 'ini' file
-        ini_start = f.find(b'line%d.ini'%(profile_num))
-        ini_end = f[ini_start:].find(b'PK')+ini_start
+        ini_start = f.find(b'line%d.ini' % (profile_num))
+        ini_end = f[ini_start:].find(b'PK') + ini_start
         ini_str = str(f[ini_start:ini_end])
-        for i,line in enumerate(ini_str.split('\\r\\n')):
+        for i, line in enumerate(ini_str.split('\\r\\n')):
             if i == 0:
-                hd_lines.append(line[2:len('line%d.ini'%(profile_num))+2])
-                hd_lines.append(line[len('line%d.ini'%(profile_num))+2:])
-            elif i == len(ini_str.split('\\r\\n'))-1:
+                hd_lines.append(line[2:len('line%d.ini' % (profile_num)) + 2])
+                hd_lines.append(line[len('line%d.ini' % (profile_num)) + 2:])
+            elif i == len(ini_str.split('\\r\\n')) - 1:
                 continue
             else:
                 hd_lines.append(line)
 
         # Write to the header file
-        with open('LINE'+str(profile_num)+'.HD','w') as fout:
+        with open('LINE' + str(profile_num) + '.HD', 'w') as fout:
             for line in hd_lines:
-                fout.write(line+'\n')
+                fout.write(line + '\n')
 
         # Get the data file
-        dt_start = f.find(b'line%d.dt1'%(profile_num))
-        dt_start += len(b'line%d.dt1'%(profile_num))
-        dt_end = f[dt_start:].find(b'Lineset')+dt_start
+        dt_start = f.find(b'line%d.dt1' % (profile_num))
+        dt_start += len(b'line%d.dt1' % (profile_num))
+        dt_end = f[dt_start:].find(b'Lineset') + dt_start
         dt_str = f[dt_start:dt_end]
         # Write to the data file
-        with open('LINE'+str(profile_num)+'.DT1','wb') as fout:
+        with open('LINE' + str(profile_num) + '.DT1', 'wb') as fout:
             fout.write(dt_str)
 
         profile_num += 1
 
 
 def load_pe(fn_dt1, *args, **kwargs):
-    """Load data from a pulse_ekko file"""
-
+    """Load data from a pulse_ekko file."""
     pe_data = RadarData(None)
     pe_data.fn = fn_dt1
     bn_pe = os.path.splitext(fn_dt1)[0]
@@ -184,14 +185,15 @@ def load_pe(fn_dt1, *args, **kwargs):
             if ('WINDOW' in line and 'AMPLITUDE' not in line) or 'TOTAL TIME WINDOW' in line:
                 window = float(line.rstrip('\n\r ').split(' ')[-1])
             if 'TIMEZERO' in line or 'TIMEZERO AT POINT' in line:
-                pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1])) * np.ones((pe_data.tnum,))
+                pe_data.trig = int(float(line.rstrip('\n\r ').split(' ')[-1])
+                                   ) * np.ones((pe_data.tnum,))
             if i == 4 and pe_data.version == '1.0':
                 try:
-                    doy = (int(line[6:10]),int(line[1:2]),int(line[3:5]))
-                except:
-                    doy = (int(line[:4]),int(line[5:7]),int(line[8:10]))
+                    doy = (int(line[6:10]), int(line[1:2]), int(line[3:5]))
+                except ValueError:
+                    doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
             if i == 2 and pe_data.version == '1.5.340':
-                doy = (int(line[6:10]),int(line[:2]),int(line[3:5]))
+                doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
@@ -207,16 +209,16 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.traceheaders.get_header(offset, lines)
         offset += 25 * 4 + 28
         if pe_data.version == '1.0':
-            trace = struct.unpack('<{:d}h'.format(pe_data.snum),lines[offset: offset + pe_data.snum * 2])
+            trace = struct.unpack('<{:d}h'.format(pe_data.snum),
+                                  lines[offset: offset + pe_data.snum * 2])
             offset += pe_data.snum * 2
         elif pe_data.version == '1.5.340':
-            fmt = '<%df' % (len(lines[offset: offset + pe_data.snum*4]) // 4)
-            trace = struct.unpack(fmt,lines[offset: offset + pe_data.snum * 4])
+            fmt = '<%df' % (len(lines[offset: offset + pe_data.snum * 4]) // 4)
+            trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * 4])
             offset += pe_data.snum * 4
 
         trace -= np.nanmean(trace[:100])
-        pe_data.data[:,i] = trace.copy()
-
+        pe_data.data[:, i] = trace.copy()
 
     # known vars that are not really set
     pe_data.chan = 1
@@ -225,9 +227,10 @@ def load_pe(fn_dt1, *args, **kwargs):
     pe_data.pressure = np.zeros((pe_data.tnum, ))
     pe_data.flags = RadarFlags()
 
-    #Power some more real variables
+    # Power some more real variables
     pe_data.dt = window / pe_data.snum * 1.0e-9
-    pe_data.travel_time = np.atleast_2d(np.arange(0, window / 1.e3, pe_data.dt * 1.0e6)).transpose()
+    pe_data.travel_time = np.atleast_2d(
+        np.arange(0, window / 1.e3, pe_data.dt * 1.0e6)).transpose()
     pe_data.travel_time += pe_data.dt * 1.0e6
 
     # Now deal with the gps info
@@ -241,12 +244,13 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.elev = pe_data.gps_data.z
         day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
         tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
-        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compat
+        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.
+        # 366 for matlab compat
         pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
-        pe_data.trace_int = np.hstack((np.array(np.nanmean(np.diff(pe_data.dist))),
-                                       np.diff(pe_data.dist)))
+        pe_data.trace_int = np.hstack((np.array(np.nanmean(
+            np.diff(pe_data.dist))), np.diff(pe_data.dist)))
     else:
-        print('Warning: Cannot find gps file, %s.'%gps_fn)
+        print('Warning: Cannot find gps file, %s.' % gps_fn)
         pe_data.lat = np.zeros((pe_data.data.shape[1],))
         pe_data.long = np.zeros((pe_data.data.shape[1],))
         pe_data.x_coord = np.zeros((pe_data.data.shape[1],))

@@ -8,61 +8,42 @@ Welcome to ImpDAR's documentation!
 
 ImpDAR is a flexible, open-source impulse radar processor that provides most of the benefits (and some additional features) compared to expensive commercial software. The starting point was the old St. Olaf deep radar matlab code. This code has a lot of history of contributors--I've tried to preserve acknowledgment of many of them in the file headers.
 
-Support is gradually being added for a variety of file formats. Currently, GSSI, PulseEKKO, Gecko, SEGY, and legacy StoDeep files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The primary interface is through the command line, which allows efficient processing of large volumes of data. An API, centered around the RadarData class, is also available to allow the user to use ImpDAR in other programs.
+Support is gradually being added for a variety of file formats. Currently, GSSI, PulseEKKO, Radan, Blue Systems, DELORES, SEGY, gprMAX, seidart, Gecko, and legacy StoDeep files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The primary interface is through the command line, which allows efficient processing of large volumes of data. An API, centered around the RadarData class, is also available to allow the user to use ImpDAR in other programs.
 
-In addition to processing, ImpDAR can also be used for picking reflectors. Picking is generally an interactive process, and there is something of a GUI for doing the picking. The GUI also provides support for basic processing operations, so you can see the effect of steps as you go along.
-
-ImpDAR vs StODeep
------------------
-
-Compared to StoDeep, the jumping-off point for developing this software, ImpDAR provides all the same essential functionality but with a modern interface and version control. On the other hand, ImpDAR works on modern Python, requires no proprietary software, and has a user interface that should be easy to use for anybody who has familiarity with the command line and/or Python.
+In addition to processing, ImpDAR can also be used for picking reflectors. Picking is generally an interactive process, and there is a light GUI for doing the picking. The GUI also provides support for basic processing operations, so you can see the effect of steps as you go along.
 
 Requirements
 ------------
 
-Python 2.7+ or 3.4+, 
+Python 2.7+ or 3.4+
+
 `numpy <http://www.numpy.org>`_, 
 `scipy <http://www.scipy.org>`_, 
 `matplotlib <http://matplotlib.org>`_ 
 
 To do anything involving geolocation, you will also need `GDAL <http://gdal.org>`_. The GUI, which is needed to be able to pick reflectors, requires `PyQt5 <https://pypi.org/project/PyQt5/>`_.
+`SegYIO <https://github.com/equinor/segyio/>`_ is needed for SEGY support and for SeisUnix migration. `h5py <https://h5py.org>`_ is needed for some data formats.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+.. include:: installation.rst
 
-   lib/index.rst
-   bin/index.rst
-   examples/index.rst
-
-Installation
-------------
-
-If you do not have a current (2.7 or 3+) python installation, you will need one to begin. I recommend `anaconda <https://anaconda.org/>`_. If you choose to use anaconda, you can install GDAL with `conda install -c conda-forge gdal`. GDAL is technically optional, but is needed for the majority of use cases.
-
-If you want to be able to trace layers, you need PyQt5. PyQt5 ships with Anaconda, so with no further installation is needed if you installed python with Anaconda. Otherwise, you might need to build both Qt5 and PyQt5--you are on your own for those builds.
-
-Now, you are ready to install impdar. You can get a version with
-
-.. code-block:: bash
-
-    pip install impdar
-    
-The downside here is that I need to update version tags in order to update on PyPi, and tagging releases is not a priority. To be sure that you have the newest version as a lot of development is happening, use
-
-.. code-block:: bash
-
-    git clone https://github.com/dlilien/ImpDAR.git
-    cd impdar
-    python setup.py install
-
-This requires `git <https://git-scm.com/downloads>`_.
-
-If you want to have the full suite of migration options, you will need a bit more.
+Examples
+--------
+Check out the :doc:`examples <\examples/index>`, particularly the Jupyter notebook examples beginning with :doc:`getting started <\ImpDAR_tutorials/getting_started/ImpDAR_GettingStarted>`, for an idea of how to run ImpDAR. These should be a good starting point that can be modified for a particular use case. While all of the output and input are on this website, if you actually want to run the code you can download all the notebooks and run them yourself. You can get those `here <https://github.com/Jakidxav/ImpDAR_tutorials>`_.
 
 Contributing
 ------------
 I would be thrilled to get pull requests for any additional functionality. In particular, it is difficult for me to add support for input formats for which I do not have example data--any development of readers for additional data types would be greatly appreciated.
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+    
+   installation.rst
+   lib/index.rst
+   bin/index.rst
+   examples/index.rst
+
 
 Indices and tables
 ==================

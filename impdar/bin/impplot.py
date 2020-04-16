@@ -81,8 +81,12 @@ def _get_args():
                                          xd=False,
                                          yd=False,
                                          other_ftypes=False)
-    spec_parser.add_argument('freq_lower', type=float, help='Lower frequency bound')
-    spec_parser.add_argument('freq_upper', type=float, help='Uppwer frequency bound')
+    spec_parser.add_argument('freq_lower',
+                             type=float,
+                             help='Lower frequency bound')
+    spec_parser.add_argument('freq_upper',
+                             type=float,
+                             help='Uppwer frequency bound')
     return parser
 
 
@@ -185,8 +189,9 @@ def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None,
 
 
 def plot_spectrogram(fns=None, freq_lower=None, freq_upper=None, window=None,
-                     scaling='spectrum', yd=False, s=False, o=None, o_fmt='png',
-                     dpi=300, in_fmt='mat', **kwargs):
+                     scaling='spectrum', yd=False, s=False, o=None,
+                     o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+    """Plot a spectrogram."""
     plot.plot(fns,
               spectra=(freq_lower, freq_upper),
               window=window,

@@ -53,4 +53,4 @@ Usage
 .. argparse::
     :module: impdar.bin.impproc
     :func: _get_args
-    :prog: impproc.py
+    :prog: impproc
