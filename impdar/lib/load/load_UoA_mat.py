@@ -28,14 +28,14 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
 
     with h5py.File(fn_mat, 'r') as fin:
         UoA_data.data = fin['Data']['channel'][:, :].T
-        if len(UoA_data.data.dtype) == 2:
-            UoA_data.data = UoA_data.data['real'] + 1.j * UoA_data.data['imag']
+        # if len(UoA_data.data.dtype) == 2:
+        #     UoA_data.data = UoA_data.data['real'] + 1.j * UoA_data.data['imag']
 
         # complex data
-        # if len(UoA_data.data.dtype) == 2:
-        #     UoA_data.data = 10*np.log10(np.sqrt(UoA_data.data['real'] ** 2.0 + UoA_data.data['imag'] ** 2.0))
-        # else:
-        #    UoA_data.data = 10*np.log10(UoA_data.data)
+        if len(UoA_data.data.dtype) == 2:
+            UoA_data.data = 10 * np.log10(np.sqrt(UoA_data.data['real'] ** 2.0 + UoA_data.data['imag'] ** 2.0))
+        else:
+           UoA_data.data = 10 * np.log10(UoA_data.data)
         UoA_data.snum, UoA_data.tnum = int(UoA_data.data.shape[0]), int(UoA_data.data.shape[1])
         UoA_data.trace_num = np.arange(UoA_data.tnum) + 1
         UoA_data.travel_time = fin['Data']['fast_time'][:].flatten() * 1.0e6
