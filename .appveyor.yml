@@ -5,7 +5,7 @@ environment:
       MINICONDA: C:\Miniconda
       PYTHON_VERSION: 2.7
     - PYTHON: "C:\\Python27-x64"
-      MINICONDA: C:\Miniconda
+      MINICONDA: C:\Miniconda-x64
       PYTHON_VERSION: 2.7
 
     # Commented out since tests were passing but build still failing.
@@ -22,7 +22,7 @@ environment:
       MINICONDA: C:\Miniconda36
       PYTHON_VERSION: 3.6
     - PYTHON: "C:\\Python36-x64"
-      MINICONDA: C:\Miniconda36
+      MINICONDA: C:\Miniconda36-x64
       PYTHON_VERSION: 3.6
 
     # Python 3.7
@@ -30,17 +30,14 @@ environment:
       MINICONDA: C:\Miniconda37
       PYTHON_VERSION: 3.7
     - PYTHON: "C:\\Python37-x64"
-      MINICONDA: C:\Miniconda37
+      MINICONDA: C:\Miniconda37-x64
       PYTHON_VERSION: 3.7
 
     # Python 3.8
-    - PYTHON: "C:\\Python38"
-      MINICONDA: C:\Miniconda38
-      PYTHON_VERSION: 3.8
     - PYTHON: "C:\\Python38-x64"
-      MINICONDA: C:\Miniconda38
+      MINICONDA: C:\Miniconda38-x64
       PYTHON_VERSION: 3.8
-    #
+
   PYPI_PASSWORD:
     secure: G9v/9wFi36a/e93v1QiONiuQCxqQ9adFqUiFMdM/3W4=
 
