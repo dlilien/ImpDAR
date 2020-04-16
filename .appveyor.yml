@@ -32,6 +32,14 @@ environment:
     - PYTHON: "C:\\Python37-x64"
       MINICONDA: C:\Miniconda37
       PYTHON_VERSION: 3.7
+
+    # Python 3.8
+    - PYTHON: "C:\\Python38"
+      MINICONDA: C:\Miniconda38
+      PYTHON_VERSION: 3.8
+    - PYTHON: "C:\\Python38-x64"
+      MINICONDA: C:\Miniconda38
+      PYTHON_VERSION: 3.8
     #
   PYPI_PASSWORD:
     secure: G9v/9wFi36a/e93v1QiONiuQCxqQ9adFqUiFMdM/3W4=
