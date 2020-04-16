@@ -345,9 +345,8 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
         print('CC search')
         for i in range(5):
             for j, dat in enumerate(dats):
-                if abs(max(lon)-min(dat.long)) > 360. or abs(max(dat.long)-min(lon)) > 360.:
-                    raise IndexError('The radar data object has different longitude than the input interpolation dataset.')
-
+                if (min(lon % 360) - max(dat.long % 360)) > 0. or (min(dat.long % 360) - max(lon % 360)) > 0.:
+                    raise ValueError('No overlap in longitudes')
                 if offsets[j] != 0.0:
                     search_vals = np.linspace(-0.1 * abs(offsets[j]),
                                               0.1 * abs(offsets[j]),
@@ -358,9 +357,9 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                     interp1d(decday + offsets[j] + inc_offset, lat,
                              kind='linear', fill_value=fill_value)(dat.decday),
                     dat.lat)[0, 1] + np.corrcoef(
-                        interp1d(decday + offsets[j] + inc_offset, lon,
+                        interp1d(decday + offsets[j] + inc_offset, lon % 360,
                                  kind='linear', fill_value=fill_value)(
-                                     dat.decday), dat.long)[0, 1]
+                                     dat.decday), dat.long % 360)[0, 1]
                                      for inc_offset in search_vals]
                 offsets[j] += search_vals[np.argmax(cc_coeffs)]
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
@@ -371,7 +370,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                            kind='linear',
                            fill_value=fill_value)
         int_long = interp1d(decday + offsets[j],
-                            lon, kind='linear',
+                            lon % 360, kind='linear',
                             fill_value=fill_value)
         int_elev = interp1d(decday + offsets[j],
                             elev,

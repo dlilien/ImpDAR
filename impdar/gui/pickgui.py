@@ -340,6 +340,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     t.set_color('y')
 
         self.pickNumberBox.setValue(self.dat.picks.picknums[self._pick_ind])
+        self.current_pick = np.vstack((self.dat.picks.samp1[self._pick_ind, :],
+                                       self.dat.picks.samp2[self._pick_ind, :],
+                                       self.dat.picks.samp3[self._pick_ind, :],
+                                       self.dat.picks.time[self._pick_ind, :],
+                                       self.dat.picks.power[self._pick_ind, :]))
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
