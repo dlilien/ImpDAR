@@ -50,21 +50,21 @@ class TestPlot(unittest.TestCase):
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotPLOTARGS(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], yd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True, yd=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
 
         # Check that we can save
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], xd=True, yd=True, s=True)
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
 
     @patch('impdar.lib.plot.plot_traces', returns=[DummyFig(), None])
@@ -95,12 +95,12 @@ class TestPlot(unittest.TestCase):
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADGSSI(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], filetype='gssi')
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
     def test_plotLOADPE(self, mock_plot_rad):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
-        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object))
+        mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
 
     def test_plotBADINPUT(self):
