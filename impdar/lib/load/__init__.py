@@ -99,7 +99,7 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
     return dat
 
 
-def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -116,8 +116,11 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
                         'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
-    channel: Receiver channel that the data were recorded on
+    channel: int, optional
+        Receiver channel that the data were recorded on
         This is primarily for the St. Olaf HF data
+    t_srs: str, optional
+        Convert to this coordinate system. Requires GDAL.
     """
 
     if not isinstance(fns_in, (list, tuple)):
@@ -144,6 +147,13 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
         return
     else:
         dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
+
+    if t_srs is not None:
+        try:
+            for d in dat:
+                d.get_projected_coords(t_srs=t_srs)
+        except ImportError:
+            pass
 
 
     if (filetype == 'gecko' or filetype == 'osu') and len(fns_in) > 1:

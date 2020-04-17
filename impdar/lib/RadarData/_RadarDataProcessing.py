@@ -57,7 +57,7 @@ def constant_sample_depth_spacing(self):
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
@@ -74,6 +74,9 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
         Speed of light in ice, in m/s. (different from StoDeep!!). Default 1.69e8.
     uair: float, optional
         Speed of light in air. Default 3.0e8
+    const_firn_offset: float, optional
+        Offset all depths by this much to account for firn-air. Useful it data start below the
+        surface so you can skip complicated corrections. Default None.
     rho_profile: str,optional
         Filename for a csv file with density profile (depths in first column and densities in second)
         Units should be meters for depth, kgs per meter cubed for density.
@@ -146,11 +149,15 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, rho_profile=None, permittivity_m
     self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
-        self.nmo_depth = self.travel_time / 2. * uice * 1e-6
+        self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
     else:
         self.nmo_depth = traveltime_to_depth(self, profile_depth, profile_rho, c=uair, permittivity_model=permittivity_model)
     if const_sample:
         constant_sample_depth_spacing(self)
+
+    if const_firn_offset is not None:
+        self.nmo_depth = self.nmo_depth + const_firn_offset
+
     # Set flags
     try:
         self.flags.nmo[0] = 1

@@ -46,16 +46,17 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
         nminfo.lat = fin['INS_GPS']['latitude'][:].flatten()
         nminfo.lon = fin['INS_GPS']['longitude'][:].flatten()
         nminfo.elev = fin['INS_GPS']['altitude_MSL'][:].flatten()
-        nminfo.get_utm()
-        nminfo.get_dist()
 
         UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
         UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.x_coord = interp1d(nminfo.ppstime, nminfo.x, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.y_coord = interp1d(nminfo.ppstime, nminfo.y, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.dist = interp1d(nminfo.ppstime, nminfo.dist, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
         UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
         UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+
+        try:
+            UoA_data.get_projected_coords()
+        except ImportError:
+            pass
+
         UoA_data.trace_int = UoA_data.decday[1] - UoA_data.decday[0]
         UoA_data.pressure = np.zeros_like(UoA_data.decday)
         UoA_data.trig = np.zeros_like(UoA_data.decday).astype(int)

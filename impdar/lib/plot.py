@@ -211,12 +211,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         ax.set_xlabel('Distance (km)')
 
     if flatten_layer is not None:
-        if flatten_layer not in dat.picks.picknums:
-            raise ValueError('That layer is not in existence, cannot flatten')
-        layer_ind = dat.picks.picknums.index(flatten_layer)
-        layer_depth = dat.picks.samp2[layer_ind, :]
-        zero_offset = int(np.nanmean(layer_depth))
-        offset = zero_offset - layer_depth
+        offset, _ = get_offset(dat, flatten_layer)
 
         # Now construct the data matrix
         tmp_data = np.zeros_like(dat.data)
@@ -230,7 +225,6 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                 tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
             elif (abs(offset[j]) < dat.snum) and offset[j]:
                 tmp_data[int(offset[j]):, j] = dat.data[:-int(offset[j]), j]
-
         im = ax.imshow(norm(tmp_data[:, x_range[0]:x_range[-1]]),
                        cmap=cmap,
                        vmin=clims[0],
@@ -518,17 +512,7 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
     if rd.picks is None or rd.picks.samp1 is None:
         return fig, ax
 
-    if flatten_layer is not None:
-        if flatten_layer not in rd.picks.picknums:
-            raise ValueError('That layer is not in existence, cannot flatten')
-        layer_ind = rd.picks.picknums.index(flatten_layer)
-        layer_depth = rd.picks.samp2[layer_ind, :]
-        zero_offset = int(np.nanmean(layer_depth))
-        offset = zero_offset - layer_depth
-        mask = np.isnan(rd.picks.samp2[layer_ind, :])
-    else:
-        offset = np.zeros_like(rd.picks.samp2[0, :])
-        mask = np.zeros_like(rd.picks.samp2[0, :], dtype=bool)
+    offset, mask = get_offset(rd, flatten_layer)
 
 
     variable_colors = False
@@ -676,3 +660,18 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     ax.set_title(title)
 
     return fig, ax
+
+
+def get_offset(dat, flatten_layer=None):
+    if flatten_layer is None:
+        offset = np.zeros((dat.data.shape[1]))
+        mask = np.zeros((dat.tnum, ), dtype=bool)
+    else:
+        if flatten_layer not in dat.picks.picknums:
+            raise ValueError('That layer is not in existence, cannot flatten')
+        layer_ind = dat.picks.picknums.index(flatten_layer)
+        layer_depth = dat.picks.samp2[layer_ind, :]
+        zero_offset = int(np.nanmean(layer_depth))
+        offset = zero_offset - layer_depth
+        mask = np.isnan(dat.picks.samp2[layer_ind, :])
+    return offset, mask

@@ -26,12 +26,13 @@ def _get_args():
                              nargs='+',
                              help='File(s) to load')
     parser_load.add_argument('-channel', type=int, default=1,
-                             help='Receiver channel to load, \
-                                 this is primarily for the St. Olaf HF data.')
+                             help='Receiver channel to load this is primarily for the St. Olaf HF data.')
     parser_load.add_argument('-gps_offset',
                              type=float,
                              help='Offset of GPS and data times for UoA_mat',
                              default=0.0)
+    parser_load.add_argument('-t_srs', type=str, default=None,
+                             help='Convert to this coordinate reference system. (GDAL required), default UTM')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
 
     # Options for processing data

@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 
 from .ui import RawPickGUI
 from ..lib import RadarData, picklib
-from ..lib.plot import plot_radargram
+from ..lib.plot import plot_radargram, get_offset
 
 SYMBOLS_FOR_CPS = ['o', 'd', 's']
 
@@ -23,7 +23,13 @@ SYMBOLS_FOR_CPS = ['o', 'd', 's']
 class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     """The main window"""
 
-    def __init__(self, dat, xdat='tnum', ydat='twtt', x_range=(0, -1), guard_save=False):
+    def __init__(self,
+                 dat,
+                 xdat='tnum',
+                 ydat='twtt',
+                 x_range=(0, -1),
+                 flatten_layer=None,
+                 guard_save=False):
         # Next line is required for Qt, then give us the layout
         super(InteractivePicker, self).__init__()
         self.setupUi(self)
@@ -42,11 +48,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actioncsv.triggered.connect(self._export_csv)
         self.actionshp.triggered.connect(self._export_shp)
 
-        # Process menu
-        self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
-        self.actionVertical_band_pass.triggered.connect(self._vbp)
-        self.actionReverse.triggered.connect(self._reverse)
-        self.actionCrop.triggered.connect(self._crop)
 
         # Connect controls on the left
         self.ColorSelector.currentTextChanged.connect(self._color_select)
@@ -73,7 +74,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         #: A string holding information about whether to reverse the colormap (either '' or '_r')
         self.color_reversal = ''
         #: Sometimes we like to plot distorted to a layer; None if normal, else a layer number
-        self.flatten_layer = None
+        self.flatten_layer = flatten_layer
+        #: If we distort, we need to know how much by
+        self.offset, self.offset_mask = get_offset(dat, flatten_layer)
 
         # line is the matplotlib object of the current pick
         #: That matplotlib line objects for the central picks, retained in this way for select mode
@@ -107,6 +110,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                                                             cmap=plt.cm.gray,
                                                                             fig=self.fig,
                                                                             ax=self.ax,
+                                                                            flatten_layer=flatten_layer,
                                                                             return_plotinfo=True)
 
         # Store some info that we need for later
@@ -144,6 +148,14 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Connect some stuff after things are set up
         # Do this here so we don't unintentionally trigger things that are not initialized
         #####
+
+        # Process menu
+        self.actionAdaptive_Horizontal_filter.triggered.connect(self._ahfilt)
+        self.actionVertical_band_pass.triggered.connect(self._vbp)
+        self.actionReverse.triggered.connect(self._reverse)
+        self.actionCrop.triggered.connect(self._crop)
+        self.actionFlatten_layer.triggered.connect(self._flatten_layer)
+
         self.minSpinner.valueChanged.connect(self._lim_update)
         self.maxSpinner.valueChanged.connect(self._lim_update)
         self.FrequencySpin.valueChanged.connect(self._freq_update)
@@ -253,7 +265,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         or right click (delete)
         """
         tnum = np.argmin(np.abs(self.xd - event.xdata))
-        snum = np.argmin(np.abs(self.yd - event.ydata))
+        snum = np.argmin(np.abs(self.yd - event.ydata)) - self.offset[tnum]
         if len(self.cline) == 0:
             self._add_pick(snum=snum, tnum=tnum)
         else:
@@ -273,8 +285,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _add_point_pick(self, snum, tnum):
         """We are given a snum, tnum location in the image: follow layer to that point, plot it"""
         try:
-            picks = picklib.pick(self.dat.data[:,
-                                               self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum],
+            picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum],
                                  self.dat.picks.lasttrace.snum[self._pick_ind],
                                  snum,
                                  pickparams=self.dat.picks.pickparams)
@@ -308,13 +319,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """
         c = np.zeros(self.xd.shape)
         c[:] = np.nan
-        c[~np.isnan(self.current_pick[1, :])] = self.yd[self.current_pick[1, :][~np.isnan(self.current_pick[1, :])].astype(int)]
+        comb_mask = np.logical_and(~self.offset_mask, ~np.isnan(self.current_pick[1, :]))
+        c[comb_mask] = self.yd[(self.current_pick[1, :] + self.offset)[comb_mask].astype(int)]
         t = np.zeros(self.xd.shape)
         t[:] = np.nan
-        t[~np.isnan(self.current_pick[0, :])] = self.yd[self.current_pick[0, :][~np.isnan(self.current_pick[0, :])].astype(int)]
+        comb_mask = np.logical_and(~self.offset_mask, ~np.isnan(self.current_pick[0, :]))
+        t[comb_mask] = self.yd[(self.current_pick[0, :] + self.offset)[comb_mask].astype(int)]
         b = np.zeros(self.xd.shape)
         b[:] = np.nan
-        b[~np.isnan(self.current_pick[2, :])] = self.yd[self.current_pick[2, :][~np.isnan(self.current_pick[2, :])].astype(int)]
+        comb_mask = np.logical_and(~self.offset_mask, ~np.isnan(self.current_pick[2, :]))
+        b[comb_mask] = self.yd[(self.current_pick[2, :] + self.offset)[comb_mask].astype(int)]
         if self.cline[self._pick_ind] is None:
             self.cline[self._pick_ind], = self.ax.plot(self.xd, c, color=colors[0], picker=picker)
             self.tline[self._pick_ind], = self.ax.plot(self.xd, t, color=colors[1])
@@ -519,6 +533,57 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.progressLabel.setText('Done...')
             self.progressBar.setProperty("value", 100)
 
+    def _flatten_layer(self, event):
+        dialog = FlattenLayerInputDialog(input_widget=self)
+        result = dialog.exec()
+        if result != 0:
+            self.progressLabel.setText('Flattening...')
+            self.progressBar.setProperty("value", 25)
+            QtWidgets.QApplication.processEvents()
+            if dialog.inputtype == 'None':
+                self.flatten_layer = None
+            else:
+                self.flatten_layer = int(dialog.inputtype)
+            self.offset, self.offset_mask = get_offset(self.dat, self.flatten_layer)
+            self.ax.clear()
+
+            self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(
+                self.dat, xdat=self.x, ydat=self.y, x_range=self.x_range,
+                cmap=plt.cm.gray, fig=self.fig, ax=self.ax, flatten_layer=self.flatten_layer,
+                clims=self.lims, return_plotinfo=True)
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            self.progressBar.setProperty("value", 50)
+            QtWidgets.QApplication.processEvents()
+
+            # cache selected pick then update lines.
+            pi = self._pick_ind
+            if self.dat.picks.samp1 is not None:
+                self.cline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                self.bline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                self.tline = [None for i in range(self.dat.picks.samp1.shape[0])]
+                for i in range(self.dat.picks.samp1.shape[0]):
+                    if i == self.dat.picks.samp1.shape[0] - 1:
+                        colors = 'gmm'
+                    else:
+                        colors = 'byy'
+                    self.current_pick = np.vstack((self.dat.picks.samp1[i, :],
+                                                   self.dat.picks.samp2[i, :],
+                                                   self.dat.picks.samp3[i, :],
+                                                   self.dat.picks.time[i, :],
+                                                   self.dat.picks.power[i, :]))
+                    self._pick_ind = i
+                    self.update_lines(colors=colors, picker=5)
+
+            self.pick_ind = pi
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+
+            self.progressBar.setProperty("value", 75)
+            QtWidgets.QApplication.processEvents()
+            self.progressLabel.setText('Done...')
+            self.progressBar.setProperty("value", 100)
+
     #######
     # Enable the key presses from the old stointerpret
     #######
@@ -564,7 +629,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             try:
                 self.current_pick[:, tnum] = picklib.packet_pick(self.dat.data[:, tnum],
                                                                  self.dat.picks.pickparams,
-                                                                 snum)
+                                                                 snum - self.offset[tnum])
                 self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
                 self.dat.picks.lasttrace.snum[self._pick_ind] = snum
             except ValueError:
@@ -666,6 +731,72 @@ class CropInputDialog(QDialog):
         if val == 'depth':
             self.spinnerlabel.setText('Cutoff in depth (m):')
             self.spinner.setDecimals(2)
+
+
+class FlattenLayerInputDialog(QDialog):
+    """Dialog box to get input for layer to flatten"""
+    def __init__(self, parent=None, input_widget=None):
+        super(FlattenLayerInputDialog, self).__init__(parent)
+        layout = QtWidgets.QFormLayout()
+        self.widget = input_widget
+
+        self.inputlabel = QtWidgets.QLabel()
+        self.inputlabel.setText('Layer to flatten')
+        self.inputtype = QtWidgets.QComboBox()
+        self.inputtype.addItem('None')
+        for val in input_widget.dat.picks.picknums:
+            self.inputtype.addItem(str(val))
+        for i, (c, b, t) in enumerate(zip(self.widget.cline, self.widget.bline, self.widget.tline)):
+            c.set_color('b')
+            b.set_color('y')
+            t.set_color('y')
+        self.widget.fig.canvas.draw()
+        self.widget.fig.canvas.flush_events()
+        self.inputtype.currentTextChanged.connect(self._type_select)
+        layout.addRow(self.inputlabel, self.inputtype)
+
+
+        self.cancel = QtWidgets.QPushButton("Cancel")
+        self.ok_button = QtWidgets.QPushButton("Ok")
+        layout.addRow(self.cancel, self.ok_button)
+        self.ok_button.clicked.connect(self._click_ok)
+        self.cancel.clicked.connect(self.close)
+        self.setLayout(layout)
+        self.setWindowTitle('Flatten layer')
+
+
+    def _click_ok(self):
+        self.inputtype = self.inputtype.currentText()
+        for i, (c, b, t) in enumerate(zip(self.widget.cline, self.widget.bline, self.widget.tline)):
+            if i == self.widget._pick_ind:
+                c.set_color('g')
+                b.set_color('m')
+                t.set_color('m')
+            else:
+                c.set_color('b')
+                b.set_color('y')
+                t.set_color('y')
+        self.widget.fig.canvas.draw()
+        self.widget.fig.canvas.flush_events()
+        self.accept()
+
+
+    def _type_select(self, val):
+        if val != 'None':
+            pn = self.widget.dat.picks.picknums.index(int(val))
+        else:
+            pn = -99999999
+        for i, (c, b, t) in enumerate(zip(self.widget.cline, self.widget.bline, self.widget.tline)):
+            if i == pn:
+                c.set_color('orange')
+                b.set_color('r')
+                t.set_color('r')
+            else:
+                c.set_color('b')
+                b.set_color('y')
+                t.set_color('y')
+        self.widget.fig.canvas.draw()
+        self.widget.fig.canvas.flush_events()
 
 
 def warn(message, long_message):

@@ -42,9 +42,11 @@ if conversions_enabled:
         utm_cs = osr.SpatialReference()
         utm_cs.SetWellKnownGeogCS('WGS84')
         utm_cs.SetUTM(utm_zone, is_northern)
+        utm_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         wgs84_cs = utm_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
+        wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
         return transform_WGS84_To_UTM.TransformPoints
@@ -52,9 +54,11 @@ if conversions_enabled:
     def get_conversion(t_srs):
         utm_cs = osr.SpatialReference()
         utm_cs.SetFromUserInput(t_srs)
+        utm_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         wgs84_cs = utm_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
+        wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, utm_cs)
         return transform_WGS84_To_srs.TransformPoints
