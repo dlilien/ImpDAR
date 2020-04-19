@@ -20,7 +20,7 @@ except ImportError:
 def _xmlGetVal(xml, name):
     """Look up a value in an XML fragment. Mod from Nat Wilson's irlib."""
     m = re.search(r'<Name>{0}</Name>[\r]?\n<Val>'.format(
-        name.replace(' ', '\s')), xml, flags=re.IGNORECASE)
+        name.replace(' ', r'\s')), xml, flags=re.IGNORECASE)
     if m is not None:
         tail = xml[m.span()[1]:]
         end = tail.find('</Val')
@@ -120,15 +120,7 @@ def load_bsi(fn_h5, *args, **kwargs):
             h5_data.decday = gpslib.hhmmss2dec(time) + day_offset
 
             try:
-                transform = gpslib.get_utm_conversion(
-                    h5_data.lat[0], h5_data.long[0])
-                pts = np.array(transform(
-                    np.vstack((h5_data.long, h5_data.lat)).transpose()))
-                h5_data.x_coord, h5_data.y_coord = pts[:, 0], pts[:, 1]
-                h5_data.dist = np.hstack((
-                    [0], np.cumsum(
-                        np.sqrt(np.diff(h5_data.x_coord) ** 2.0 + np.diff(
-                            h5_data.y_coord) ** 2.0)))) / 1000.
+                h5_data.get_projected_coords()
             except ImportError:
                 temp_x = h5_data.long * 110. * np.cos(h5_data.lat)
                 temp_y = 110. * h5_data.lat

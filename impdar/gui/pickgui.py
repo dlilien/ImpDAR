@@ -116,8 +116,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # Store some info that we need for later
         self.y = ydat
         self.x = xdat
-        self.minSpinner.setValue(self.lims[0])
-        self.maxSpinner.setValue(self.lims[1])
+        self.minSpinner.setValue(int(self.lims[0]))
+        self.maxSpinner.setValue(int(self.lims[1]))
         self.FrequencySpin.setValue(self.dat.picks.pickparams.freq)
 
         if self.dat.picks.samp1 is not None:
@@ -167,7 +167,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.checkBox_2.stateChanged.connect(self._update_color_reversal)
 
         try:
-            plt.show(self.fig)
+            plt.show()
         except KeyboardInterrupt:
             plt.close('all')
 
@@ -645,15 +645,15 @@ class VBPInputDialog(QDialog):
         self.minlabel = QtWidgets.QLabel()
         self.minlabel.setText('Min (MHz):')
         self.minspin = QtWidgets.QSpinBox()
-        self.minspin.setMinimum(0.)
-        self.minspin.setMaximum(999999.)
-        self.minspin.setValue(50.)
+        self.minspin.setMinimum(0)
+        self.minspin.setMaximum(999999)
+        self.minspin.setValue(50)
         self.maxlabel = QtWidgets.QLabel()
         self.maxlabel.setText('Max (MHz):')
         self.maxspin = QtWidgets.QSpinBox()
-        self.maxspin.setMinimum(0.)
-        self.maxspin.setMaximum(999999.)
-        self.maxspin.setValue(250.)
+        self.maxspin.setMinimum(0)
+        self.maxspin.setMaximum(999999)
+        self.maxspin.setValue(250)
         layout.addRow(self.minlabel, self.minspin)
         layout.addRow(self.maxlabel, self.maxspin)
         self.cancel = QtWidgets.QPushButton("Cancel")

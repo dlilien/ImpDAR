@@ -11,6 +11,7 @@ import numpy as np
 from .LastTrace import LastTrace
 from .LeaderTrailer import LeaderTrailer
 from .PickParameters import PickParameters
+from scipy.signal import filtfilt, butter
 
 
 class Picks():
@@ -189,6 +190,57 @@ class Picks():
         self.samp3[ind, :] = pick_info[2, :]
         self.time[ind, :] = pick_info[3, :]
         self.power[ind, :] = pick_info[4, :]
+
+    def smooth(self, lowpass, units='tnum'):
+        """"Smooth the picks
+
+        For now there are no choices on the filter--it is 3rd order Butterworth.
+
+        Parameters
+        ----------
+        lowpass: float
+            The cutoff value for filtering, in units determined by 'units'
+        units: str, optional
+            The units in which lowpass are provided. Choices are tnum or dist, default tnum.
+        """
+        # Quickly do nothing if we don't have picks
+        if self.samp1 is None:
+            return
+
+        if (self.radardata.flags.interp is None or
+                not self.radardata.flags.interp[0]) and units == 'dist':
+            raise ImpdarError('Use units=tnum for non-respaced data')
+
+        if self.radardata.flags.elev:
+            raise ImpdarError('This will not work with elevation corrected data')
+
+        tracespace = self.radardata.flags.interp[1]
+
+        # Calculate the number of samples per wavelength.
+        if units == 'dist':
+            nsamp = lowpass / tracespace
+        elif units == 'tnum':
+            nsamp = lowpass
+        else:
+            raise ValueError('Units must be dist or tnum')
+        if nsamp <= 2:
+            raise ValueError('wavelength is too small, causing no samples per wavelength')
+        if nsamp > self.radardata.tnum:
+            raise ValueError('wavelength is too large, bigger than the whole radargram')
+        
+        high_corner_freq = 1. / float(nsamp)
+        corner_freq = high_corner_freq * 2
+        b, a = butter(3, corner_freq, 'low')
+
+        for attr in ['samp1', 'samp2', 'samp3']:
+            print(getattr(self, attr))
+            dat = getattr(self, attr)
+            for row in range(dat.shape[0]):
+                dat[row, ~np.isnan(dat[row, :])] = np.around(filtfilt(
+                    b, a, dat[row, ~np.isnan(dat[row, :])]))
+            setattr(self, attr, dat)
+            print(getattr(self, attr))
+
 
     def to_struct(self):
         """Convert to a format writable to a .mat file.

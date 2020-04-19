@@ -39,9 +39,9 @@ class TestGPS(unittest.TestCase):
 
     def test_kinematic_gps_control(self):
         dats = [NoInitRadarData(big=True)]
-        gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(40, 60., 1.), np.arange(0., 2000., 100.), np.arange(0., 20., 1.), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
-        self.assertTrue(np.allclose(np.arange(0, 200, 10), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
         self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
 
 
@@ -49,29 +49,38 @@ class TestGPS(unittest.TestCase):
             gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=True)
 
         dat = NoInitRadarData(big=True)
-        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dat.lat))
-        self.assertTrue(np.allclose(np.arange(0, 200, 10), dat.long))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dat.long))
         self.assertTrue(np.allclose(np.arange(0, 2000, 100), dat.elev))
 
         # We should be allowed to be off by 360 in longitude
         dat = NoInitRadarData(big=True)
-        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10) - 360., np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1) - 360., np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
-        self.assertTrue(np.allclose(np.arange(0, 200, 10), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
         self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
 
         # and off the other way
         dat = NoInitRadarData(big=True)
         dat.long = dat.long - 360.
-        gpslib.kinematic_gps_control(dat, np.arange(-1.0, 3.0, 0.1), np.arange(-100, 300, 10), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
-        dats = [NoInitRadarData(big=True), NoInitRadarData(big=True)]
-        gpslib.kinematic_gps_control(dats, np.arange(-1.0, 3.0, 0.1), np.arange(-100, 300, 10), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
 
+        dat = NoInitRadarData(big=True)
+        gpslib.kinematic_gps_control(dat, np.arange(-1.0, 3.0, 0.1), np.arange(20, 60, 1), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+
+        # Multiple inputs
+        dats = [NoInitRadarData(big=True), NoInitRadarData(big=True)]
+        gpslib.kinematic_gps_control(dats, np.arange(-1.0, 3.0, 0.1), np.arange(40, 80, 1), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+
+        # Bad timing
         dat = NoInitRadarData(big=True)
         dat.decday = dat.decday + 10
         with self.assertRaises(ValueError):
-            gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1))
+            gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 20, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1))
 
     @patch('impdar.lib.gpslib.kinematic_gps_control')
     def test_kinematic_gps_mat(self, mock_kgc):

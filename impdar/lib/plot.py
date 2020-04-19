@@ -321,7 +321,11 @@ def plot_hft(dat, fig=None, ax=None):
 
     # approximate as with the hbp
     freq = np.fft.fftfreq(dat.tnum)
-    wavelength = dat.flags.interp[1] / freq
+
+    # we expect a divide by zero here
+    with np.errstate(divide='ignore', invalid='ignore'):
+        wavelength = dat.flags.interp[1] / freq
+        wavelength[freq == 0.0] = np.inf
 
     if fig is not None:
         if ax is None:
@@ -377,6 +381,8 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
         fig, ax = plt.subplots(figsize=(8, 12))
     # ax.set_xscale('symlog')
     lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
+    if lims[0] == lims[1]:
+        lims[1] = lims[0] + 1.
     ax.invert_yaxis()
 
     if ydat == 'twtt':

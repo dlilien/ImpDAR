@@ -181,9 +181,7 @@ class nmea_info:
             self.get_utm()
 
         self.dist = np.zeros((len(self.y), ))
-        self.dist[1:] = np.cumsum(np.sqrt(
-            (self.x[1:] - self.x[:-1]) ** 2.0 + (
-                self.y[1:] - self.y[:-1]) ** 2.0)) / 1000.0
+        self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x) ** 2.0 + np.diff(self.y) ** 2.0)) / 1000.0
 
     def get_utm(self):
         """Transform lat and lon to utm coords in a nice way."""
@@ -360,7 +358,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                 cc_coeffs = [np.corrcoef(
                     interp1d(decday + offsets[j] + inc_offset, lat,
                              kind='linear', fill_value=fill_value)(dat.decday),
-                    dat.lat)[0, 1] + np.corrcoef(
+                    dat.lat)[1, 1] + np.corrcoef(
                         interp1d(decday + offsets[j] + inc_offset, lon % 360,
                                  kind='linear', fill_value=fill_value)(
                                      dat.decday), dat.long % 360)[0, 1]
@@ -383,14 +381,8 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
         dat.lat = int_lat(dat.decday)
         dat.long = int_long(dat.decday)
         dat.elev = int_elev(dat.decday)
-        gpsdat = nmea_info()
-        gpsdat.lat = dat.lat
-        gpsdat.lon = dat.long
         if conversions_enabled:
-            gpsdat.get_utm()
-            gpsdat.get_dist()
-            dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
-            dat.dist = gpsdat.dist
+            dat.get_projected_coords()
 
 
 def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False,

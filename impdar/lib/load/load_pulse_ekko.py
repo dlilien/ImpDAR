@@ -171,7 +171,14 @@ def load_pe(fn_dt1, *args, **kwargs):
     true_fn = bn_pe + '.DT1'
     gps_fn = bn_pe + '.GPS'
 
-    with open(hdname, 'rU') as fin:
+    try:
+        strtypes = (unicode, str)
+        openmode_unicode = 'rU'
+    except NameError:
+        strtypes = (str, )
+        openmode_unicode = 'r'
+
+    with open(hdname, openmode_unicode) as fin:
         if fin.read().find('1.5.340') != -1:
             pe_data.version = '1.5.340'
         else:
