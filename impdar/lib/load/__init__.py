@@ -83,11 +83,14 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
     elif filetype == 'mcords_mat':
         dat = [load_mcords.load_mcords_mat(fn) for fn in fns_in]
     elif filetype == 'UoA_mat':
-        if 'gps_offset' in kwargs:
-            gps_offset = kwargs['gps_offset']
+        if load_UoA_mat.H5:
+            if 'gps_offset' in kwargs:
+                gps_offset = kwargs['gps_offset']
+            else:
+                gps_offset = 0.0
+            dat = [load_UoA_mat.load_UoA_mat(fn, gps_offset=gps_offset) for fn in fns_in]
         else:
-            gps_offset = 0.0
-        dat = [load_UoA_mat.load_UoA_mat(fn, gps_offset=gps_offset) for fn in fns_in]
+            raise ImportError('You need h5py for UoA_mat')
     elif filetype == 'delores':
         dat = [load_delores.load_delores(fn, channel=channel) for fn in fns_in]
     elif filetype == 'osu':

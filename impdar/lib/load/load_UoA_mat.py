@@ -12,7 +12,11 @@ import numpy as np
 from scipy.interpolate import interp1d
 from ..RadarData import RadarData, RadarFlags
 from ..gpslib import nmea_info
-import h5py
+try:
+    import h5py
+    H5 = True
+except ImportError:
+    H5 = False
 
 
 def load_UoA_mat(fn_mat, gps_offset=0.0):
