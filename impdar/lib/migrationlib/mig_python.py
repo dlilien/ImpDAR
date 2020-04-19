@@ -205,7 +205,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     return dat
 
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **genfromtxt_kwargs):
     """
 
     Phase-Shift Migration
@@ -268,7 +268,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     # Velocity structure from input
     if vel_fn is not None:
         try:
-            vel = np.genfromtxt(vel_fn)
+            vel = np.genfromtxt(vel_fn, **genfromtxt_kwargs)
             print('Velocities loaded from %s.'%vel_fn)
         except:
             raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat to txt file.'%vel_fn)
@@ -417,10 +417,12 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                  TK[itau,ik] += FFK
 
     else:
+        if not hasattr(vmig, 'shape'):
+            raise ValueError('vmig needs to be an array or float')
         # Layered and/or lateral velocity case, vmig=v(x,z)
         if len(vmig) != dat.snum:
             raise ValueError('Interpolated velocity profile is not the length of the number of samples in a trace.')
-        if hasattr(vmig[0],"__len__"):
+        if hasattr(vmig[0], "__len__"):
             print('2-D velocity structure, Fourier Finite-Difference Migration')
             # Finite Difference Stencil
             stencil = Sp_Matr(dat.tnum,-2,1,1)
@@ -432,7 +434,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             print('Travel Times ($\mu$ sec):',dat.travel_time)
         # iterate through all output travel times
         for itau in range(dat.snum):
-            tau = dat.travel_time[itau]/1e6
+            tau = dat.travel_time[itau] / 1.0e6
             if itau%100 == 0:
                 print('Time %.2e, ' %(tau), end='')
                 sys.stdout.flush()
@@ -440,14 +442,15 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             for iw in range(len(ws)):
                 w = ws[iw]
                 if w == 0.0:
-                    w = 1e-10/dat.dt
+                    w = 1.0e-10 / dat.dt
 
                 # Get foreground and background velocities
-                if hasattr(vmig[itau],"__len__"):
-                    vbg = np.min(vmig[itau])
-                    vfg = vmig[itau]-vbg
+                if hasattr(vmig[itau], "__len__"):
+                    vbg = np.min(vmig[itau])  # Stoffa et al. 1990's 1 / U_0 for the depth interval
+                    vfg = vmig[itau]-vbg  # Stoffa et al. 1990's 1 / DeltaU
+                    ufg  = 1. / vmig[itau] - 1. / vbg  # Stoffa's DeltaU
                 else:
-                    vbg = vmig[itau]
+                    vbg = vmig[itau] # Stoffa et al. 1990's U_0 for the depth interval
 
                 ### Retardation term
                 # cosine squared
@@ -462,7 +465,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
                     FFX = np.fft.ifft(FK[iw])
 
                     ### Thin-lens term (Stoffa et al. 1990)
-                    phase2 = (1./vbg - 2./vfg)*w*dat.dt # TODO: I am pretty sure that this is wrong
+                    phase2 = 2. * ufg * w * dat.dt + 1. * vbg * w * dat.dt
                     cshift2 = np.cos(phase2) + 1j*np.sin(phase2)
                     FFX *= cshift2
 
