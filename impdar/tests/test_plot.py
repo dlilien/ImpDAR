@@ -47,8 +47,9 @@ def Any(cls):
 
 
 class TestPlot(unittest.TestCase):
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
-    def test_plotPLOTARGS(self, mock_plot_rad):
+    def test_plotPLOTARGS(self, mock_plot_rad, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
@@ -67,38 +68,45 @@ class TestPlot(unittest.TestCase):
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='dist', ydat='depth', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
         mock_plot_rad.reset_called()
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_traces', returns=[DummyFig(), None])
-    def test_plotPLOTTRACES(self, mock_plot_tr):
+    def test_plotPLOTTRACES(self, mock_plot_tr, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], tr=0)
         mock_plot_tr.assert_called_with(Any(RadarData), 0, ydat='twtt')
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_spectrogram', returns=[DummyFig(), None])
-    def test_plotPLOTSPECDENSE(self, mock_plot_specdense):
+    def test_plotPLOTSPECDENSE(self, mock_plot_specdense, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], spectra=(0, 1), window=0, scaling=1)
         mock_plot_specdense.assert_called_with(Any(RadarData), (0, 1), window=0, scaling=1)
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_ft', returns=[DummyFig(), None])
-    def test_plotFT(self, mock_plot_ft):
+    def test_plotFT(self, mock_plot_ft, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], ft=True)
         mock_plot_ft.assert_called_with(Any(RadarData))
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_hft', returns=[DummyFig(), None])
-    def test_plotHFT(self, mock_plot_hft):
+    def test_plotHFT(self, mock_plot_hft, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], hft=True)
         mock_plot_hft.assert_called_with(Any(RadarData))
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_power', returns=[DummyFig(), None])
-    def test_plotPLOTPOWER(self, mock_plot_power):
+    def test_plotPLOTPOWER(self, mock_plot_power, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'small_data.mat')], power=0)
         mock_plot_power.assert_called_with(Any(RadarData), 0)
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
-    def test_plotLOADGSSI(self, mock_plot_rad):
+    def test_plotLOADGSSI(self, mock_plot_rad, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_gssi.DZT')], filetype='gssi')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
+    @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_radargram', returns=[DummyFig(), None])
-    def test_plotLOADPE(self, mock_plot_rad):
+    def test_plotLOADPE(self, mock_plot_rad, mock_show):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
@@ -113,7 +121,8 @@ class TestPlot(unittest.TestCase):
 
 class TestPlotTraces(unittest.TestCase):
 
-    def test_plot_traces(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_traces(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_traces(dat, 0)
@@ -147,7 +156,8 @@ class TestPlotTraces(unittest.TestCase):
 
 class TestPlotPower(unittest.TestCase):
 
-    def test_plot_power(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_power(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         with self.assertRaises(TypeError):
@@ -189,7 +199,8 @@ class TestPlotPower(unittest.TestCase):
 
 class TestPlotRadargram(unittest.TestCase):
 
-    def test_plot_radargram_figaxin(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_radargram_figaxin(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_radargram(dat)
@@ -218,7 +229,8 @@ class TestPlotRadargram(unittest.TestCase):
         dat.elev[1:] = 1
         plot.plot_radargram(dat, ydat='elev')
 
-    def test_plot_radargram_flattenlayer(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_radargram_flattenlayer(self, mock_show):
         dat = NoInitRadarData(big=True)
         dat.picks = Picks(dat)
         dat.picks.add_pick(10)
@@ -253,7 +265,8 @@ class TestPlotRadargram(unittest.TestCase):
 
 class TestPlotFT(unittest.TestCase):
     
-    def test_plot_ft(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_ft(self, mcok_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_ft(dat)
@@ -268,7 +281,8 @@ class TestPlotFT(unittest.TestCase):
 
 class TestPlotHFT(unittest.TestCase):
     
-    def test_plot_hft(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_hft(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_hft(dat)
@@ -283,7 +297,8 @@ class TestPlotHFT(unittest.TestCase):
 
 class TestPlotPicks(unittest.TestCase):
     
-    def test_plot_picks_via_radargram(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_picks_via_radargram(self, mock_show):
         """We want to be able to call this via plot_radargram"""
         dat = NoInitRadarData(big=True)
         dat.picks = Picks(dat)
@@ -293,7 +308,8 @@ class TestPlotPicks(unittest.TestCase):
 
         fig, ax = plot.plot_radargram(dat, pick_colors='mgm')
 
-    def test_plot_picks(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_picks(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
 
@@ -324,7 +340,8 @@ class TestPlotPicks(unittest.TestCase):
 
 class TestPlotSpectral(unittest.TestCase):
 
-    def test_plot_spectrogram(self):
+    @patch('impdar.lib.plot.plt.show')
+    def test_plot_spectrogram(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
 

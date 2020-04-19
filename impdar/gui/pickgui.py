@@ -535,7 +535,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _flatten_layer(self, event):
         dialog = FlattenLayerInputDialog(input_widget=self)
-        result = dialog.exec()
+        result = dialog.exec_()
         if result != 0:
             self.progressLabel.setText('Flattening...')
             self.progressBar.setProperty("value", 25)

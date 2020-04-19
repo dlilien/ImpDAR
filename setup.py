@@ -50,9 +50,8 @@ if __name__ == '__main__':
                 'impdar.lib.migrationlib']
 
     requires = ['numpy>1.12.0',
-                'scipy>1.0.0',
-                'matplotlib>2.0.0',
-                'h5py']
+                'scipy>0.13.0',
+                'matplotlib>2.0.0']
 
     try:
         setuptools.setup(name='impdar',
