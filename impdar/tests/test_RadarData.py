@@ -23,9 +23,23 @@ class TestRadarDataLoading(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
 
+    def test_ReadLegacyStodeep(self):
+        # This one has data and other attrs
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_otherstodeepattrs.mat'))
+        self.assertEqual(data.data.shape, (20, 40))
+
+        # This one has has only other attrs
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_just_otherstodeepattrs.mat'))
+        self.assertEqual(data.data.shape, (20, 40))
+
     def test_badread(self):
+        # Data but not other attrs
         with self.assertRaises(KeyError):
             data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_matlab.mat'))
+
+        # All other attrs, no data
+        with self.assertRaises(KeyError):
+            data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_justmissingdat.mat'))
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):

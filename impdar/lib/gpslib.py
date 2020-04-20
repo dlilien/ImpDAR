@@ -81,7 +81,7 @@ else:
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 
-    def get_conversion(lat, lon):
+    def get_conversion(t_srs):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 

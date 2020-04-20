@@ -45,6 +45,7 @@ install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda install -c conda-forge h5py
   - conda install -c anaconda msvc_runtime
   # We need to install numpy, scipy and matplotlib through conda
   - "conda create -c anaconda -q -n test-environment python=%PYTHON_VERSION% numpy scipy matplotlib nose pyqt msvc_runtime"

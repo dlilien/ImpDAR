@@ -115,5 +115,25 @@ class TestGPS(unittest.TestCase):
         self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
 
 
+    @unittest.skipIf(not gpslib.conversions_enabled, 'No gdal')
+    def test_conversions(self):
+        pts = np.array([[-8., 10.], [-9., 11.], [-10., 12.]])
+        conv_utm = gpslib.get_utm_conversion(-8.0, 10.0)
+        proj_pts = conv_utm(pts)
+        self.assertTrue(np.all(~np.isnan(proj_pts)))
+
+        pts = np.array([[-88., 10.], [-89., 11.], [-89.1, 12.]])
+        conv_sps = gpslib.get_conversion(t_srs='EPSG:3031')
+        proj_pts = conv_sps(pts)
+        self.assertTrue(np.all(~np.isnan(proj_pts)))
+
+    @unittest.skipIf(gpslib.conversions_enabled, 'GDAL found, this is a failure test')
+    def test_conversions_off(self):
+        # we want to be able to import gpslib but later fail
+        with self.assertRaises(ImportError):
+            conv_utm = gpslib.get_utm_conversion(-8.0, 10.0)
+        with self.assertRaises(ImportError):
+            conv_sps = gpslib.get_conversion(t_srs='EPSG:3031')
+
 if __name__ == '__main__':
     unittest.main()

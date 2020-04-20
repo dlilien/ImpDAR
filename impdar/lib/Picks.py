@@ -8,10 +8,12 @@
 
 """The Picks structure tracks picks and picking parameters."""
 import numpy as np
+from scipy.signal import filtfilt, butter
+
+from .ImpdarError import ImpdarError
 from .LastTrace import LastTrace
 from .LeaderTrailer import LeaderTrailer
 from .PickParameters import PickParameters
-from scipy.signal import filtfilt, butter
 
 
 class Picks():
@@ -195,6 +197,8 @@ class Picks():
         """"Smooth the picks
 
         For now there are no choices on the filter--it is 3rd order Butterworth.
+        Picks that have NaNs in the middle are left alone--this avoids edge effects.
+        Power is not recalculated--too much risk of bias. Do manually at own risk.
 
         Parameters
         ----------
@@ -202,6 +206,15 @@ class Picks():
             The cutoff value for filtering, in units determined by 'units'
         units: str, optional
             The units in which lowpass are provided. Choices are tnum or dist, default tnum.
+
+        Raises
+        ------
+        ValueError
+            If the wavelength is less than 1 or greater than tnum.
+            If the units are not in [dist, tnum].
+        ImpDARError
+            If units are dist but the data are not constant spaced.
+            If the data have been elevation corrected.
         """
         # Quickly do nothing if we don't have picks
         if self.samp1 is None:
@@ -233,14 +246,15 @@ class Picks():
         b, a = butter(3, corner_freq, 'low')
 
         for attr in ['samp1', 'samp2', 'samp3']:
-            print(getattr(self, attr))
             dat = getattr(self, attr)
             for row in range(dat.shape[0]):
+                # We cannot smooth if there are gaps in the middle
+                nn = np.where(~np.isnan(dat[row, :]))[0]
+                if np.any(np.isnan(dat[row, int(nn[0]):int(nn[-1])])):
+                    continue
                 dat[row, ~np.isnan(dat[row, :])] = np.around(filtfilt(
                     b, a, dat[row, ~np.isnan(dat[row, :])]))
             setattr(self, attr, dat)
-            print(getattr(self, attr))
-
 
     def to_struct(self):
         """Convert to a format writable to a .mat file.
