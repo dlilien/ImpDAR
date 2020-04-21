@@ -33,6 +33,8 @@ def reverse(self):
     self.lat = np.flip(self.lat, 0)
     self.long = np.flip(self.long, 0)
     self.elev = np.flip(self.elev, 0)
+    if self.picks is not None:
+        self.picks.reverse()
 
     # allow for re-reverasl
     if self.flags.reverse:
@@ -378,6 +380,9 @@ def hcrop(self, lim, left_or_right='left', dimension='tnum'):
         if getattr(self, var) is not None and isinstance(getattr(self, var), np.ndarray):
             setattr(self, var, getattr(self, var)[lims[0]:lims[1]])
 
+    if self.picks is not None:
+        self.picks.hcrop(lims)
+
     # More complex modifications for these two
     if self.dist is not None:
         self.dist = self.dist[lims[0]:lims[1]] - self.dist[lims[0]]
@@ -537,7 +542,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     if self.picks is not None:
-        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+        for attr in ['samp1', 'samp2', 'samp3', 'power', 'time']:
             if getattr(self.picks, attr) is not None:
                 setattr(self.picks, attr, interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists))
 

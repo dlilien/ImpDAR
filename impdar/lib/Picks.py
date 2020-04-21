@@ -194,7 +194,7 @@ class Picks():
         self.power[ind, :] = pick_info[4, :]
 
     def smooth(self, lowpass, units='tnum'):
-        """"Smooth the picks
+        """Smooth the picks.
 
         For now there are no choices on the filter--it is 3rd order Butterworth.
         Picks that have NaNs in the middle are left alone--this avoids edge effects.
@@ -240,21 +240,79 @@ class Picks():
             raise ValueError('wavelength is too small, causing no samples per wavelength')
         if nsamp > self.radardata.tnum:
             raise ValueError('wavelength is too large, bigger than the whole radargram')
-        
+
         high_corner_freq = 1. / float(nsamp)
         corner_freq = high_corner_freq * 2
         b, a = butter(3, corner_freq, 'low')
+        padlen = 12
 
         for attr in ['samp1', 'samp2', 'samp3']:
             dat = getattr(self, attr)
             for row in range(dat.shape[0]):
                 # We cannot smooth if there are gaps in the middle
+                # But we do want to smooth everything, so iterate through non-nan chunks
                 nn = np.where(~np.isnan(dat[row, :]))[0]
-                if np.any(np.isnan(dat[row, int(nn[0]):int(nn[-1])])):
-                    continue
-                dat[row, ~np.isnan(dat[row, :])] = np.around(filtfilt(
-                    b, a, dat[row, ~np.isnan(dat[row, :])]))
+                isn = np.where(np.isnan(dat[row, :]))[0]
+                start_ind = nn[0]
+                while start_ind < self.radardata.tnum:
+                    nans_remaining = isn[isn > start_ind]
+                    if len(nans_remaining) > 0:
+                        # Smooth a chunk that does not reach the right
+                        end_ind = isn[isn > start_ind][0]
+
+                        # need to check that the chunk is long enough to smooth
+                        if end_ind - start_ind < padlen:
+                            # If we still have remaining non-nans, update start_ind
+                            # otherwise, we are done
+                            if len(nn[nn > end_ind]) > 0:
+                                start_ind = nn[nn > end_ind][0]
+                                continue
+                            else:
+                                break
+
+                        dat[row, start_ind:end_ind] = np.around(
+                            filtfilt(b, a, dat[row, start_ind:end_ind], padlen=padlen))
+
+                        # If we still have remaining non-nans, update start_ind
+                        # otherwise, we are done
+                        if len(nn[nn > end_ind]) > 0:
+                            start_ind = nn[nn > end_ind][0]
+                        else:
+                            break
+                    else:
+                        # Everything left is not nan
+                        if self.radardata.tnum - start_ind < nsamp:
+                            break
+                        dat[row, start_ind:] = np.around(filtfilt(b, a, dat[row, start_ind:], padlen=padlen))
+                        break
             setattr(self, attr, dat)
+
+    def reverse(self):
+        """Flip left-right.
+
+        Called by the overall RadarData.reverse
+        """
+        if self.samp1 is not None:
+            self.samp1 = np.flip(self.samp1, 1)
+        if self.samp2 is not None:
+            self.samp2 = np.flip(self.samp2, 1)
+        if self.samp3 is not None:
+            self.samp3 = np.flip(self.samp3, 1)
+        if self.power is not None:
+            self.power = np.flip(self.power, 1)
+        if self.time is not None:
+            self.time = np.flip(self.time, 1)
+
+    def hcrop(self, limits):
+        """Crop to limits.
+
+        Called by the overall RadarData.hcrop
+        """
+        attrs = ['samp1', 'samp2', 'samp3', 'time', 'power']
+        for attr in attrs:
+            val = getattr(self, attr)
+            if val is not None:
+                setattr(self, attr, val[:, limits[0]:limits[1]])
 
     def to_struct(self):
         """Convert to a format writable to a .mat file.

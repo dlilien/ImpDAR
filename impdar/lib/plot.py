@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 from .load import load
 
+# define a set of non-gray colors (from Paul Tol)
+COLORS_NONGRAY = ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE',
+                  '#882255', '#44AA99', '#999933', '#AA4499']
 
 def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
          x_range=(0, -1), power=None, spectra=None, freq_limit=None,
@@ -531,7 +534,7 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
             else:
                 cl = ('none', colors, 'none')
         elif (type(colors) == bool) and colors:
-            colors = [None for i in range(rd.picks.samp1.shape[0])]
+            colors = (COLORS_NONGRAY * (rd.picks.samp1.shape[0] // len(COLORS_NONGRAY) + 1))[:rd.picks.samp1.shape[0]]
             variable_colors = True
         elif not len(colors) == rd.picks.samp1.shape[0]:
             raise ValueError('If not a string, \

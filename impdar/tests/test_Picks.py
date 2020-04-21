@@ -106,8 +106,6 @@ class TestPickMods(unittest.TestCase):
             val[:, 5] = np.NaN
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='dist')
-        self.assertTrue(np.allclose(data.picks.samp1[~np.isnan(data.picks.samp1)],
-                                    cache_val[~np.isnan(data.picks.samp1)]))
 
         # do not complain if nothing to do
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
