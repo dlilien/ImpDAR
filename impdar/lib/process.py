@@ -243,6 +243,8 @@ def concat(radar_data):
     out.picks = Picks(out)
     if len(all_picks) > 0:
         out.picks.picknums = all_picks
+        out.picks.lasttrace.tnum = [out.tnum for i in all_picks]
+        out.picks.lasttrace.snum = [0 for i in all_picks]
         pick_attrs = ['samp1', 'samp2', 'samp3', 'power', 'time']
         for attr in pick_attrs:
             setattr(out.picks, attr, np.zeros((len(all_picks), out.tnum)) * np.NaN)

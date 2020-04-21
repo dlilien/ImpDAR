@@ -253,7 +253,10 @@ class Picks():
                 # But we do want to smooth everything, so iterate through non-nan chunks
                 nn = np.where(~np.isnan(dat[row, :]))[0]
                 isn = np.where(np.isnan(dat[row, :]))[0]
-                start_ind = nn[0]
+                if len(nn) == 0:
+                    continue
+                else:
+                    start_ind = nn[0]
                 while start_ind < self.radardata.tnum:
                     nans_remaining = isn[isn > start_ind]
                     if len(nans_remaining) > 0:

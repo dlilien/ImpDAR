@@ -1,5 +1,7 @@
 environment:
   matrix:
+    allow_failures:
+          - PYTHON_VERSION: 2.7
     # Python 2.7
     - PYTHON: "C:\\Python27"
       MINICONDA: C:\Miniconda

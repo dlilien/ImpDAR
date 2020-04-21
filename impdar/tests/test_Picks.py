@@ -96,6 +96,14 @@ class TestPickMods(unittest.TestCase):
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='tnum')
 
+        # one row all nans
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            val = getattr(data.picks, attr)
+            val[0, :] = np.NaN
+            setattr(data.picks, attr, val)
+        data.picks.smooth(4, units='tnum')
+
         # Now with dist
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
         data.flags.interp = [2, 1]
