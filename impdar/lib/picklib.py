@@ -194,8 +194,8 @@ def get_intersection(data_main, data_cross, return_nans=False):
             data_cross.picks.picknums) == 0 or data_cross.picks.samp1 is None:
         raise AttributeError('We do not have viable cross picks')
 
-    out_tnums = np.zeros_like(data_cross.picks.picknums, dtype=int)
-    out_sns = np.zeros_like(data_cross.picks.picknums, dtype=int)
+    out_tnums = np.zeros_like(data_cross.picks.picknums, dtype=float)
+    out_sns = np.zeros_like(data_cross.picks.picknums, dtype=float)
 
     tree = KDTree(np.vstack((
         data_main.x_coord.flatten(), data_main.y_coord.flatten())).transpose())
@@ -210,12 +210,17 @@ def get_intersection(data_main, data_cross, return_nans=False):
              data_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
 
         # need the spot in the cross profile that is closest
-        ind_dat_cross = np.argmin(closest_dist)
+        # sequence will be empty if we have a pick that is purely nans
+        if len(closest_dist) > 0:
+            ind_dat_cross = np.argmin(closest_dist)
 
-        # Where to plot this on the main profile
-        out_tnums[i] = closest_inds[ind_dat_cross]
+            # Where to plot this on the main profile
+            out_tnums[i] = closest_inds[ind_dat_cross]
 
-        out_sns[i] = data_cross.picks.samp1[i, :][
-            mask_pick_not_nan][ind_dat_cross].astype(int)
+            out_sns[i] = data_cross.picks.samp1[i, :][
+                mask_pick_not_nan][ind_dat_cross].astype(int)
+        else:
+            out_tnums[i] = np.nan
+            out_sns[i] = np.nan
 
     return out_tnums, out_sns

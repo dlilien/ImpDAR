@@ -5,7 +5,7 @@
 # Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
-"""The picking gui classes (i.e. the different windows that can pop up)"""
+"""The picking gui classes (i.e. the different windows that can pop up)."""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ SYMBOLS_FOR_CPS = ['o', 'd', 's']
 
 
 class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
-    """The main window"""
+    """The main window."""
 
     def __init__(self,
                  dat,
@@ -47,7 +47,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actionLoad_crossprofile.triggered.connect(self._load_cp)
         self.actioncsv.triggered.connect(self._export_csv)
         self.actionshp.triggered.connect(self._export_shp)
-
 
         # Connect controls on the left
         self.ColorSelector.currentTextChanged.connect(self._color_select)
@@ -103,15 +102,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
             self.pick_pts = [p[~np.isnan(p)].tolist() for p in self.dat.picks.samp1]
 
-        self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(self.dat,
-                                                                            xdat=xdat,
-                                                                            ydat=ydat,
-                                                                            x_range=x_range,
-                                                                            cmap=plt.cm.gray,
-                                                                            fig=self.fig,
-                                                                            ax=self.ax,
-                                                                            flatten_layer=flatten_layer,
-                                                                            return_plotinfo=True)
+        (self.im, self.xd, self.yd,
+         self.x_range, self.lims) = plot_radargram(self.dat,
+                                                   xdat=xdat,
+                                                   ydat=ydat,
+                                                   x_range=x_range,
+                                                   cmap=plt.cm.gray,
+                                                   fig=self.fig,
+                                                   ax=self.ax,
+                                                   flatten_layer=flatten_layer,
+                                                   return_plotinfo=True)
 
         # Store some info that we need for later
         self.y = ydat
@@ -283,9 +283,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self._saved = False
 
     def _add_point_pick(self, snum, tnum):
-        """We are given a snum, tnum location in the image: follow layer to that point, plot it"""
+        """We are given a snum, tnum location in the image: follow layer to that point, plot it."""
         try:
-            picks = picklib.pick(self.dat.data[:, self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum],
+            picks = picklib.pick(self.dat.data[:,
+                                 self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum],
                                  self.dat.picks.lasttrace.snum[self._pick_ind],
                                  snum,
                                  pickparams=self.dat.picks.pickparams)
@@ -298,7 +299,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                  'Resulting search window for pick to be too large. Increase frequency!')
 
     def _add_nanpick(self, snum, tnum):
-        """Update for a nanpick. This is trivial, since the matrix is already NaNs"""
+        """Update for a nanpick. This is trivial, since the matrix is already NaNs."""
         # Just move our counter over so we know where to go next
         self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
         self.dat.picks.lasttrace.snum[self._pick_ind] = snum
@@ -367,6 +368,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     # Logistics of saving and closing
     #######
     def closeEvent(self, event):
+        """Close with the option of saving if data modified, otherwise close."""
         if not self._saved:
             self._save_cancel_close(event)
         else:
@@ -394,17 +396,17 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 event.accept()
 
     def _save(self, evt):
-        """Save the file without changing name"""
+        """Save the file without changing name."""
         if not hasattr(self, 'fn') or self.fn is None:
             raise AttributeError('Filename for gui is undefined, needs to be set with "save as"...')
         self._save_fn(self.fn)
 
     def _save_pick(self, evt):
-        """Save with _pick appended"""
+        """Save with _pick appended."""
         self._save_fn(self.dat.fn[:-4] + '_pick.mat')
 
     def _save_as(self, event=None):
-        """Fancy file handler for gracious exit"""
+        """Fancy file handler for gracious exit."""
         fn, _ = QFileDialog.getSaveFileName(self,
                                             "QFileDialog.getSaveFileName()",
                                             self.dat.fn,
@@ -421,7 +423,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actionSave_pick.triggered.connect(self._save)
 
     def _load_cp(self, event=None):
-        """Load a cross profile"""
+        """Load a cross profile."""
         fn, _ = QFileDialog.getOpenFileName(self,
                                             "QFileDialog.getSaveFileName()",
                                             self.dat.fn,
@@ -443,20 +445,27 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 else:
                     y_coords_plot = dat_cross.travel_time / 2.0 * 1.69e8 * 1.0e-6
 
+            # Also check if we are in dist or tnum
+            if self.x == 'tnum':
+                x_coords_plot = self.dat.trace_num
+            elif self.x == 'dist':
+                x_coords_plot = self.dat.dist
+
             for tnum, snum, pnum in zip(out_tnums, out_snums, dat_cross.picks.picknums):
-                self.ax.plot([tnum],
-                             [y_coords_plot[snum]],
-                             linestyle='none',
-                             marker=SYMBOLS_FOR_CPS[self.cross_profile],
-                             color='k',
-                             markersize=10)
-                self.ax.text(tnum,
-                             y_coords_plot[snum],
-                             str(pnum),
-                             color='w',
-                             ha='center',
-                             va='center',
-                             fontsize=8)
+                if ~np.isnan(tnum):
+                    self.ax.plot([x_coords_plot[int(tnum)]],
+                                 [y_coords_plot[int(snum)]],
+                                 linestyle='none',
+                                 marker=SYMBOLS_FOR_CPS[self.cross_profile],
+                                 color='k',
+                                 markersize=10)
+                    self.ax.text(x_coords_plot[int(tnum)],
+                                 y_coords_plot[int(snum)],
+                                 str(pnum),
+                                 color='w',
+                                 ha='center',
+                                 va='center',
+                                 fontsize=8)
 
             self.cross_profile += 1
             self.fig.canvas.draw()
@@ -482,7 +491,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     # Decorators for processing
     ######
     def update_radardata(self):
-        """Make the plot reflect updates to the data"""
+        """Make the plot reflect updates to the data."""
         self.im.set_data(self.dat.data[:, self.x_range[0]:self.x_range[-1]])
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -638,7 +647,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
 
 class VBPInputDialog(QDialog):
-    """Get input information for vertical bandpassing"""
+    """Get input information for vertical bandpassing."""
+
     def __init__(self, parent=None):
         super(VBPInputDialog, self).__init__(parent)
         layout = QtWidgets.QFormLayout()
@@ -675,7 +685,8 @@ class VBPInputDialog(QDialog):
 
 
 class CropInputDialog(QDialog):
-    """Dialog box to get inputs for vertical cropping"""
+    """Dialog box to get inputs for vertical cropping."""
+
     def __init__(self, parent=None):
         super(CropInputDialog, self).__init__(parent)
         layout = QtWidgets.QFormLayout()
@@ -734,7 +745,8 @@ class CropInputDialog(QDialog):
 
 
 class FlattenLayerInputDialog(QDialog):
-    """Dialog box to get input for layer to flatten"""
+    """Dialog box to get input for layer to flatten."""
+
     def __init__(self, parent=None, input_widget=None):
         super(FlattenLayerInputDialog, self).__init__(parent)
         layout = QtWidgets.QFormLayout()
@@ -755,7 +767,6 @@ class FlattenLayerInputDialog(QDialog):
         self.inputtype.currentTextChanged.connect(self._type_select)
         layout.addRow(self.inputlabel, self.inputtype)
 
-
         self.cancel = QtWidgets.QPushButton("Cancel")
         self.ok_button = QtWidgets.QPushButton("Ok")
         layout.addRow(self.cancel, self.ok_button)
@@ -763,7 +774,6 @@ class FlattenLayerInputDialog(QDialog):
         self.cancel.clicked.connect(self.close)
         self.setLayout(layout)
         self.setWindowTitle('Flatten layer')
-
 
     def _click_ok(self):
         self.inputtype = self.inputtype.currentText()
@@ -779,7 +789,6 @@ class FlattenLayerInputDialog(QDialog):
         self.widget.fig.canvas.draw()
         self.widget.fig.canvas.flush_events()
         self.accept()
-
 
     def _type_select(self, val):
         if val != 'None':
@@ -800,7 +809,7 @@ class FlattenLayerInputDialog(QDialog):
 
 
 def warn(message, long_message):
-    """Raise a popup warning dialog
+    """Raise a popup warning dialog.
 
     Parameters
     ----------

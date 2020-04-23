@@ -188,13 +188,16 @@ class TestRadarDataMethods(unittest.TestCase):
     @patch('impdar.lib.RadarData._RadarDataProcessing.optimize_moveout_depth', returns=[1000.])
     def test_NMO(self, mock_omd):
         # If velocity is 2
+
         self.data.nmo(0., uice=2.0, uair=2.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
+
         # shouldn't care about uair if offset=0
+        self.setUp()
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
 
-        self.data.flags.nmo = False
+        self.setUp()
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertEqual(self.data.flags.nmo.shape, (2,))
         self.assertTrue(self.data.flags.nmo[0])
@@ -211,7 +214,6 @@ class TestRadarDataMethods(unittest.TestCase):
         # Good rho profile
         self.setUp()
         self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'rho_profile.txt'))
-        mock_omd.assert_called()
 
         # bad rho profile
         self.setUp()
