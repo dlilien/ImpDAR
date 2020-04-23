@@ -129,26 +129,26 @@ class TestPlotTraces(unittest.TestCase):
         fig, ax = plt.subplots()
         plot.plot_traces(dat, 0, fig=fig)
         plot.plot_traces(dat, 0, fig=fig, ax=ax)
-        fig, ax = plot.plot_traces(dat, [1, 1])
-        fig, ax = plot.plot_traces(dat, [1, 18])
+        plot.plot_traces(dat, [1, 1], fig=fig, ax=ax)
+        plot.plot_traces(dat, [1, 18], fig=fig, ax=ax)
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_traces(dat, np.arange(10))
+            plot.plot_traces(dat, np.arange(10), fig=fig, ax=ax)
         with self.assertRaises(IndexError):
-            fig, ax = plot.plot_traces(dat, 999)
+            plot.plot_traces(dat, 999, fig=fig, ax=ax)
 
         # no nmo
-        fig, ax = plot.plot_traces(dat, 0, ydat='depth')
+        plot.plot_traces(dat, 0, ydat='depth', fig=fig, ax=ax)
 
         # with nmo
         dat.nmo_depth = np.arange(10)
-        fig, ax = plot.plot_traces(dat, 0, ydat='depth')
+        plot.plot_traces(dat, 0, ydat='depth', fig=fig, ax=ax)
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_traces(dat, 0, ydat='dum')
+            plot.plot_traces(dat, 0, ydat='dum', fig=fig, ax=ax)
 
         # Make sure we handle axes rescaling ok
         dat.data[:, 0] = 10
         dat.data[:, 1] = -10
-        fig, ax = plot.plot_traces(dat, (0, 2))
+        plot.plot_traces(dat, (0, 2), fig=fig, ax=ax)
 
     def tearDown(self):
         plt.close('all')
@@ -161,9 +161,9 @@ class TestPlotPower(unittest.TestCase):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         with self.assertRaises(TypeError):
-            fig, ax = plot.plot_power(dat, [12, 14])
+            plot.plot_power(dat, [12, 14])
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_power(dat, 0)
+            plot.plot_power(dat, 0)
 
         dat.picks = Picks(dat)
         dat.picks.add_pick(10)
@@ -175,23 +175,23 @@ class TestPlotPower(unittest.TestCase):
         fig, ax = plt.subplots()
         plot.plot_power(dat, 10, fig=fig)
         plot.plot_power(dat, 10, fig=fig, ax=ax)
-        plot.plot_power(dat, 10, clims=(-100, 100))
+        plot.plot_power(dat, 10, clims=(-100, 100), fig=fig, ax=ax)
 
         # works with multiple inputs
-        fig, ax = plot.plot_power([dat, dat], 10)
+        plot.plot_power([dat, dat], 10, fig=fig, ax=ax)
 
         # works with projected coordinates
         dat.x_coord = np.arange(dat.data.shape[1])
         dat.y_coord = np.arange(dat.data.shape[1])
-        fig, ax = plot.plot_power(dat, 10)
-        fig, ax = plot.plot_power([dat, dat], 10)
+        plot.plot_power(dat, 10, fig=fig, ax=ax)
+        plot.plot_power([dat, dat], 10, fig=fig, ax=ax)
 
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_power(dat, 0)
+            plot.plot_power(dat, 0, fig=fig, ax=ax)
 
         # gets ok lims with variable power?
         dat.picks.power[:, 0] = 1
-        fig, ax = plot.plot_power(dat, 10)
+        plot.plot_power(dat, 10, fig=fig, ax=ax)
 
     def tearDown(self):
         plt.close('all')
@@ -200,41 +200,44 @@ class TestPlotPower(unittest.TestCase):
 class TestPlotRadargram(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
-    def test_plot_radargram_figaxin(self, mock_show):
+    def test_plot_radargram(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
         fig, ax = plot.plot_radargram(dat)
 
         fig, ax = plt.subplots()
-        fig, ax = plot.plot_radargram(dat, fig=fig, ax=ax)
-        fig, ax = plt.subplots()
-        fig, ax = plot.plot_radargram(dat, fig=fig)
+        plot.plot_radargram(dat, fig=fig, ax=ax)
+        plot.plot_radargram(dat, fig=fig)
+
+        dat.data = dat.data + 1.0j * dat.data
+        plot.plot_radargram(dat, fig=fig, ax=ax)
 
         # Varying xdata
-        fig, ax = plot.plot_radargram(dat, x_range=None)
-        fig, ax = plot.plot_radargram(dat, xdat='dist')
+        dat = NoInitRadarData(big=True)
+        plot.plot_radargram(dat, x_range=None, fig=fig, ax=ax)
+        plot.plot_radargram(dat, xdat='dist', fig=fig, ax=ax)
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_radargram(dat, xdat='dummy')
+            plot.plot_radargram(dat, xdat='dummy', fig=fig, ax=ax)
 
-        fig, ax = plot.plot_radargram(dat, y_range=None)
-        fig, ax = plot.plot_radargram(dat, ydat='depth')
+        plot.plot_radargram(dat, y_range=None, fig=fig, ax=ax)
+        plot.plot_radargram(dat, ydat='depth', fig=fig, ax=ax)
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_radargram(dat, ydat='dummy')
+            plot.plot_radargram(dat, ydat='dummy', fig=fig, ax=ax)
 
         # Cannot do dist if we have no dist
         dat = NoInitRadarData(big=True)
         dat.dist = None
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_radargram(dat, xdat='dist')
+            plot.plot_radargram(dat, xdat='dist', fig=fig, ax=ax)
 
         # Elevation offsets
         dat = NoInitRadarData(big=True)
         with self.assertRaises(ValueError):
-            plot.plot_radargram(dat, ydat='elev')
+            plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
         dat.flags.elev = True
         dat.elev = np.zeros(dat.data.shape[1])
         dat.elev[1:] = 1
-        plot.plot_radargram(dat, ydat='elev')
+        plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
 
     @patch('impdar.lib.plot.plt.show')
     def test_plot_radargram_flattenlayer(self, mock_show):
@@ -276,11 +279,10 @@ class TestPlotFT(unittest.TestCase):
     def test_plot_ft(self, mcok_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
-        fig, ax = plot.plot_ft(dat)
         fig, ax = plt.subplots()
-        fig, ax = plot.plot_ft(dat, fig=fig, ax=ax)
-        fig, ax = plt.subplots()
-        fig, ax = plot.plot_ft(dat, fig=fig)
+        plot.plot_ft(dat, fig=fig, ax=ax)
+        plot.plot_ft(dat, fig=fig)
+        plot.plot_ft(dat)
 
     def tearDown(self):
         plt.close('all')
@@ -292,11 +294,10 @@ class TestPlotHFT(unittest.TestCase):
     def test_plot_hft(self, mock_show):
         # Only checking that these do not throw errors
         dat = NoInitRadarData(big=True)
-        fig, ax = plot.plot_hft(dat)
+        plot.plot_hft(dat)
         fig, ax = plt.subplots()
-        fig, ax = plot.plot_hft(dat, fig=fig, ax=ax)
-        fig, ax = plt.subplots()
-        fig, ax = plot.plot_hft(dat, fig=fig)
+        plot.plot_hft(dat, fig=fig, ax=ax)
+        plot.plot_hft(dat, fig=fig)
 
     def tearDown(self):
         plt.close('all')
@@ -312,8 +313,8 @@ class TestPlotPicks(unittest.TestCase):
         dat.picks.samp1 = np.ones((2, len(dat.lat)))
         dat.picks.samp2 = np.ones((2, len(dat.lat)))
         dat.picks.samp3 = np.ones((2, len(dat.lat)))
-
-        fig, ax = plot.plot_radargram(dat, pick_colors='mgm')
+        dat.picks.picknums = [0, 9]
+        plot.plot_radargram(dat, pick_colors='mgm')
 
     @patch('impdar.lib.plot.plt.show')
     def test_plot_picks(self, mock_show):
@@ -323,23 +324,25 @@ class TestPlotPicks(unittest.TestCase):
         fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time)
 
         dat.picks = Picks(dat)
+        dat.picks.picknums = [2, 10]
         dat.picks.samp1 = np.ones((2, len(dat.lat)))
         dat.picks.samp2 = np.ones((2, len(dat.lat)))
         dat.picks.samp3 = np.ones((2, len(dat.lat)))
 
         fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time)
-        fig, ax = plt.subplots()
+
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, fig=fig)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, fig=fig, ax=ax)
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='g')
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='gmm')
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'g'])
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cmy', 'brb'])
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'])
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=True)
-        fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=False)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='g', fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='gmm', fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'g'], fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cmy', 'brb'], fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'], fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=True, fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=False, fig=fig, ax=ax)
+        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=False, fig=fig, ax=ax)
         with self.assertRaises(ValueError):
-            fig, ax = plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'])
+            plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=True, fig=fig, ax=ax)
 
     def tearDown(self):
         plt.close('all')

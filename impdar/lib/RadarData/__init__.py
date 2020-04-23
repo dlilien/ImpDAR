@@ -289,9 +289,9 @@ class RadarData(object):
             If None (default) use UTM.
         """
         if t_srs is not None:
-            transform = gpslib.get_conversion(t_srs=t_srs)
+            transform, self.t_srs = gpslib.get_conversion(t_srs=t_srs)
         else:
-            transform = gpslib.get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.long))
+            transform, self.t_srs = gpslib.get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.long))
 
         pts = np.array(transform(np.vstack((self.long, self.lat)).transpose()))
 

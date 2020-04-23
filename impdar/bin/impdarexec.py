@@ -136,13 +136,11 @@ def _get_args():
     parser_plot.add_argument('-window',
                              type=str,
                              default='hanning',
-                             help='Type of window function to be used for the \
-                                 singal.periodogram() method')
+                             help='Type of window function to be used for the singal.periodogram() method')
     parser_plot.add_argument('-scaling',
                              type=str,
                              default='spectrum',
-                             help='Whether to plot power spectral density or \
-                                 power spectrum: default is spectrum')
+                             help='Whether to plot power spectral density or power spectrum: default is spectrum')
 
     parser_convert = subparsers.add_parser('convert',
                                            help='Convert filetype (lossy)')
@@ -158,13 +156,9 @@ def _get_args():
                                 type=str,
                                 default=None,
                                 choices=load.FILETYPE_OPTIONS,
-                                help='Input format type. \
-                                        If none, guess from extension, but \
-                                        be warned, we are bad at guessing!')
-    parser_convert.add_argument('-t_srs', type=int, default=4326,
-                                help='Target spatial reference system \
-                                      (only used if out_fmt==shp). \
-                                      Give as EPSG number.')
+                                help='Input format type. If none, guess from extension, but  be warned, we are bad at guessing!')
+    parser_convert.add_argument('-t_srs', type=str, default=None,
+                                help='Target srs, in a format recognized by gdal. Default None (write raw input)')
     return parser
 
 

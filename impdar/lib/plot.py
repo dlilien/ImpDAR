@@ -96,7 +96,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                    y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None,
                    return_plotinfo=False, pick_colors=None, clims=None,
-                   flatten_layer=None):
+                   flatten_layer=None, middle_picks_only=False):
     """Plot a radio echogram.
 
     This function is a little weird since I want to be able to plot on top of
@@ -124,6 +124,10 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes
         Axes that should be plotted upon
+    flatten_layer: int, optional
+        Distort so this layer is flat
+    middle_picks_only: bool, optional
+        Allows you to specify color triples for plotting picks and not have them misinterptreted.
 
 
     Returns
@@ -252,7 +256,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        aspect='auto')
 
     if (pick_colors is not None) and pick_colors:
-        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer)
+        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer, just_middle=middle_picks_only)
     if not return_plotinfo:
         return fig, ax
     else:
@@ -496,7 +500,7 @@ def plot_power(dats, idx, fig=None, ax=None, clims=None):
     return fig, ax
 
 
-def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
+def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, just_middle=False, picknums=None, **plotting_kwargs):
     """Update the plotting of the current pick.
 
     Parameters
@@ -523,6 +527,10 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
 
     offset, mask = get_offset(rd, flatten_layer)
 
+    if picknums is None:
+        if rd.picks.picknums is None:
+            return fig, ax
+        picknums = rd.picks.picknums
 
     variable_colors = False
     if not colors:  # may be False or None
@@ -534,20 +542,24 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
             else:
                 cl = ('none', colors, 'none')
         elif (type(colors) == bool) and colors:
-            colors = (COLORS_NONGRAY * (rd.picks.samp1.shape[0] // len(COLORS_NONGRAY) + 1))[:rd.picks.samp1.shape[0]]
+            colors = (COLORS_NONGRAY * (rd.picks.samp1.shape[0] // len(COLORS_NONGRAY) + 1))[:len(picknums)]
             variable_colors = True
-        elif not len(colors) == rd.picks.samp1.shape[0]:
-            raise ValueError('If not a string, \
-                             must have length 3 or length npicks')
+        elif not len(colors) == len(picknums):
+            if (len(colors) == 3) and not just_middle:
+                cl = colors
+            else:
+                raise ValueError('If not a string, must have length 3 or length npicks')
         else:
             variable_colors = True
 
-    for i in range(rd.picks.samp1.shape[0]):
+    for j, pn in enumerate(picknums):
+        # use i and j so that we can color out of order
+        i = rd.picks.picknums.index(pn)
         if variable_colors:
-            if hasattr(colors[i], '__len__') and len(colors[i]) == 3:
-                cl = colors[i]
+            if hasattr(colors[j], '__len__') and len(colors[j]) == 3 and not just_middle:
+                cl = colors[j]
             else:
-                cl = ('none', colors[i], 'none')
+                cl = ('none', colors[j], 'none')
         c = np.zeros(xd.shape)
         c[:] = np.nan
         comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp2[i, :]))
@@ -558,9 +570,9 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None):
         b = np.zeros(xd.shape)
         b[:] = np.nan
         b[~comb_mask] = yd[(rd.picks.samp3[i, :] + offset)[~comb_mask].astype(int)]
-        ax.plot(xd, c, color=cl[1])
-        ax.plot(xd, t, color=cl[0])
-        ax.plot(xd, b, color=cl[2])
+        ax.plot(xd, c, color=cl[1], **plotting_kwargs)
+        ax.plot(xd, t, color=cl[0], **plotting_kwargs)
+        ax.plot(xd, b, color=cl[2], **plotting_kwargs)
     return fig, ax
 
 

@@ -12,13 +12,13 @@ from .RadarData import RadarData
 from .load import load_gssi, load_pulse_ekko, load_segy, load
 
 
-def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
+def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
     """Convert between formats. Mainly used to create shps and sgy files."""
     # Basic check on the conversion being implemented.
     # This is really simple because I'm not converting from one proprietary
     # form to another
     if t_srs == 'wgs84':
-        t_srs = 4326
+        t_srs = 'EPSG:3413'
 
     if out_fmt not in ['shp', 'mat', 'sgy']:
         raise ValueError('Can only convert to shp, mat, or sgy')
@@ -39,12 +39,10 @@ def convert(fns_in, out_fmt, t_srs='wgs84', in_fmt=None, *args, **kwargs):
                 loaders[i] = load_pulse_ekko.load_pe
             elif f_i[-4:] == '.sgy':
                 if not load_segy.SEGY:
-                    raise ImportError('You cannot use segy \
-                                          without segyio installed!')
+                    raise ImportError('You cannot use segy without segyio installed!')
                 loaders[i] = load_segy.load_segy
             else:
-                raise ValueError('Unrecognized file \
-                                 extension {:s}'.format(f_i[-4:]))
+                raise ValueError('Unrecognized file extension {:s}'.format(f_i[-4:]))
     else:
         loaders = [lambda x: load(in_fmt, x)[0] for i in fns_in]
 

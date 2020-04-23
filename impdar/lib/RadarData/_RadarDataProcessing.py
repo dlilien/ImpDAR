@@ -14,7 +14,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize
 from ..permittivity_models import firn_permittivity
-
+from ..ImpdarError import ImpdarError
 
 def reverse(self):
     """Reverse radar data
@@ -107,7 +107,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
 
     # need to crop out the pretrigger before doing the move-out
     if np.any(self.trig > 0):
-        raise ValueError('Crop out the pretrigger before doing the nmo correction.')
+        raise ImpdarError('Crop out the pretrigger before doing the nmo correction.')
 
     # --- Load the velocity profile --- #
     if rho_profile is not None:
@@ -169,9 +169,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
         self.flags.nmo[1] = ant_sep
 
 
-def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
-    """
-    For depth optimization in the nmo filter
+def optimize_moveout_depth(d_in, t, ant_sep, profile_depth, profile_u):
+    """Optimize depth in the nmo filter.
 
     In the case of variable velocity, we need to iterate on the depth
     and rms velocity within this function until it converges.
@@ -190,6 +189,8 @@ def optimize_moveout_depth(d_in,t,ant_sep,profile_depth,profile_u):
         velocity
     """
     args = np.argwhere(profile_depth<d_in)
+    if len(args) == 0:
+        raise ValueError('Profile not shallow enough. Extend to cover top')
     vels = profile_u[args][:,0]
     u_rms = np.sqrt(np.mean(vels**2.))
     return abs(np.sqrt((t/2.*u_rms)**2.-ant_sep**2.)-d_in)
@@ -510,6 +511,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     show_nomove: bool, optional
         If True, make a plot shading the areas where we think there is no movement.
         This can be really helpful for diagnosing what is wrong if you have lingering stationary traces.
+        Untested.
     """
     # eliminate an interpolation error by masking out little movement
     good_vals = np.hstack((np.array([True]), np.diff(self.dist * 1000.) >= min_movement))
@@ -520,7 +522,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
             self.dist[i:] = self.dist[i:] - (self.dist[i] - self.dist[i - 1])
     temp_dist = self.dist[good_vals]
 
-    if show_nomove:
+    if show_nomove:  # pragma: no cover
         from ..plot import plot_radargram
         fig, ax = plot_radargram(self)
         ax.fill_between(self.trace_num, np.ones_like(self.dist) * np.max(self.travel_time), np.ones_like(self.dist) * np.min(self.travel_time), where=~good_vals, alpha=0.5)

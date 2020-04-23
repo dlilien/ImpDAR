@@ -10,7 +10,7 @@
 
 """
 
-
+from ..gpslib import get_conversion
 import numpy as np
 from scipy.io import savemat
 from ..RadarFlags import RadarFlags
@@ -31,7 +31,7 @@ except ImportError:
 
 
 def save(self, fn):
-    """Save the radar data
+    """Save the radar data.
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ def save_as_segy(self, fn):
     segyio.tools.from_array2D(fn, np.ascontiguousarray(self.data.transpose(), np.float32), dt=self.dt * 1.0e12)
 
 
-def output_shp(self, fn, t_srs=4326, target_out=None):
+def output_shp(self, fn, t_srs=None, target_out=None):
     """Output a shapefile of the traces.
 
     If there are any picks, we want to output these. If not, we will only output the tracenumber. This function requires osr/gdal for shapefile creation. I suggest exporting a csv if you don't want to deal with gdal.
@@ -96,15 +96,28 @@ def output_shp(self, fn, t_srs=4326, target_out=None):
         Used to overwrite the default output format of picks. By default, try to write depth and if there is no nmo_depth use TWTT. You might want to use this to get the output in TWTT or sample number (options are depth, elev, twtt, snum)
     """
     if not CONVERSIONS_ENABLED:
-        raise ImportError('osgeo was not imported')
-    out_srs = osr.SpatialReference()
-    out_srs.ImportFromEPSG(t_srs)
-    in_srs = osr.SpatialReference()
-    in_srs.ImportFromEPSG(4326)
-    cT = osr.CoordinateTransformation(in_srs, out_srs)
+        raise ImportError('osgeo could not be imported')
+
+    if t_srs is not None:
+        # We overwrite the t_srs with the WKT version
+        cT, t_srs = get_conversion(t_srs=t_srs)
+        pts = np.array(cT(np.vstack((self.long, self.lat)).transpose()))
+    else:
+        if self.x_coord is not None and hasattr(self, 't_srs'):
+            pts = np.vstack((self.x_coord, self.y_coord)).transpose()
+            t_srs = self.t_srs
+        else:
+            if self.x_coord is not None:
+                print('RadarData has projected coordinates but projection information is unknown.')
+                print('Writing wgs84; specify t_srs for projected output.')
+            pts = np.vstack((self.long, self.lat)).transpose()
+            t_srs = 'EPSG:3426'
+
 
     driver = ogr.GetDriverByName('ESRI Shapefile')
     data_source = driver.CreateDataSource(fn)
+    out_srs = osr.SpatialReference()
+    out_srs.SetFromUserInput(t_srs)
     layer = data_source.CreateLayer('traces', out_srs, ogr.wkbPoint)
     layer.CreateField(ogr.FieldDefn('TraceNum', ogr.OFTInteger))
 
@@ -131,7 +144,7 @@ def output_shp(self, fn, t_srs=4326, target_out=None):
                     else:
                         feature.SetField('L{:d}_{:s}'.format(picknum, out_name), np.nan)
 
-        x, y, _ = cT.TransformPoint(self.long[trace], self.lat[trace])
+        x, y = pts[trace, 0], pts[trace, 1]
         wkt = 'POINT({:f} {:f})'.format(x, y)
         point = ogr.CreateGeometryFromWkt(wkt)
         feature.SetGeometry(point)

@@ -9,10 +9,18 @@
 """
 Test the basics of RadarData
 """
+import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import RadarData
+from impdar.lib.RadarData import RadarData, _RadarDataProcessing
+from impdar.lib.Picks import Picks
+from impdar.lib.ImpdarError import ImpdarError
+
+if sys.version_info[0] >= 3:
+    from unittest.mock import patch
+else:
+    from mock import patch
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -172,7 +180,13 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.rangegain(1.0)
         self.assertTrue(self.data.flags.rgain)
 
-    def test_NMO_noexcpetion(self):
+        # Deprecated for trig not to be a vector, but check it anyway
+        self.data.trig = 0.0
+        self.data.rangegain(1.0)
+        self.assertTrue(self.data.flags.rgain)
+
+    @patch('impdar.lib.RadarData._RadarDataProcessing.optimize_moveout_depth', returns=[1000.])
+    def test_NMO(self, mock_omd):
         # If velocity is 2
         self.data.nmo(0., uice=2.0, uair=2.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
@@ -184,6 +198,35 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertEqual(self.data.flags.nmo.shape, (2,))
         self.assertTrue(self.data.flags.nmo[0])
+
+        self.setUp()
+        self.data.nmo(0., uice=2.0, uair=2.0, const_firn_offset=3.0)
+        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6 + 3.0, self.data.nmo_depth))
+
+        self.setUp()
+        self.data.trig = np.ones((self.data.tnum, ))
+        with self.assertRaises(ImpdarError):
+            self.data.nmo(0., uice=2.0, uair=2.0)
+
+        # Good rho profile
+        self.setUp()
+        self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'rho_profile.txt'))
+        mock_omd.assert_called()
+
+        # bad rho profile
+        self.setUp()
+        with self.assertRaises(Exception):
+            self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
+
+    def test_optimize_moveout_depth(self):
+        d = _RadarDataProcessing.optimize_moveout_depth(100.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
+        self.assertFalse(np.isnan(d))
+
+        d = _RadarDataProcessing.optimize_moveout_depth(2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
+        self.assertFalse(np.isnan(d))
+
+        with self.assertRaises(ValueError):
+            d = _RadarDataProcessing.optimize_moveout_depth(-2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
 
     def test_restack_odd(self):
         self.data.restack(5)
@@ -201,25 +244,77 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.elev_correct(v_avg=2.0e6)
         self.assertTrue(self.data.data.shape == (27, 40))
 
-    def test_constant_space(self):
+    def test_constant_space_real(self):
+        # Basic check where there is movement every step
         distlims = (self.data.dist[0], self.data.dist[-1])
         space = 100.
+        targ_size = np.ceil((distlims[-1] - distlims[0]) * 1000. / space)
         self.data.constant_space(space)
-        self.assertTrue(self.data.data.shape == (20, np.ceil((distlims[-1] - distlims[0]) * 1000. / space)))
-        self.assertTrue(self.data.x_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.y_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.lat.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.long.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.elev.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.decday.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
+
+        # Make sure we can have some bad values from no movement
+        # This will delete some distance so, be careful with checks
+        self.setUp()
+        self.data.constant_space(space, min_movement=35.)
+        self.assertEqual(self.data.data.shape[0], 20)
+        self.assertLessEqual(self.data.data.shape[1], targ_size)
+        self.assertLessEqual(self.data.x_coord.shape[0], targ_size)
+        self.assertLessEqual(self.data.y_coord.shape[0], targ_size)
+        self.assertLessEqual(self.data.lat.shape[0], targ_size)
+        self.assertLessEqual(self.data.long.shape[0], targ_size)
+        self.assertLessEqual(self.data.elev.shape[0], targ_size)
+        self.assertLessEqual(self.data.decday.shape[0], targ_size)
 
         # do not fail because flags structure is weird from matlab
-        space = 100.
+        self.setUp()
         self.data.flags.interp = False
         self.data.constant_space(space)
         self.assertTrue(self.data.flags.interp.shape == (2,))
         self.assertTrue(self.data.flags.interp[0])
         self.assertEqual(self.data.flags.interp[1], space)
+
+        # Want to be able to do picks too
+        self.setUp()
+        self.data.pick = Picks(self.data)
+        self.data.picks.samp1 = np.ones((2, self.data.tnum))
+        self.data.picks.samp2 = np.ones((2, self.data.tnum))
+        self.data.picks.samp3 = np.ones((2, self.data.tnum))
+        self.data.picks.power = np.ones((2, self.data.tnum))
+        self.data.picks.time = np.ones((2, self.data.tnum))
+        self.data.constant_space(space)
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
+        self.assertTrue(self.data.picks.samp1.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.samp2.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.samp3.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.power.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.time.shape == (2, targ_size))
+        
+    def test_constant_space_complex(self):
+        # One of the few functions that really differs with complex data.
+        self.data.data = self.data.data + 1.0j * self.data.data
+        distlims = (self.data.dist[0], self.data.dist[-1])
+        space = 100.
+        targ_size = np.ceil((distlims[-1] - distlims[0]) * 1000. / space)
+        self.data.constant_space(space)
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
 
     def test_constant_sample_depth_spacing(self):
         # first check that it fails if we are not set up

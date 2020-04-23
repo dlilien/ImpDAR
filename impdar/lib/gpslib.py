@@ -57,25 +57,25 @@ if conversions_enabled:
             pass
 
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-        return transform_WGS84_To_UTM.TransformPoints
+        return transform_WGS84_To_UTM.TransformPoints, utm_cs.ExportToPrettyWkt()
 
     def get_conversion(t_srs):
-        utm_cs = osr.SpatialReference()
-        utm_cs.SetFromUserInput(t_srs)
+        out_cs = osr.SpatialReference()
+        out_cs.SetFromUserInput(t_srs)
         try:
-            utm_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            out_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         except AttributeError:
             pass
 
-        wgs84_cs = utm_cs.CloneGeogCS()
+        wgs84_cs = out_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
         try:
             wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         except AttributeError:
             pass
 
-        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-        return transform_WGS84_To_srs.TransformPoints
+        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, out_cs)
+        return transform_WGS84_To_srs.TransformPoints, out_cs.ExportToPrettyWkt()
 else:
     def get_utm_conversion(lat, lon):
         """Just raise an exception since we cannot really convert."""
@@ -199,8 +199,8 @@ class nmea_info:
 
     def get_utm(self):
         """Transform lat and lon to utm coords in a nice way."""
-        transform = get_utm_conversion(np.nanmean(self.lat),
-                                       np.nanmean(self.lon))
+        transform, _ = get_utm_conversion(np.nanmean(self.lat),
+                                          np.nanmean(self.lon))
         pts = np.array(transform(np.vstack((self.lon, self.lat)).transpose()))
         self.x, self.y = pts[:, 0], pts[:, 1]
 
