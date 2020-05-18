@@ -2,14 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 dlilien <dlilien@berens>
+# Copyright © 2019 dlilien <dlilien90@gmail.com>
 #
-# Distributed under terms of the MIT license.
+# Distributed under terms of the GNU GPL3.0 license.
 
-"""
-
-"""
-
+"""Methods for saving radar data in different formats."""
 from ..gpslib import get_conversion
 import numpy as np
 from scipy.io import savemat
@@ -56,18 +53,23 @@ def save(self, fn):
     else:
         # We want the structure available to prevent read errors from corrupt files
         mat['flags'] = RadarFlags().to_matlab()
+
     # Make sure not to expand the size of the data due to type conversion
-    if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
+    if hasattr(self, 'data_dtype') and (
+            self.data_dtype is not None) and (self.data_dtype != mat['data'].dtype):
         # Be carefuly of obliterating NaNs
         # We will use singles instead of ints for this guess
         if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float16 rather than ', self.data_dtype, ' since we now have NaNs')
+            print('Warning: new file is float16 rather than ',
+                  self.data_dtype, ' since we now have NaNs')
             mat['data'] = mat['data'].astype(np.float16)
         elif (self.data_dtype in [np.int32]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float32 rather than ', self.data_dtype, ' since we now have NaNs')
+            print('Warning: new file is float32 rather than ',
+                  self.data_dtype, ' since we now have NaNs')
             mat['data'] = mat['data'].astype(np.float32)
         elif (self.data_dtype in [np.int64]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float64 rather than ', self.data_dtype, ' since we now have NaNs')
+            print('Warning: new file is float64 rather than ',
+                  self.data_dtype, ' since we now have NaNs')
             mat['data'] = mat['data'].astype(np.float64)
         else:
             mat['data'] = mat['data'].astype(self.data_dtype)
@@ -75,16 +77,33 @@ def save(self, fn):
 
 
 def save_as_segy(self, fn):
+    """Save as a (non standard-compliant) SEGY file that can be used with, e.g., SeisUNIX.
+
+    Parameters
+    ----------
+    fn: str
+        The filename to save as.
+
+    Raises
+    ------
+    ImportError
+        If segyio cannot be imported.
+    """
     if not SEGY:
         raise ImportError('segyio failed to import, cannot save as segy')
 
-    segyio.tools.from_array2D(fn, np.ascontiguousarray(self.data.transpose(), np.float32), dt=self.dt * 1.0e12)
+    segyio.tools.from_array2D(fn,
+                              np.ascontiguousarray(self.data.transpose(), np.float32),
+                              dt=self.dt * 1.0e12)
 
 
 def output_shp(self, fn, t_srs=None, target_out=None):
     """Output a shapefile of the traces.
 
-    If there are any picks, we want to output these. If not, we will only output the tracenumber. This function requires osr/gdal for shapefile creation. I suggest exporting a csv if you don't want to deal with gdal.
+    If there are any picks, we want to output these.
+    If not, we will only output the tracenumber.
+    This function requires osr/gdal for shapefile creation.
+    I suggest exporting a csv if you don't want to deal with gdal.
 
     Parameters
     ----------
@@ -93,7 +112,15 @@ def output_shp(self, fn, t_srs=None, target_out=None):
     t_srs: int, optional
         EPSG number of the target spatial reference system. Default 4326 (wgs84)
     target_out: str, optional
-        Used to overwrite the default output format of picks. By default, try to write depth and if there is no nmo_depth use TWTT. You might want to use this to get the output in TWTT or sample number (options are depth, elev, twtt, snum)
+        Used to overwrite the default output format of picks.
+        By default, try to write depth and if there is no nmo_depth use TWTT.
+        You might want to use this to get the output in TWTT or sample number
+        (options are depth, elev, twtt, snum)
+
+    Raises
+    ------
+    ImportError
+        If osgeo cannot be imported
     """
     if not CONVERSIONS_ENABLED:
         raise ImportError('osgeo could not be imported')
@@ -112,7 +139,6 @@ def output_shp(self, fn, t_srs=None, target_out=None):
                 print('Writing wgs84; specify t_srs for projected output.')
             pts = np.vstack((self.long, self.lat)).transpose()
             t_srs = 'EPSG:3426'
-
 
     driver = ogr.GetDriverByName('ESRI Shapefile')
     data_source = driver.CreateDataSource(fn)
@@ -134,13 +160,16 @@ def output_shp(self, fn, t_srs=None, target_out=None):
             for i, picknum in enumerate(self.picks.picknums):
                 if out_name != 'elev':
                     if not np.isnan(self.picks.samp2[i, trace]):
-                        feature.SetField('L{:d}_{:s}'.format(picknum, out_name), target_out_array[int(self.picks.samp2[i, trace])])
+                        feature.SetField('L{:d}_{:s}'.format(picknum, out_name),
+                                         target_out_array[int(self.picks.samp2[i, trace])])
                     else:
                         feature.SetField('L{:d}_{:s}'.format(picknum, out_name), np.nan)
 
                 else:
                     if not np.isnan(self.picks.samp2[i, trace]):
-                        feature.SetField('L{:d}_{:s}'.format(picknum, out_name), self.elev[trace] - target_out_array[int(self.picks.samp2[i, trace])])
+                        feature.SetField('L{:d}_{:s}'.format(picknum, out_name),
+                                         self.elev[trace] - target_out_array[
+                                             int(self.picks.samp2[i, trace])])
                     else:
                         feature.SetField('L{:d}_{:s}'.format(picknum, out_name), np.nan)
 
@@ -156,14 +185,18 @@ def output_shp(self, fn, t_srs=None, target_out=None):
 def output_csv(self, fn, target_out=None, delimiter=','):
     """Output a csv of the traces.
 
-    If there are any picks, we want to output these. If not, we will only output the tracenumber.
+    If there are any picks, we want to output these.
+    If not, we will only output the tracenumber.
 
     Parameters
     ----------
     fn: str
         The filename of the output
     target_out: str, optional
-        Used to overwrite the default output format of picks. By default, try to write depth and if there is no nmo_depth use TWTT. You might want to use this to get the output in TWTT or sample number (options are depth, elev, twtt, snum)
+        Used to overwrite the default output format of picks.
+        By default, try to write depth and if there is no nmo_depth use TWTT.
+        You might want to use this to get the output in TWTT or sample number
+        (options are depth, elev, twtt, snum)
     delimiter: str, optional
         Delimiter for csv. Default ','.
     """
@@ -185,9 +218,20 @@ def output_csv(self, fn, target_out=None, delimiter=','):
 
 
 def _get_pick_targ_info(self, target_out):
-    """Get the rate type of pick information for returning
+    """Get the rate type of pick information for returning.
 
-    Use this code to eliminate some overlap in exporting csvs and shps"""
+    Use this code to eliminate some overlap in exporting csvs and shps.
+
+    Parameters
+    ----------
+    target_out: str
+        The z coordinate to output. Options are depth, twtt, elev, snum.
+
+    Raises
+    ------
+    ValueError
+        If the target output is bad.
+    """
     if target_out is None:
         if self.nmo_depth is not None:
             out_name = 'depth'

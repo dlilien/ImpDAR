@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright 2018 dlilien <dlilien90@gmail.com>
+# Copyright 2020 dlilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '0.7a'
+    version = '1.0'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',

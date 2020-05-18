@@ -77,8 +77,10 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
     uair: float, optional
         Speed of light in air. Default 3.0e8
     const_firn_offset: float, optional
-        Offset all depths by this much to account for firn-air. Useful it data start below the
-        surface so you can skip complicated corrections. Default None.
+        Offset all depths by this much to account for firn-air.
+        THIS IS THE TWO-WAY THICKNESS (not the firn-air).
+        Useful if data start below thesurface so you can skip
+        complicated, depth-dependent corrections. Default None.
     rho_profile: str,optional
         Filename for a csv file with density profile (depths in first column and densities in second)
         Units should be meters for depth, kgs per meter cubed for density.
