@@ -14,15 +14,29 @@ Documentation of the various processing steps is [here](https://impdar.readthedo
 
 ## Installation
 
-Easiest is `pip install impdar`. Some explanation of other options is available in the main documentation, but PyPi should be updated with any important changes.
+Easiest is `pip install impdar`. Some explanation of other options is available in the main documentation, but PyPi will be updated with any important changes.
 
 ### Dependencies
 
 #### Required
-*Python 2 or 3* The package is tested on Python 2.7, and 3.5+. Other versions may work, but they are not tested. [numpy](http://www.scipy.org), [scipy](http://numpy.org), [matplotlib](http://matplotlib.org). I recommend just using Anaconda for your install, since it will also get you PyQt and therefore enable the GUI.
+*Python 2 or 3* The package is tested on Python 2.7, and 3.5+. Other versions may work, but they are not tested.
+
+[numpy](http://www.scipy.org)
+
+[scipy](http://numpy.org)
+
+[matplotlib](http://matplotlib.org).
+
+I recommend just using Anaconda for your install, since it will also get you PyQt and therefore enable the GUI.
 
 #### Recommended
-[GDAL](http://gdal.org) is needed to reproject out of WGS84, and thus for proper distance measurement. [PyQt5](https://pypi.org/project/PyQt5/) is needed to run the GUI, which is needed for picking. You can do everything from the command line, and plot the results with matplotlib, without PyQt5. [SegYIO](https://github.com/equinor/segyio/) is needed for SEGY support and for SeisUnix migration.
+[GDAL](http://gdal.org) is needed to reproject out of WGS84, and thus for proper distance measurement. Otherwise, distance calculations re going to moderately or severely incorrect.
+
+[PyQt5](https://pypi.org/project/PyQt5/) is needed to run the GUI, which is needed for picking. You can do everything from the command line, and plot the results with matplotlib, without PyQt5.
+
+[SegYIO](https://github.com/equinor/segyio/) is needed for SEGY support and for SeisUnix migration.
+
+[h5py](https://h5py.org) is needed for some data formats.
 
 Depending on whether you need migration routines, there may be some external dependencies. ImpDAR is designed to interface with [SeisUnix](http://https://github.com/JohnWStockwellJr/SeisUnix), which contains a number of powerful migration routines. You need to install SeisUnix yourself and get it on your path. If you are running windows, you need to figure out how to use Cygwin as well. However, the pure python migration routines in ImpDAR can work quite well, so don't let the difficulty of installing these compiled routines stop you from using those. ImpDAR searches for SeisUnix at the time of the call to the migration routine, so you can always add this later if you find that you need it.
 

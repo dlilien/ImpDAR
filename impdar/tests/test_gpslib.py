@@ -39,29 +39,48 @@ class TestGPS(unittest.TestCase):
 
     def test_kinematic_gps_control(self):
         dats = [NoInitRadarData(big=True)]
-        gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(40, 60., 1.), np.arange(0., 2000., 100.), np.arange(0., 20., 1.), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
-        self.assertTrue(np.allclose(np.arange(0, 200, 10), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
         self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
+
 
         with self.assertRaises(ValueError):
             gpslib.kinematic_gps_control(dats, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=True)
 
         dat = NoInitRadarData(big=True)
-        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dat.lat))
-        self.assertTrue(np.allclose(np.arange(0, 200, 10), dat.long))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dat.long))
         self.assertTrue(np.allclose(np.arange(0, 2000, 100), dat.elev))
 
+        # We should be allowed to be off by 360 in longitude
         dat = NoInitRadarData(big=True)
-        gpslib.kinematic_gps_control(dat, np.arange(-1.0, 3.0, 0.1), np.arange(-100, 300, 10), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
-        dats = [NoInitRadarData(big=True), NoInitRadarData(big=True)]
-        gpslib.kinematic_gps_control(dats, np.arange(-1.0, 3.0, 0.1), np.arange(-100, 300, 10), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1) - 360., np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
 
+        # and off the other way
+        dat = NoInitRadarData(big=True)
+        dat.long = dat.long - 360.
+        gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
+        self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1), dats[0].lat))
+        self.assertTrue(np.allclose(np.arange(40, 60, 1), dats[0].long))
+        self.assertTrue(np.allclose(np.arange(0, 2000, 100), dats[0].elev))
+
+        dat = NoInitRadarData(big=True)
+        gpslib.kinematic_gps_control(dat, np.arange(-1.0, 3.0, 0.1), np.arange(20, 60, 1), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+
+        # Multiple inputs
+        dats = [NoInitRadarData(big=True), NoInitRadarData(big=True)]
+        gpslib.kinematic_gps_control(dats, np.arange(-1.0, 3.0, 0.1), np.arange(40, 80, 1), np.arange(-1000, 3000, 100), np.arange(-10, 30, 1), guess_offset=True)
+
+        # Bad timing
         dat = NoInitRadarData(big=True)
         dat.decday = dat.decday + 10
         with self.assertRaises(ValueError):
-            gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 200, 10), np.arange(0, 2000, 100), np.arange(0, 20, 1))
+            gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 20, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1))
 
     @patch('impdar.lib.gpslib.kinematic_gps_control')
     def test_kinematic_gps_mat(self, mock_kgc):
@@ -95,6 +114,26 @@ class TestGPS(unittest.TestCase):
         gpslib.interp(dats, 10.)
         self.assertTrue(len(dats[0].constant_space.mock_calls) > 0)
 
+
+    @unittest.skipIf(not gpslib.conversions_enabled, 'No gdal')
+    def test_conversions(self):
+        pts = np.array([[-8., 10.], [-9., 11.], [-10., 12.]])
+        conv_utm, _ = gpslib.get_utm_conversion(-8.0, 10.0)
+        proj_pts = conv_utm(pts)
+        self.assertTrue(np.all(~np.isnan(proj_pts)))
+
+        pts = np.array([[-88., 10.], [-89., 11.], [-89.1, 12.]])
+        conv_sps, _ = gpslib.get_conversion(t_srs='EPSG:3031')
+        proj_pts = conv_sps(pts)
+        self.assertTrue(np.all(~np.isnan(proj_pts)))
+
+    @unittest.skipIf(gpslib.conversions_enabled, 'GDAL found, this is a failure test')
+    def test_conversions_off(self):
+        # we want to be able to import gpslib but later fail
+        with self.assertRaises(ImportError):
+            conv_utm = gpslib.get_utm_conversion(-8.0, 10.0)
+        with self.assertRaises(ImportError):
+            conv_sps = gpslib.get_conversion(t_srs='EPSG:3031')
 
 if __name__ == '__main__':
     unittest.main()

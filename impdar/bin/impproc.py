@@ -204,6 +204,10 @@ def _get_args():
                             default=3.0e8,
                             help='Speed of light in air in m/s \
                                    (default 3.0e8)')
+    parser_nmo.add_argument('--const_firn_offset',
+                            type=float,
+                            default=None,
+                            help='A constant value added to depth to account for firn. Default None (0.0).')
     parser_nmo.add_argument('--rho_profile',
                             type=str,
                             default=None,

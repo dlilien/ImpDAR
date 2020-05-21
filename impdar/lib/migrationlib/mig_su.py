@@ -161,6 +161,7 @@ def migrationSeisUnix(dat,
     with open(bin_fn, 'rb') as fid:
         data_flat = np.fromfile(fid, np.float32)
     for ps in [ps1, ps2, ps3, ps4]:
+        ps.wait()
         ps.stdout.close()
         try:
             ps.stderr.close()

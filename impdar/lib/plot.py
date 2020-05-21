@@ -13,19 +13,28 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 from .load import load
 
+# define a set of non-gray colors (from Paul Tol)
+COLORS_NONGRAY = ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE',
+                  '#882255', '#44AA99', '#999933', '#AA4499']
 
 def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
          x_range=(0, -1), power=None, spectra=None, freq_limit=None,
          window=None, scaling='spectrum', filetype='mat', pick_colors=None,
-         ft=False, hft=False, clims=None, cmap=plt.cm.gray, *args, **kwargs):
-    """We have an overarching wrapper here to handle a number of plot types.
+         ft=False, hft=False, clims=None, cmap=plt.cm.gray, flatten_layer=None,
+         *args, **kwargs):
+    """Wrap a number of plot types.
+
+    This should really only be used by the exectuables.
+    If you are plotting yourself, just use the individual plotting
+    functions that are described below.
+
     Parameters
     ----------
     fns: list of strs
         A list of filenames to plot individually.
     tr: tuple or int, optional
         Plot traces tr[1] to tr[2] (or trace tr) rather than the radargram.
-        Default is None (plot radargram)
+        Default is None (plot radargram).
     power: int, optional
         If not None, then plot power returned from this layer
     filetype: str, optional
@@ -33,6 +42,8 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
     x_range: tuple, optional
         The range of traces to plot in the radargram.
         Default is (0, -1) (plot all traces)
+    flatten_layer: int, optional
+        Distort the radargram so this layer is flat. Default is None (do not distort).
     """
     radar_data = load(filetype, fns)
 
@@ -66,7 +77,8 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
                                x_range=None,
                                pick_colors=pick_colors,
                                clims=clims,
-                               cmap=cmap)
+                               cmap=cmap,
+                               flatten_layer=flatten_layer)
                 for dat in radar_data]
 
     for fig, dat in zip(figs, radar_data):
@@ -84,7 +96,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                    y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None,
                    return_plotinfo=False, pick_colors=None, clims=None,
-                   flatten_layer=None):
+                   flatten_layer=None, middle_picks_only=False):
     """Plot a radio echogram.
 
     This function is a little weird since I want to be able to plot on top of
@@ -112,6 +124,10 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes
         Axes that should be plotted upon
+    flatten_layer: int, optional
+        Distort so this layer is flat
+    middle_picks_only: bool, optional
+        Allows you to specify color triples for plotting picks and not have them misinterptreted.
 
 
     Returns
@@ -202,12 +218,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         ax.set_xlabel('Distance (km)')
 
     if flatten_layer is not None:
-        if flatten_layer not in dat.picks.picknums:
-            raise ValueError('That layer is not in existence, cannot flatten')
-        layer_ind = dat.picks.picknums.index(flatten_layer)
-        layer_depth = dat.picks.samp2[layer_ind, :]
-        zero_offset = int(np.nanmean(layer_depth))
-        offset = zero_offset - layer_depth
+        offset, _ = get_offset(dat, flatten_layer)
 
         # Now construct the data matrix
         tmp_data = np.zeros_like(dat.data)
@@ -217,12 +228,10 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                 continue
             if int(offset[j]) == 0:
                 tmp_data[:, j] = dat.data[:, j]
-            # We have a weird error here with max size ints?
             elif offset[j] < 0 and (abs(offset[j]) < dat.snum):
                 tmp_data[:int(offset[j]), j] = dat.data[-int(offset[j]):, j]
             elif (abs(offset[j]) < dat.snum) and offset[j]:
                 tmp_data[int(offset[j]):, j] = dat.data[:-int(offset[j]), j]
-
         im = ax.imshow(norm(tmp_data[:, x_range[0]:x_range[-1]]),
                        cmap=cmap,
                        vmin=clims[0],
@@ -247,7 +256,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        aspect='auto')
 
     if (pick_colors is not None) and pick_colors:
-        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors)
+        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer, just_middle=middle_picks_only)
     if not return_plotinfo:
         return fig, ax
     else:
@@ -319,7 +328,11 @@ def plot_hft(dat, fig=None, ax=None):
 
     # approximate as with the hbp
     freq = np.fft.fftfreq(dat.tnum)
-    wavelength = dat.flags.interp[1] / freq
+
+    # we expect a divide by zero here
+    with np.errstate(divide='ignore', invalid='ignore'):
+        wavelength = dat.flags.interp[1] / freq
+        wavelength[freq == 0.0] = np.inf
 
     if fig is not None:
         if ax is None:
@@ -373,8 +386,10 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
             ax = plt.gca()
     else:
         fig, ax = plt.subplots(figsize=(8, 12))
-    #ax.set_xscale('symlog')
+    # ax.set_xscale('symlog')
     lims = np.percentile(dat.data[:, tr[0]:tr[1]], (1, 99))
+    if lims[0] == lims[1]:
+        lims[1] = lims[0] + 1.
     ax.invert_yaxis()
 
     if ydat == 'twtt':
@@ -485,7 +500,7 @@ def plot_power(dats, idx, fig=None, ax=None, clims=None):
     return fig, ax
 
 
-def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
+def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, just_middle=False, picknums=None, **plotting_kwargs):
     """Update the plotting of the current pick.
 
     Parameters
@@ -496,9 +511,9 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
         Any of the x3 options are interpretted as top, middle, bottom colors.
         If it is a string, the lines are all plotted in this color. If it is
         a list, the different values are used for the different lines.
-    picker:
-        argument to pass to plot of cline (if new) for selection tolerance
-        (use if plotting in select mode)
+    flatten_layer: int, optional
+        Make this layer flat in the plot. Distorts all layers. Default is no
+        distortion.
     """
     if ax is None:
         if fig is not None:
@@ -510,6 +525,13 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
     if rd.picks is None or rd.picks.samp1 is None:
         return fig, ax
 
+    offset, mask = get_offset(rd, flatten_layer)
+
+    if picknums is None:
+        if rd.picks.picknums is None:
+            return fig, ax
+        picknums = rd.picks.picknums
+
     variable_colors = False
     if not colors:  # may be False or None
         cl = 'mgm'
@@ -520,35 +542,37 @@ def plot_picks(rd, xd, yd, colors=None, fig=None, ax=None):
             else:
                 cl = ('none', colors, 'none')
         elif (type(colors) == bool) and colors:
-            colors = [None for i in range(rd.picks.samp1.shape[0])]
+            colors = (COLORS_NONGRAY * (rd.picks.samp1.shape[0] // len(COLORS_NONGRAY) + 1))[:len(picknums)]
             variable_colors = True
-        elif not len(colors) == rd.picks.samp1.shape[0]:
-            raise ValueError('If not a string, \
-                             must have length 3 or length npicks')
+        elif not len(colors) == len(picknums):
+            if (len(colors) == 3) and not just_middle:
+                cl = colors
+            else:
+                raise ValueError('If not a string, must have length 3 or length npicks')
         else:
             variable_colors = True
 
-    for i in range(rd.picks.samp1.shape[0]):
+    for j, pn in enumerate(picknums):
+        # use i and j so that we can color out of order
+        i = rd.picks.picknums.index(pn)
         if variable_colors:
-            if hasattr(colors[i], '__len__') and len(colors[i]) == 3:
-                cl = colors[i]
+            if hasattr(colors[j], '__len__') and len(colors[j]) == 3 and not just_middle:
+                cl = colors[j]
             else:
-                cl = ('none', colors[i], 'none')
+                cl = ('none', colors[j], 'none')
         c = np.zeros(xd.shape)
         c[:] = np.nan
-        c[~np.isnan(rd.picks.samp2[i, :])] = yd[rd.picks.samp2[i, :][
-            ~np.isnan(rd.picks.samp2[i, :])].astype(int)]
+        comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp2[i, :]))
+        c[~comb_mask] = yd[(rd.picks.samp2[i, :] + offset)[~comb_mask].astype(int)]
         t = np.zeros(xd.shape)
         t[:] = np.nan
-        t[~np.isnan(rd.picks.samp1[i, :])] = yd[rd.picks.samp1[i, :][
-            ~np.isnan(rd.picks.samp1[i, :])].astype(int)]
+        t[~comb_mask] = yd[(rd.picks.samp1[i, :] + offset)[~comb_mask].astype(int)]
         b = np.zeros(xd.shape)
         b[:] = np.nan
-        b[~np.isnan(rd.picks.samp3[i, :])] = yd[rd.picks.samp3[i, :][
-            ~np.isnan(rd.picks.samp3[i, :])].astype(int)]
-        ax.plot(xd, c, color=cl[1])
-        ax.plot(xd, t, color=cl[0])
-        ax.plot(xd, b, color=cl[2])
+        b[~comb_mask] = yd[(rd.picks.samp3[i, :] + offset)[~comb_mask].astype(int)]
+        ax.plot(xd, c, color=cl[1], **plotting_kwargs)
+        ax.plot(xd, t, color=cl[0], **plotting_kwargs)
+        ax.plot(xd, b, color=cl[2], **plotting_kwargs)
     return fig, ax
 
 
@@ -656,5 +680,19 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     title = 'PSD(tnum, f)'
     ax.set_title(title)
 
-
     return fig, ax
+
+
+def get_offset(dat, flatten_layer=None):
+    if flatten_layer is None:
+        offset = np.zeros((dat.data.shape[1]))
+        mask = np.zeros((dat.tnum, ), dtype=bool)
+    else:
+        if flatten_layer not in dat.picks.picknums:
+            raise ValueError('That layer is not in existence, cannot flatten')
+        layer_ind = dat.picks.picknums.index(flatten_layer)
+        layer_depth = dat.picks.samp2[layer_ind, :]
+        zero_offset = int(np.nanmean(layer_depth))
+        offset = zero_offset - layer_depth
+        mask = np.isnan(dat.picks.samp2[layer_ind, :])
+    return offset, mask

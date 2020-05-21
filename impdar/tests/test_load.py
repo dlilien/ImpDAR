@@ -34,9 +34,6 @@ class TestLoad(unittest.TestCase):
         data = load.load('gecko', os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'))
         data = load.load('gecko', [os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd'), os.path.join(THIS_DIR, 'input_data', 'test_gecko.gtd')])
 
-    def test_loadgprmax(self):
-        data = load.load('gprMax', os.path.join(THIS_DIR, 'input_data', 'rectangle_gprMax_Bscan.h5'))
-
     def test_loadbad(self):
         with self.assertRaises(ValueError):
             data = load.load('bad', os.path.join(THIS_DIR, 'input_data', 'small_data.bad'))

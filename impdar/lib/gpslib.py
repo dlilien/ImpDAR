@@ -43,27 +43,45 @@ if conversions_enabled:
         utm_cs.SetWellKnownGeogCS('WGS84')
         utm_cs.SetUTM(utm_zone, is_northern)
 
+        # On newer versions of osr we need this, but on old versions it will fail
+        try:
+            utm_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
         wgs84_cs = utm_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
+        try:
+            wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
 
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-        return transform_WGS84_To_UTM.TransformPoints
+        return transform_WGS84_To_UTM.TransformPoints, utm_cs.ExportToPrettyWkt()
 
     def get_conversion(t_srs):
-        utm_cs = osr.SpatialReference()
-        utm_cs.SetFromUserInput(t_srs)
+        out_cs = osr.SpatialReference()
+        out_cs.SetFromUserInput(t_srs)
+        try:
+            out_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
 
-        wgs84_cs = utm_cs.CloneGeogCS()
+        wgs84_cs = out_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
+        try:
+            wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
 
-        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-        return transform_WGS84_To_srs.TransformPoints
+        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, out_cs)
+        return transform_WGS84_To_srs.TransformPoints, out_cs.ExportToPrettyWkt()
 else:
     def get_utm_conversion(lat, lon):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 
-    def get_conversion(lat, lon):
+    def get_conversion(t_srs):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 
@@ -177,14 +195,12 @@ class nmea_info:
             self.get_utm()
 
         self.dist = np.zeros((len(self.y), ))
-        self.dist[1:] = np.cumsum(np.sqrt(
-            (self.x[1:] - self.x[:-1]) ** 2.0 + (
-                self.y[1:] - self.y[:-1]) ** 2.0)) / 1000.0
+        self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x) ** 2.0 + np.diff(self.y) ** 2.0)) / 1000.0
 
     def get_utm(self):
         """Transform lat and lon to utm coords in a nice way."""
-        transform = get_utm_conversion(np.nanmean(self.lat),
-                                       np.nanmean(self.lon))
+        transform, _ = get_utm_conversion(np.nanmean(self.lat),
+                                          np.nanmean(self.lon))
         pts = np.array(transform(np.vstack((self.lon, self.lat)).transpose()))
         self.x, self.y = pts[:, 0], pts[:, 1]
 
@@ -345,9 +361,8 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
         print('CC search')
         for i in range(5):
             for j, dat in enumerate(dats):
-                if abs(max(lon)-min(dat.long)) > 360. or abs(max(dat.long)-min(lon)) > 360.:
-                    raise IndexError('The radar data object has different longitude than the input interpolation dataset.')
-
+                if (min(lon % 360) - max(dat.long % 360)) > 0. or (min(dat.long % 360) - max(lon % 360)) > 0.:
+                    raise ValueError('No overlap in longitudes')
                 if offsets[j] != 0.0:
                     search_vals = np.linspace(-0.1 * abs(offsets[j]),
                                               0.1 * abs(offsets[j]),
@@ -357,10 +372,10 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                 cc_coeffs = [np.corrcoef(
                     interp1d(decday + offsets[j] + inc_offset, lat,
                              kind='linear', fill_value=fill_value)(dat.decday),
-                    dat.lat)[0, 1] + np.corrcoef(
-                        interp1d(decday + offsets[j] + inc_offset, lon,
+                    dat.lat)[1, 1] + np.corrcoef(
+                        interp1d(decday + offsets[j] + inc_offset, lon % 360,
                                  kind='linear', fill_value=fill_value)(
-                                     dat.decday), dat.long)[0, 1]
+                                     dat.decday), dat.long % 360)[0, 1]
                                      for inc_offset in search_vals]
                 offsets[j] += search_vals[np.argmax(cc_coeffs)]
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
@@ -371,7 +386,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                            kind='linear',
                            fill_value=fill_value)
         int_long = interp1d(decday + offsets[j],
-                            lon, kind='linear',
+                            lon % 360, kind='linear',
                             fill_value=fill_value)
         int_elev = interp1d(decday + offsets[j],
                             elev,
@@ -380,14 +395,8 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
         dat.lat = int_lat(dat.decday)
         dat.long = int_long(dat.decday)
         dat.elev = int_elev(dat.decday)
-        gpsdat = nmea_info()
-        gpsdat.lat = dat.lat
-        gpsdat.lon = dat.long
         if conversions_enabled:
-            gpsdat.get_utm()
-            gpsdat.get_dist()
-            dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
-            dat.dist = gpsdat.dist
+            dat.get_projected_coords()
 
 
 def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False,
