@@ -96,7 +96,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                    y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None,
                    return_plotinfo=False, pick_colors=None, clims=None,
-                   flatten_layer=None, middle_picks_only=False):
+                   data_name='data', flatten_layer=None, middle_picks_only=False):
     """Plot a radio echogram.
 
     This function is a little weird since I want to be able to plot on top of
@@ -124,6 +124,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes
         Axes that should be plotted upon
+    data_name: str, optional
+        The name of the data attribute. Default 'data'. Must exist.
     flatten_layer: int, optional
         Distort so this layer is flat
     middle_picks_only: bool, optional
@@ -152,6 +154,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         clims: 2-tuple
             The limits of the colorbar
     """
+    plotting_data = getattr(dat, data_name)
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
     elif (xdat == 'dist') and dat.dist is None:
@@ -175,13 +178,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
             return x
 
     if clims is None:
-        clims = np.percentile(norm(dat.data[y_range[0]:y_range[-1],
-                                            x_range[0]:x_range[-1]])[~np.isnan(
-                                                dat.data[y_range[0]:
-                                                         y_range[-1],
-                                                         x_range[0]:
-                                                             x_range[-1]])],
-                              (10, 90))
+        clims = np.percentile(norm(plotting_data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])]), (10, 90))
 
     if fig is not None:
         if ax is None:
