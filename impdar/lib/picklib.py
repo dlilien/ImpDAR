@@ -66,9 +66,6 @@ def auto_pick(dat,snums,tnums):
         packet, time (deprecated, all nans), and power. Size 5xtnum
     """
 
-    print(snums)
-    print(tnums)
-
     picks_out = np.empty((len(snums),5,dat.tnum))
 
     for i in range(len(snums)):

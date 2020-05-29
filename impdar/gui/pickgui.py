@@ -361,7 +361,6 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bline[self._pick_ind], = self.ax.plot(self.xd, b, color=colors[2])
         else:
             # This is a little complicated to avoid plotting NaN regions
-            print(self._pick_ind)
             self.cline[self._pick_ind].set_data(self.xd, c)
             self.tline[self._pick_ind].set_data(self.xd, t)
             self.bline[self._pick_ind].set_data(self.xd, b)
@@ -376,6 +375,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """
 
         auto_picks = picklib.auto_pick(self.dat,self.autopick_indices[:,0].astype(int),self.autopick_indices[:,1].astype(int))
+        self.autopick_indices = None
 
         if self.dat.picks.samp1 is None:
             self.dat.picks.samp1 = auto_picks[:,0]
@@ -388,8 +388,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bline = [None for i in range(auto_picks.shape[0])]
             self.tline = [None for i in range(auto_picks.shape[0])]
 
-            self.dat.picks.lasttrace.tnum = self.dat.tnum*np.ones(len(self.dat.picks.samp1))
-            self.dat.picks.lasttrace.snum = auto_picks[:,0,-1]
+            self.dat.picks.lasttrace.tnum = self.dat.tnum*np.ones(len(self.dat.picks.samp1)).astype(int)
+            self.dat.picks.lasttrace.snum = auto_picks[:,0,-1].astype(int)
 
         else:
             self.dat.picks.samp1 = np.append(self.dat.picks.samp1,auto_picks[:,0],axis=0)
@@ -398,16 +398,17 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.dat.picks.time = np.append(self.dat.picks.samp3,auto_picks[:,3],axis=0)
             self.dat.picks.power = np.append(self.dat.picks.samp3,auto_picks[:,4],axis=0)
             self.dat.picks.picknums = np.append(self.dat.picks.picknums,
-                    np.arange(self.pickNumberBox.value(),self.pickNumberBox.value()+len(self.dat.picks.samp1)))
-            self.cline.append([None for i in range(auto_picks.shape[0])])
-            self.bline.append([None for i in range(auto_picks.shape[0])])
-            self.tline.append([None for i in range(auto_picks.shape[0])])
+                    np.arange(self.pickNumberBox.value(),self.pickNumberBox.value()+len(auto_picks)))
+            for i in range(auto_picks.shape[0]):
+                self.cline.append(None)
+                self.bline.append(None)
+                self.tline.append(None)
 
-        for i in range(self.dat.picks.samp1.shape[0]):
-            if i == self.dat.picks.samp1.shape[0] - 1:
-                colors = 'gmm'
-            else:
-                colors = 'byy'
+            self.dat.picks.lasttrace.tnum = np.append(self.dat.picks.lasttrace.tnum,self.dat.tnum*np.ones(auto_picks.shape[0]).astype(int))
+            self.dat.picks.lasttrace.snum = np.append(self.dat.picks.lasttrace.snum,auto_picks[:,0,-1].astype(int))
+
+        for i in range(self.dat.picks.samp1.shape[0]-len(auto_picks),self.dat.picks.samp1.shape[0]):
+            colors = 'byy'
             self.current_pick = np.vstack((self.dat.picks.samp1[i, :],
                                            self.dat.picks.samp2[i, :],
                                            self.dat.picks.samp3[i, :],
@@ -417,17 +418,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.pickNumberBox.setValue(self.dat.picks.picknums[i])
             self.update_lines(colors=colors, picker=5)
 
-            self.pickNumberBox.setValue(self.dat.picks.picknums[self._pick_ind])
-            self.current_pick = np.vstack((self.dat.picks.samp1[self._pick_ind, :],
-                                           self.dat.picks.samp2[self._pick_ind, :],
-                                           self.dat.picks.samp3[self._pick_ind, :],
-                                           self.dat.picks.time[self._pick_ind, :],
-                                           self.dat.picks.power[self._pick_ind, :]))
-
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self._saved = False
 
+        # New Pick
+        self._add_pick()
 
     def _select_lines_click(self, event):
         thisline = event.artist
@@ -461,7 +457,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """
         tnum = np.argmin(np.abs(self.xd - event.xdata))
         snum = np.argmin(np.abs(self.yd - event.ydata)) - self.offset[tnum]
-        if hasattr(self,'autopick_indices'):
+        if hasattr(self,'autopick_indices') and self.autopick_indices is not None:
             self.autopick_indices = np.append(self.autopick_indices,[[snum,tnum]],axis=0)
         else:
             self.autopick_indices = np.array([[snum,tnum]])
