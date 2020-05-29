@@ -48,7 +48,7 @@ def pick(traces, snum_start, snum_end, pickparams):
     return picks_out
 
 
-def auto_pick(dat,indices):
+def auto_pick(dat,snums,tnums):
     """Automatically pick any number of reflectors.
 
     Parameters
@@ -66,14 +66,28 @@ def auto_pick(dat,indices):
         packet, time (deprecated, all nans), and power. Size 5xtnum
     """
 
-    picks_out = np.empty((len(indices),5,dat.tnum))
+    print(snums)
+    print(tnums)
 
-    for i in range(len(indices)):
-        dmid = indices[i]
-        for j in range(dat.tnum):
+    picks_out = np.empty((len(snums),5,dat.tnum))
+
+    for i in range(len(snums)):
+        j = int(tnums[i])
+        t_start = int(tnums[i])
+        dmid = snums[i]
+        for n in range(dat.tnum):
             pp = packet_pick(dat.data[:,j],dat.picks.pickparams,dmid)
-            dmid = (pp[0]+pp[2])//2
             picks_out[i,:,j] = pp
+            if j <= t_start and j > 0:
+                dmid = (pp[0]+pp[2])//2
+                j -= 1
+            elif j == 0:
+                dmid = (picks_out[i,0,t_start]+picks_out[i,2,t_start])//2
+                j = t_start + 1
+            elif j > t_start:
+                dmid = (pp[0]+pp[2])//2
+                j += 1
+
     return picks_out
 
 

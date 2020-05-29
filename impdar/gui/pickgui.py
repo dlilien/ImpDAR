@@ -361,6 +361,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bline[self._pick_ind], = self.ax.plot(self.xd, b, color=colors[2])
         else:
             # This is a little complicated to avoid plotting NaN regions
+            print(self._pick_ind)
             self.cline[self._pick_ind].set_data(self.xd, c)
             self.tline[self._pick_ind].set_data(self.xd, t)
             self.bline[self._pick_ind].set_data(self.xd, b)
@@ -374,7 +375,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             3-letter string of one-letter colors
         """
 
-        auto_picks = picklib.auto_pick(self.dat,self.autopick_indices)
+        auto_picks = picklib.auto_pick(self.dat,self.autopick_indices[:,0].astype(int),self.autopick_indices[:,1].astype(int))
 
         if self.dat.picks.samp1 is None:
             self.dat.picks.samp1 = auto_picks[:,0]
@@ -425,6 +426,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+        self._saved = False
 
 
     def _select_lines_click(self, event):
@@ -452,7 +454,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.fig.canvas.flush_events()
 
 
-    def _auto_click(self, event, point_color='g'):
+    def _auto_click(self, event, point_color='m'):
         """Click with auto on.
 
         Can only be plain left click (pick index)
@@ -460,12 +462,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         tnum = np.argmin(np.abs(self.xd - event.xdata))
         snum = np.argmin(np.abs(self.yd - event.ydata)) - self.offset[tnum]
         if hasattr(self,'autopick_indices'):
-            self.autopick_indices.append(snum)
+            self.autopick_indices = np.append(self.autopick_indices,[[snum,tnum]],axis=0)
         else:
-            self.autopick_indices = [snum]
+            self.autopick_indices = np.array([[snum,tnum]])
 
-        c = self.yd[int((self.autopick_indices[-1] + self.offset[0]))]
-        self.ax.plot(0, c, '.', color=point_color)
+        c = self.yd[int((self.autopick_indices[-1,0] + self.offset[0]))]
+        self.ax.plot(tnum, c, '.', color=point_color)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
