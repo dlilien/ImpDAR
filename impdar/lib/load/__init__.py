@@ -12,8 +12,9 @@ A wrapper around the other loading utilities
 
 import os.path
 import numpy as np
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_UoA_mat, load_ramac, load_bsi
-from . import load_delores, load_osu, load_stomat
+from . import load_mcords  # needs to be imported first and alone due to opaque h5py/netcdf4 error
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_segy, load_UoA_mat, 
+from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
