@@ -20,6 +20,8 @@ from ..ImpdarError import ImpdarError
 from ..Picks import Picks
 from .. import gpslib
 
+STODEEP_ATTRS = ['data', 'migdata', 'interp_data', 'nmo_data', 'filtdata', 'hfilt_data']
+
 
 class RadarData(object):
     """A class that holds the relevant information for a radar profile.
@@ -56,6 +58,9 @@ class RadarData(object):
                       'x_coord',
                       'y_coord',
                       'fn']
+
+    #: The names of the optional StoDeep data matrices
+    stodeep_attrs = STODEEP_ATTRS
 
     from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
         rangegain, agc, constant_space, elev_correct, \
@@ -187,13 +192,8 @@ class RadarData(object):
 
         self.check_attrs()
 
-    def _parse_stodeepdata(self, mat, data_attrs=['data',
-                                                  'migdata',
-                                                  'interp_data',
-                                                  'nmo_data',
-                                                  'filtdata',
-                                                  'hfilt_data']):
-        """Set data attribute in a prioritized order"""
+    def _parse_stodeepdata(self, mat, data_attrs=STODEEP_ATTRS):
+        """Set data attribute in a prioritized order."""
         data_dict = {}
         for data_attr in data_attrs:
             if data_attr in mat:

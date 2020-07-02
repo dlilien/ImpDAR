@@ -43,7 +43,7 @@ def save(self, fn):
         else:
             # this guards against error in matlab format
             mat[attr] = 0
-    for attr in self.attrs_optional:
+    for attr in self.attrs_optional + self.stodeep_attrs:
         if hasattr(self, attr) and getattr(self, attr) is not None:
             mat[attr] = getattr(self, attr)
     if hasattr(self, 'picks') and self.picks is not None:
