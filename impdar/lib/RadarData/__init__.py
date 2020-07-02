@@ -57,10 +57,58 @@ class RadarData(object):
                       'dist',
                       'x_coord',
                       'y_coord',
-                      'fn']
+                      'fn',
+                      't_srs']
 
     #: The names of the optional StoDeep data matrices
     stodeep_attrs = STODEEP_ATTRS
+
+    def __str__(self):
+        try:
+            if (self.snum is not None) and (self.tnum is not None):
+                string = '{:d}x{:d} RadarData object'.format(self.snum, self.tnum)
+                proc = False
+                if (self.flags.bpass is not None) and (self.flags.bpass[0]):
+                    proc = True
+                    string += ', vertically bandpassed {:4.1f}:{:4.1f} Mhz'.format(self.flags.bpass[0], self.flags.bpass[1])
+                if (self.flags.hfilt is not None) and (self.flags.hfilt[0]):
+                    proc = True
+                    string += ', horizontally filtered'
+                if (self.flags.interp is not None) and (self.flags.interp[0]):
+                    proc = True
+                    string += ', re-interpolated to {:4.2f}-m spacing'.format(self.flags.interp[1])
+                if (self.flags.crop is not None) and (self.flags.crop[0]):
+                    proc = True
+                    string += ', cropped to {:d}:{:d}'.format(int(self.flags.crop[1]), int(self.flags.crop[2]))
+                if self.nmo_depth is not None:
+                    string += ', moveout-corrected'
+                if (self.flags.restack is not None) and self.flags.restack > 0:
+                    proc = True
+                    string += ', restacked by {:d}'.format(int(self.flags.restack))
+                if (self.flags.mig is not None) and (self.flags.mig != 'none'):
+                    proc = True
+                    string += ', migrated'
+                if not proc:
+                    string += ', unprocessed'
+                string += '.\n'
+
+                if self.fn is not None:
+                    string += '\n    from file {:s}'.format(self.fn)
+                if self.x_coord is not None:
+                    string += '\n    Projected geographic coordinates'
+                    if self.t_srs is not None:
+                        string += (': ' + self.t_srs)
+                elif self.lat is not None:
+                    string += '\n    Unprojected geographic coordinates'
+                if (self.picks is not None) and (self.picks.samp1 is not None):
+                    string += ('\nAssociate picks are: ' + str(self.picks))
+                else:
+                    string += '\nno picks'
+            else:
+                string = 'RadarData object, undefined dimensions'
+        except (ValueError, TypeError, IndexError):
+            string = 'RadarData Object'
+        return string
 
     from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
         rangegain, agc, constant_space, elev_correct, \
@@ -127,6 +175,8 @@ class RadarData(object):
             # Optional attributes
             #: str, the input filename. May be left as None.
             self.fn = None
+            #: str, the projected coordinate system of the data
+            self.t_srs = None
             #: np.ndarray(tnum,) Optional.
             #: Projected x-coordinate along the profile.
             self.x_coord = None

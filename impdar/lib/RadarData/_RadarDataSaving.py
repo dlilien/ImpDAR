@@ -130,7 +130,7 @@ def output_shp(self, fn, t_srs=None, target_out=None):
         cT, t_srs = get_conversion(t_srs=t_srs)
         pts = np.array(cT(np.vstack((self.long, self.lat)).transpose()))
     else:
-        if self.x_coord is not None and hasattr(self, 't_srs'):
+        if (self.x_coord is not None) and hasattr(self, 't_srs') and (self.t_srs is not None):
             pts = np.vstack((self.x_coord, self.y_coord)).transpose()
             t_srs = self.t_srs
         else:
