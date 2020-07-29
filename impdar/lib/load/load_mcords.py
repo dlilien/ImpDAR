@@ -9,9 +9,11 @@
 """
 Load data from the CReSIS radar MCoRDS
 """
+
 import datetime
 import numpy as np
 from scipy.io import loadmat
+import h5py
 from ..RadarData import RadarData
 
 try:
@@ -78,7 +80,11 @@ def load_mcords_mat(fn_mat):
     mcords_data = RadarData(None)
     mcords_data.fn = fn_mat
 
-    mat = loadmat(fn_mat)
+    try:
+        mat = loadmat(fn_mat)
+    except:
+        mat = h5py.File('AR_20140424_03_018.mat', 'r')
+
     if ('Data' not in mat) or ('Longitude' not in mat):
         if ('data' in mat) and ('long' in mat):
             raise KeyError('It appears that this mat file is ImpDAR/StoDeep, not MCoRDS')
@@ -87,6 +93,9 @@ def load_mcords_mat(fn_mat):
     mcords_data.data = 10.*np.log10(np.squeeze(mat['Data']))
     mcords_data.long = np.squeeze(mat['Longitude'])
     mcords_data.lat = np.squeeze(mat['Latitude'])
+    # sometimes the mcords data array is transposed, so check and fix
+    if np.shape(mcords_data.data)[1] != np.shape(mcords_data.lat) and np.shape(mcords_data.data)[0] == np.shape(mcords_data.lat)[0]:
+        mcords_data.data = np.transpose(mcords_data.data)
     # time has units of seconds according to documentation, but this seems wrong
     # numbers are way too big. Leaving it since that is how it is documented though?
     partial_days = np.squeeze(mat['GPS_time']) / (24. * 60. * 60.)
