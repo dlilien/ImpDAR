@@ -13,7 +13,6 @@ Load data from the CReSIS radar MCoRDS
 import datetime
 import numpy as np
 from scipy.io import loadmat
-import h5py
 from ..RadarData import RadarData
 
 try:
@@ -21,6 +20,13 @@ try:
     NC = True
 except ImportError:
     NC = False
+
+try:
+    import h5py
+    H5 = True
+except ImportError:
+    H5 = False
+
 
 
 def load_mcords_nc(fn):
