@@ -24,7 +24,7 @@ FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
                     'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
-def load(filetype, fns_in, channel=1, *args, **kwargs):
+def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     """Load a list of files of a certain type
 
     Parameters
@@ -100,10 +100,18 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
         dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
+
+    if t_srs is not None:
+        try:
+            for d in dat:
+                d.get_projected_coords(t_srs=t_srs)
+        except ImportError:
+            pass
+
     return dat
 
 
-def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -126,74 +134,57 @@ def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     t_srs: str, optional
         Convert to this coordinate system. Requires GDAL.
     """
-
     if not isinstance(fns_in, (list, tuple)):
         fns_in = [fns_in]
 
-    # If a pulse ekko project file is input. We need to partition it first
-    if filetype =='pe' and np.any(np.array([os.path.splitext(fn)[-1] for fn in fns_in]) == '.GPZ'):
-        for fn in fns_in:
-            if os.path.splitext(fn)[-1] != '.GPZ':
-                print(fn,'is NOT a Pulse Ekko Project File but we are partitioning now.'+\
-                        'Load it on its own.')
-                continue
-            else:
-                bn_pe = os.path.splitext(fn)[0]
-                print(fn,'is a Pulse Ekko project file.\n'+\
-                'We will partition it into the respective data and header files at ./'+\
-                bn_pe)
-                if not os.path.isdir(bn_pe):
-                    os.mkdir(bn_pe)
-                os.rename(fn,bn_pe+'/'+fn)
-                os.chdir(bn_pe)
-                load_pulse_ekko.partition_project_file(fn)
-                os.rename(fn,'../'+fn)
-        return
+    if filetype in ['osu', 'gecko']:
+        # In this case, we do all at once since these radars split across files that should be merged
+        rd_list = load(filetype, fns_in, channel=channel, t_srs=t_srs, *args, **kwargs)
+        _save(rd_list, outpath=o)
     else:
-        dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
+        # Other filetypes can be safely done sequentially
+        # If multiple ins, and output is not a dir, we have a problem
+        if (len(fns_in) > 1) and (o is not None) and (not os.path.isdir(o)):
+            raise FileNotFoundError('The output directory does not exist')
 
-    if t_srs is not None:
-        try:
-            for d in dat:
-                d.get_projected_coords(t_srs=t_srs)
-        except ImportError:
-            pass
+        for fn_i in fns_in:
+            # If a pulse ekko project file is input. We need to partition it first
+            # TODO @benhills can you look at moving the following bit to load above.
+            if filetype =='pe' and np.any(np.array([os.path.splitext(fn)[-1] for fn in fn_in]) == '.GPZ'):
+                if os.path.splitext(fn)[-1] != '.GPZ':
+                    print(fn,'is NOT a Pulse Ekko Project File but we are partitioning now.'+\
+                            'It is ignored now. Go back and load it on its own.')
+                    continue
+                else:
+                    bn_pe = os.path.splitext(fn)[0]
+                    print(fn,'is a Pulse Ekko project file.\n'+\
+                    'We will partition it into the respective data and header files at ./'+\
+                    bn_pe)
+                    if not os.path.isdir(bn_pe):
+                        os.mkdir(bn_pe)
+                    os.rename(fn, os.path.join(bn_pe, fn))
+                    os.chdir(bn_pe)
+                    load_pulse_ekko.partition_project_file(fn)
+                    os.rename(fn, os.path.join('..', fn))
+            else:
+                rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, *args, **kwargs)
+            _save(rd_list, outpath=o)
 
 
-    if (filetype == 'gecko' or filetype == 'osu') and len(fns_in) > 1:
-        f_common = fns_in[0]
-        for i in range(1, len(fns_in)):
-            f_common = _common_start(f_common, fns_in[i]).rstrip('[')
-        fn_out = os.path.splitext(f_common)[0] + '_raw.mat'
-        if 'o' in kwargs and kwargs['o'] is not None:
-            fn_out = os.path.join(kwargs['o'], os.path.split(fn_out)[-1])
-        dat[0].save(fn_out)
-    elif 'o' in kwargs and kwargs['o'] is not None:
-        if len(fns_in) > 1:
-            for d_i in dat:
-                fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(d_i.fn)[0] + '_raw.mat')[-1])
-                d_i.save(fn_out)
-        elif os.path.isdir(kwargs['o']):
-            fn_out = kwargs['o'] + os.path.splitext(fns_in[0])[0] + '_raw.mat'
-            dat[0].save(fn_out)
+def _save(rd_list, outpath=None):
+    """Save a list of RadarData objects with optional output directory."""
+    if outpath is not None:
+        if len(rd_list) > 1:
+            for rd in rd_list:
+                fn_out = os.path.join(outpath, os.path.split(os.path.splitext(rd.fn)[0] + '_raw.mat')[-1])
+                rd.save(fn_out)
+        elif os.path.isdir(outpath):
+            fn_out = outpath + os.path.splitext(rd_list[0].fn)[0] + '_raw.mat'
+            rd_list[0].save(fn_out)
         else:
-            fn_out = kwargs['o']
-            dat[0].save(fn_out)
+            fn_out = outpath
+            rd_list[0].save(fn_out)
     else:
-        for d_i in dat:
-            fn_out = os.path.splitext(d_i.fn)[0] + '_raw.mat'
-            d_i.save(fn_out)
-
-
-def _common_start(string_a, string_b):
-    """ returns the longest common substring from the beginning of sa and sb
-    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
-    """
-    def _iter():
-        for char_a, char_b in zip(string_a, string_b):
-            if char_a == char_b:
-                yield char_a
-            else:
-                return
-
-    return ''.join(_iter())
+        for rd in rd_list:
+            fn_out = os.path.splitext(rd.fn)[0] + '_raw.mat'
+            rd.save(fn_out)

@@ -27,7 +27,7 @@ from .Picks import Picks
 from copy import deepcopy
 
 
-def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
+def process_and_exit(fn, cat=False, filetype='mat', o=None, **kwargs):
     """Perform one or more processing steps, save, and exit.
 
     Parameters
@@ -39,45 +39,34 @@ def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
         through each individually.
     filetype: str, optional
         The type of input file. Default is .mat.
+    o: str, optional
+        An output path
     kwargs:
         These are the processing arguments for `process`
     """
-    radar_data = load(filetype, fn)
 
-    # first we do the quirky one
+    def _p_and_e(radar_data):
+        processed = process(radar_data, **kwargs)
+        if not processed and not cat:
+            print('No processing steps performed. Not saving!')
+        else:
+            _save(radar_data, outpath=o, cat=cat)
+
     if cat:
+        # first we do the quirky one
+        # We need to load it all if catting
+        radar_data = load(filetype, fn)
         radar_data = concat(radar_data)
         bn = os.path.splitext(fn[0])[0]
         if bn[-4:] == '_raw':
             bn = bn[:-4]
-        fn = [bn + '_cat.mat']
-
-    processed = process(radar_data, **kwargs)
-    if not processed and not cat:
-        print('No processing steps performed. Not saving!')
-        return
-
-    if 'o' in kwargs and kwargs['o'] is not None:
-        if len(radar_data) > 1:
-            for d, f in zip(radar_data, fn):
-                bn = os.path.split(os.path.splitext(f)[0])[1]
-                if bn[-4:] == '_raw':
-                    bn = bn[:-4]
-                out_fn = os.path.join(kwargs['o'], bn + '_proc.mat')
-                d.save(out_fn)
-        else:
-            out_fn = kwargs['o']
-            radar_data[0].save(out_fn)
+        radar_data[0].fn = bn + '_cat.mat'
+        return _p_and_e(radar_data)
     else:
-        for d, f in zip(radar_data, fn):
-            bn = os.path.splitext(f)[0]
-            if bn[-4:] == '_raw':
-                bn = bn[:-4]
-            if cat:
-                out_fn = bn + '.mat'
-            else:
-                out_fn = bn + '_proc.mat'
-            d.save(out_fn)
+        # Otherwise, we can do things sequentially
+        for fn_i in fn:
+            radar_data = load(filetype, fn)
+            return _p_and_e(radar_data)
 
 
 def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
@@ -267,3 +256,27 @@ def concat(radar_data):
 
     print('Objects concatenated')
     return [out]
+
+
+def _save(rd_list, outpath=True, cat=False):
+    if outpath is not None:
+        if len(rd_list) > 1:
+            for rd in rd_list:
+                bn = os.path.split(os.path.splitext(rd.fn)[0])[1]
+                if bn[-4:] == '_raw':
+                    bn = bn[:-4]
+                out_fn = os.path.join(outpath, bn + '_proc.mat')
+                rd.save(out_fn)
+        else:
+            out_fn = outpath
+            rd_list[0].save(out_fn)
+    else:
+        for rd in rd_list:
+            bn = os.path.splitext(rd.fn)[0]
+            if bn[-4:] == '_raw':
+                bn = bn[:-4]
+            if cat:
+                out_fn = bn + '.mat'
+            else:
+                out_fn = bn + '_proc.mat'
+            rd.save(out_fn)

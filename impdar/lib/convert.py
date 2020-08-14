@@ -47,26 +47,24 @@ def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
         loaders = [lambda x: load(in_fmt, x)[0] for i in fns_in]
 
     # Now actually load the data
-    data = [loader(f) for loader, f in zip(loaders, fns_in)]
+    for loader, fn_i in zip(loaders, fns_in):
+        data = loader(fn_i)
 
-    # Convert
-    if out_fmt == 'mat':
-        for loader, f_i, dat in zip(loaders, fns_in, data):
+        # Convert
+        if out_fmt == 'mat':
             # Guard against silly re-write
             if loader == RadarData and out_fmt == 'mat':
-                continue
-            fn_out = os.path.splitext(f_i)[0] + '.mat'
-            dat.save(fn_out)
-    elif out_fmt == 'shp':
-        for dat in data:
-            fn_out = os.path.splitext(dat.fn)[0] + '.shp'
-            dat.output_shp(fn_out, t_srs=t_srs)
-    elif out_fmt == 'sgy':
-        if not load_segy.SEGY:
-            raise ImportError('You cannot use segy without segyio installed!')
-        for loader, f_i, dat in zip(loaders, fns_in, data):
-            fn_out = os.path.splitext(f_i)[0] + '.sgy'
-            dat.save_as_segy(fn_out)
+                raise ValueError('You are trying a blank conversion that will cause an overwrite...')
+            fn_out = os.path.splitext(data.fn)[0] + '.mat'
+            data.save(fn_out)
+        elif out_fmt == 'shp':
+            fn_out = os.path.splitext(data.fn)[0] + '.shp'
+            data.output_shp(fn_out, t_srs=t_srs)
+        elif out_fmt == 'sgy':
+            if not load_segy.SEGY:
+                raise ImportError('You cannot use segy without segyio installed!')
+            fn_out = os.path.splitext(data.fn)[0] + '.sgy'
+            data.save_as_segy(fn_out)
 
 
 if __name__ == '__main__':
