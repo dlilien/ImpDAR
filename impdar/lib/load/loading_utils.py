@@ -27,7 +27,8 @@ def common_start(string_list):
     if len(string_list) == 1:
         return string_list[0]
     else:
-        sl = string_list.copy()
+        # copy in a 2/3 safe way
+        sl = string_list[:]
         while len(sl) > 1:
             sl[-2] = _cs(sl[-2], sl[-1])
             sl.pop()
