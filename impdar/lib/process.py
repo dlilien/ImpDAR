@@ -108,7 +108,6 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
             raise ValueError('First element of crop must be a float')
         except TypeError:
             raise TypeError('Crop must be subscriptible')
-
     if hcrop is not None:
         try:
             hcrop = (float(hcrop[0]), hcrop[1], hcrop[2])
@@ -119,6 +118,23 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
         for dat in RadarDataList:
             dat.hcrop(*hcrop)
         done_stuff = True
+    if denoise is not None:
+        try:
+            assert (type(denoise[0]) is int)
+            assert (type(denoise[1]) is int)
+        except (ValueError, TypeError, AssertionError, IndexError):
+            raise ValueError('Denoise must be two integers giving vertical and horizontal window sizes')
+    if vbp is not None:
+        if not hasattr(vbp, '__iter__'):
+            raise TypeError('vbp must be a tuple with first two elements \
+                            [low] [high] MHz')
+    if interp is not None:
+        try:
+            float(interp[0])
+            interp[1]
+        except (ValueError, TypeError, IndexError):
+            raise ValueError('interp must be a target spacing (float) then a gps filename')
+
 
     if restack is not None:
         for dat in RadarDataList:
@@ -133,9 +149,6 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
         done_stuff = True
 
     if vbp is not None:
-        if not hasattr(vbp, '__iter__'):
-            raise TypeError('vbp must be a tuple with first two elements \
-                            [low] [high] MHz')
         for dat in RadarDataList:
             dat.vertical_band_pass(*vbp)
         done_stuff = True
@@ -225,10 +238,10 @@ def concat(radar_data):
 
     # Picks are the most challenging part
     all_picks = []
-    all_picks = np.unique(all_picks).tolist()
     for dat in radar_data:
         if dat.picks is not None and dat.picks.picknums is not None and dat.picks.picknums != 0:
             all_picks.extend(dat.picks.picknums)
+    all_picks = np.unique(all_picks).tolist()
     out.picks = Picks(out)
     if len(all_picks) > 0:
         out.picks.picknums = all_picks
@@ -240,7 +253,7 @@ def concat(radar_data):
         start_ind = 0
         for dat in radar_data:
             if ((not hasattr(dat, 'picks')) or (not hasattr(dat.picks, 'picknums')) or (
-                    len(dat.picks.picknums) == 0)):
+                    not hasattr(dat.picks.picknums, '__len__')) or (len(dat.picks.picknums) == 0)):
                 start_ind += dat.tnum
                 continue
             for attr in pick_attrs:

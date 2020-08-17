@@ -97,8 +97,9 @@ def _get_args():
                                      meters. Second argument is the filename \
                                      (csv or mat) with the new GPS data')
     parser_proc.add_argument('-denoise',
-                             type=str,
-                             help='Denoising filter (scipy wiener for now)')
+                             nargs=2,
+                             type=int,
+                             help='Denoising filter vertical and horizontal (scipy wiener for now)')
     parser_proc.add_argument('-migrate',
                              type=str,
                              help='Migrate with the indicated routine.')
