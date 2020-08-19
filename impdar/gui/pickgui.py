@@ -312,6 +312,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _delete_picks(self, snum, tnum):
         self.current_pick[:, tnum:] = np.nan
+        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+        if not np.isnan(self.current_pick[1, tnum - 1]):
+            self.dat.picks.lasttrace.snum[self._pick_ind] = self.current_pick[1, tnum - 1]
 
     def update_lines(self, colors='gmm', picker=None):
         """Update the plotting of the current pick.
