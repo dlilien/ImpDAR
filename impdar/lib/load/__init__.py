@@ -24,7 +24,7 @@ FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
                     'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
-def load(filetype, fns_in, channel=1, *args, **kwargs):
+def load(filetype, fns_in, channel=1, nans=None, *args, **kwargs):
     """Load a list of files of a certain type
 
     Parameters
@@ -60,7 +60,7 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
     elif filetype == 'bsi':
         # BSI data are slightly different since we may have multiple profiles per file
         if load_bsi.H5:
-            data_nestedlist = [load_bsi.load_bsi(fn) for fn in fns_in]
+            data_nestedlist = [load_bsi.load_bsi(fn, nans=nans) for fn in fns_in]
             dat = []
             for data in data_nestedlist:
                 dat.extend(data)
@@ -103,7 +103,7 @@ def load(filetype, fns_in, channel=1, *args, **kwargs):
     return dat
 
 
-def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, t_srs=None, nans=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -150,7 +150,7 @@ def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
                 os.rename(fn,'../'+fn)
         return
     else:
-        dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
+        dat = load(filetype, fns_in, channel=channel, nans=nans, *args, **kwargs)
 
     if t_srs is not None:
         try:
