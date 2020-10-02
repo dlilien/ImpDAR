@@ -151,6 +151,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
 
                 # Deal with this here in case tnum changed due to bad traces
                 h5_data.tnum = h5_data.data.shape[1]
+                h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
             else:
                 h5_data.lat = _dm2dec(lat)
                 h5_data.long = _dm2dec(lon)
