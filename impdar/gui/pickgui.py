@@ -250,7 +250,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     #######
     def _click(self, event):
         # This will handle both edit mode and select mode clicks
-        if self.FigCanvasWidget.mpl_toolbar._active is not None:
+        # Using private attributes so this is amess
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, '_active') and (self.FigCanvasWidget.mpl_toolbar._active is not None):
+            return
+        # mpl >= 3.3.2
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, 'Mode') and (self.FigCanvasWidget.mpl_toolbar.Mode is not None) and (self.FigCanvasWidget.mpl_toolbar.Mode != ''):
             return
         if self.pick_mode == 'edit':
             self._edit_lines_click(event)

@@ -190,7 +190,7 @@ def optimize_moveout_depth(d_in, t, ant_sep, profile_depth, profile_u):
     profile_u: array
         velocity
     """
-    args = np.argwhere(profile_depth<d_in)
+    args = np.argwhere(profile_depth<=d_in)
     if len(args) == 0:
         raise ValueError('Profile not shallow enough. Extend to cover top')
     vels = profile_u[args][:,0]
