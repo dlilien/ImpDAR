@@ -5,13 +5,22 @@
 # Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
-
+"""Legacy class for appending bits of neighboring profiles."""
 
 from .Crop import Crop
 
 
 class LeaderTrailer():
-    """The lt structure from StoInterpret"""
+    """The lt structure from StoInterpret.
+
+    Parameters
+    ----------
+    radardata: impdar.lib.RadarData.RadarData
+        The radardata object for which this contains info.
+    lt_struct: dict
+        Input dictionary of information that we turn into the struct.
+    """
+
     attrs = ['llength', 'tlength', 'ltmatrix']
 
     def __init__(self, radardata, lt_struct=None):
@@ -26,6 +35,13 @@ class LeaderTrailer():
             self.crop = Crop(radardata)
 
     def to_struct(self):
+        """Export to dictionary for Matlab.
+
+        Returns
+        -------
+        dict:
+            The data in a format for use with scipy.io.savemat
+        """
         mat = {}
         for attr in self.attrs:
             if getattr(self, attr) is not None:

@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 """
-
-Load SeiDarT .csv files and convert to the .mat ImpDAR file
+Load SeiDarT .csv files and convert to the .mat ImpDAR file.
 
 Author:
 Benjamin Hills
@@ -19,16 +18,16 @@ import numpy as np
 from ..RadarData import RadarData
 from ..RadarFlags import RadarFlags
 
-def load_seidart(fn_sd, fn_prj, seismic=False, *args, **kwargs):
-    """Load a SeiDarT file into ImpDAR"""
 
+def load_seidart(fn_sd, fn_prj, seismic=False, *args, **kwargs):
+    """Load a SeiDarT file into ImpDAR."""
     sd_data = RadarData(None)
 
     # open the SeiDarT file to get data
     sd_data.data = np.transpose(np.genfromtxt(fn_sd))
 
     # open the project file to read the time step
-    with open(fn_prj,'r') as fid:
+    with open(fn_prj, 'r') as fid:
         prj_contents = fid.read()
     if seismic:
         dt_start = prj_contents.find("S,dt,") + 5
@@ -40,7 +39,8 @@ def load_seidart(fn_sd, fn_prj, seismic=False, *args, **kwargs):
     # Remove pretrigger
     trig_threshold = 0.5  # trigger when mean trace gets up to 50% of maximum
     mean_trace = np.nanmean(np.abs(sd_data.data), axis=1)
-    idx_threshold = np.argwhere(mean_trace > trig_threshold * np.nanmax(mean_trace))
+    idx_threshold = np.argwhere(mean_trace > trig_threshold * np.nanmax(
+        mean_trace))
     idx_trig = np.nanmin(idx_threshold)
     sd_data.data = sd_data.data[idx_trig:]
 
@@ -63,5 +63,6 @@ def load_seidart(fn_sd, fn_prj, seismic=False, *args, **kwargs):
 
     sd_data.dist = np.arange(sd_data.tnum)
     sd_data.chan = -99.
+    sd_data.fn = fn_sd
     sd_data.check_attrs()
     return sd_data

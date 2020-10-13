@@ -103,13 +103,17 @@ class TestMain(unittest.TestCase):
             impproc.sys.argv = ['dummy']
             impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'dummy']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'dummy']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'ahfilt']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'ahfilt']
+                impproc.main()
 
 
 class TestInputs(unittest.TestCase):
@@ -133,12 +137,17 @@ class TestInputs(unittest.TestCase):
         aca, kwca = agc_patch.call_args
         self.assertEqual(kwca['window'], window)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'agc', 'dummy.mat', '-window', '10.1']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'agc', 'dummy.mat', '-window', 'badint']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'agc', 'dummy.mat', '-window', '10.1']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'agc', 'dummy.mat', '-window', 'badint']
+                impproc.main()
 
     @patch('impdar.bin.impproc.vbp')
     @patch('impdar.bin.impproc.load')
@@ -152,9 +161,11 @@ class TestInputs(unittest.TestCase):
         self.assertEqual(kwca['low_MHz'], 10)
         self.assertEqual(kwca['high_MHz'], 20)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'vbp', 'dummy.mat', '10', '20']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'vbp', 'dummy.mat', '10', '20']
+                impproc.main()
 
     @patch('impdar.bin.impproc.rev')
     @patch('impdar.bin.impproc.load')
@@ -189,9 +200,11 @@ class TestInputs(unittest.TestCase):
         self.assertEqual(kwca['ant_sep'], sep)
         self.assertEqual(kwca['uice'], 10.)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'nmo', '--uice', 'badvel', str(sep), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'nmo', '--uice', 'badvel', str(sep), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'nmo', '--uair', str(10), str(sep), 'dummy.mat']
         impproc.main()
@@ -199,13 +212,17 @@ class TestInputs(unittest.TestCase):
         aca, kwca = nmo_patch.call_args
         self.assertEqual(kwca['ant_sep'], sep)
         self.assertEqual(kwca['uair'], 10.)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'nmo', '--uair', 'badvel', str(sep), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'nmo', '--uair', 'badvel', str(sep), 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'nmo', 'dummy.mat', str(sep)]
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'nmo', 'dummy.mat', str(sep)]
+                impproc.main()
 
     @patch('impdar.bin.impproc.interp')
     @patch('impdar.bin.impproc.load')
@@ -219,9 +236,11 @@ class TestInputs(unittest.TestCase):
         self.assertEqual(kwca['spacing'], spacing)
         self.assertEqual(kwca['extrapolate'], False)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'interp', 'dummy.mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat')]
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'interp', 'dummy.mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat')]
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'interp', '--gps_fn', 'dummy', str(spacing), 'dummy.mat']
         impproc.main()
@@ -234,9 +253,12 @@ class TestInputs(unittest.TestCase):
         aca, kwca = interp_patch.call_args
         self.assertEqual(kwca['spacing'], spacing)
         self.assertEqual(kwca['offset'], 10.)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'interp', '--offset', 'badfloat', str(spacing), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'interp', '--offset', 'badfloat', str(spacing), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'interp', '--minmove', str(10), str(spacing), 'dummy.mat']
         impproc.main()
@@ -244,9 +266,11 @@ class TestInputs(unittest.TestCase):
         self.assertEqual(kwca['spacing'], spacing)
         self.assertEqual(kwca['minmove'], 10.)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'interp', '--minmove', 'badfloat', str(spacing), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'interp', '--minmove', 'badfloat', str(spacing), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'interp', '--extrapolate', str(spacing), 'dummy.mat']
         impproc.main()
@@ -282,13 +306,17 @@ class TestInputs(unittest.TestCase):
         self.assertEqual(kwca['start_trace'], 10)
         self.assertEqual(kwca['end_trace'], 20)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'hfilt', '10', 'dummy', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'hfilt', '10', 'dummy', 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'hfilt', 'dummy', '10', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'hfilt', 'dummy', '10', 'dummy.mat']
+                impproc.main()
 
     @patch('impdar.bin.impproc.crop')
     @patch('impdar.bin.impproc.load')
@@ -306,17 +334,23 @@ class TestInputs(unittest.TestCase):
                 self.assertEqual(kwca['lim'], lim)
 
         # Now bad entries
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'crop', 'top', 'bad', str(lim), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'crop', 'top', 'bad', str(lim), 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'crop', 'bad', 'snum', str(lim), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'crop', 'bad', 'snum', str(lim), 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'crop', 'top', 'snum', 'notgood', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'crop', 'top', 'snum', 'notgood', 'dummy.mat']
+                impproc.main()
 
     @patch('impdar.bin.impproc.hcrop')
     @patch('impdar.bin.impproc.load')
@@ -334,17 +368,23 @@ class TestInputs(unittest.TestCase):
                 self.assertEqual(kwca['lim'], lim)
 
         # Now bad entries
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'hcrop', 'left', 'bad', str(lim), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'hcrop', 'left', 'bad', str(lim), 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'hcrop', 'bad', 'tnum', str(lim), 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'hcrop', 'bad', 'tnum', str(lim), 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'hcrop', 'left', 'tnum', 'notgood', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'hcrop', 'left', 'tnum', 'notgood', 'dummy.mat']
+                impproc.main()
 
     @patch('impdar.bin.impproc.restack')
     @patch('impdar.bin.impproc.load')
@@ -357,13 +397,17 @@ class TestInputs(unittest.TestCase):
         aca, kwca = restack_patch.call_args
         self.assertEqual(kwca['traces'], interval)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'restack', 'bad', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'restack', 'bad', 'dummy.mat']
+                impproc.main()
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'restack', '0.1', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'restack', '0.1', 'dummy.mat']
+                impproc.main()
 
     @patch('impdar.bin.impproc.rgain')
     @patch('impdar.bin.impproc.load')
@@ -379,9 +423,11 @@ class TestInputs(unittest.TestCase):
         aca, kwca = rgain_patch.call_args
         self.assertEqual(kwca['slope'], slope)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'rgain', '-slope', 'bad', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'rgain', '-slope', 'bad', 'dummy.mat']
+                impproc.main()
 
     @patch('impdar.bin.impproc.mig')
     @patch('impdar.bin.impproc.load')
@@ -398,9 +444,11 @@ class TestInputs(unittest.TestCase):
             aca, kwca = migrate_patch.call_args
             self.assertEqual(kwca['mtype'], mtype)
 
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--mtype', 'bad', 'dummy.mat']
-            impproc.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--mtype', 'bad', 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--nearfield', 'dummy.mat']
         impproc.main()
@@ -415,64 +463,97 @@ class TestInputs(unittest.TestCase):
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['htaper'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--htaper', str(badint), 'dummy.mat']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--htaper', str(worseint), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--htaper', str(badint), 'dummy.mat']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--htaper', str(worseint), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--vtaper', str(goodint), 'dummy.mat']
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['vtaper'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--vtaper', str(badint), 'dummy.mat']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--vtaper', str(worseint), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--vtaper', str(badint), 'dummy.mat']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--vtaper', str(worseint), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--nxpad', str(goodint), 'dummy.mat']
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['nxpad'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--nxpad', str(badint), 'dummy.mat']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--nxpad', str(worseint), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--nxpad', str(badint), 'dummy.mat']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--nxpad', str(worseint), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--tmig', str(goodint), 'dummy.mat']
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['tmig'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--tmig', str(badint), 'dummy.mat']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--tmig', str(worseint), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--tmig', str(badint), 'dummy.mat']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--tmig', str(worseint), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--verbose', str(goodint), 'dummy.mat']
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['verbose'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--verbose', str(badint), 'dummy.mat']
-            impproc.main()
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--verbose', str(worseint), 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--verbose', str(badint), 'dummy.mat']
+                impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--verbose', str(worseint), 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--vel', str(goodint), 'dummy.mat']
         impproc.main()
         aca, kwca = migrate_patch.call_args
         self.assertEqual(kwca['vel'], goodint)
-        with self.assertRaises(SystemExit):
-            impproc.sys.argv = ['dummy', 'migrate', '--vel', 'dummy', 'dummy.mat']
-            impproc.main()
+
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impproc.sys.argv = ['dummy', 'migrate', '--vel', 'dummy', 'dummy.mat']
+                impproc.main()
 
         impproc.sys.argv = ['dummy', 'migrate', '--vel_fn', str(goodint), 'dummy.mat']
         impproc.main()

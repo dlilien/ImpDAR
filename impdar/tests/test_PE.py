@@ -17,7 +17,7 @@ from impdar.lib.load import load_pulse_ekko
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class Dummy(unittest.TestCase):
+class TestPE(unittest.TestCase):
 
     def test_load_pe(self):
         load_pulse_ekko.load_pe(os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1'))

@@ -2,16 +2,18 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2016 dlilien <dlilien@berens>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3 license.
 
 """
-Some classes and functions to handle different types of GPS data
+Some classes and functions to handle different types of GPS data.
 
-The workhorse of this library, nmea_info, is not designed to be created directly. Use RadarGPS class, which has an __init__ method, instead.
+The workhorse of this library, nmea_info, is not designed to be created
+directly. Use RadarGPS class, which has an __init__ method, instead.
 
-Additional methods in this library are used to read the filetypes from StoDeep. These can then be used to redo the GPS info on another object
+Additional methods in this library are used to read the filetypes from StoDeep.
+These can then be used to redo the GPS info on another object
 """
 import numpy as np
 try:
@@ -24,6 +26,7 @@ from scipy.interpolate import interp1d
 
 if conversions_enabled:
     def get_utm_conversion(lat, lon):
+        """Retrun the gdal transform to convert coords."""
         def utm_getZone(longitude):
             return (int(1 + (longitude + 180.0) / 6.0))
 
@@ -40,14 +43,55 @@ if conversions_enabled:
         utm_cs.SetWellKnownGeogCS('WGS84')
         utm_cs.SetUTM(utm_zone, is_northern)
 
+        # On newer versions of osr we need this, but on old versions it will fail
+        try:
+            utm_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
         wgs84_cs = utm_cs.CloneGeogCS()
         wgs84_cs.ExportToPrettyWkt()
+        try:
+            wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
 
         transform_WGS84_To_UTM = osr.CoordinateTransformation(wgs84_cs, utm_cs)
-        return transform_WGS84_To_UTM.TransformPoints
+        return transform_WGS84_To_UTM.TransformPoints, utm_cs.ExportToPrettyWkt()
+
+    def get_conversion(t_srs):
+        out_cs = osr.SpatialReference()
+        out_cs.SetFromUserInput(t_srs)
+        try:
+            out_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
+        wgs84_cs = out_cs.CloneGeogCS()
+        wgs84_cs.ExportToPrettyWkt()
+        try:
+            wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
+        transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, out_cs)
+        return transform_WGS84_To_srs.TransformPoints, out_cs.ExportToPrettyWkt()
 else:
     def get_utm_conversion(lat, lon):
+        """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
+
+    def get_conversion(t_srs):
+        """Just raise an exception since we cannot really convert."""
+        raise ImportError('Cannot convert coordinates: osr not importable')
+
+
+def hhmmss2dec(times):
+    """Deal with one of the many weird time formats. 6-char string to day."""
+    s = times % 100
+    m = (times % 10000 - s) / 100
+    h = (times - m * 100 - s) / 10000
+    return (h + m / 60.0 + s / 3600.0) / 24.0
 
 
 class nmea_info:
@@ -55,17 +99,18 @@ class nmea_info:
 
     Attributes
     ----------
-    lat: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
+    lat: np.ndarray
         wgs84 latitude of points
-    lon: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
+    lon: np.ndarray_
         wgs84 longitude of points
-    x: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
+    x: np.ndarray
         Projected x coordinates of points
-    y: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
+    y: np.ndarray
         Projected y coordinates of points
-    z: `ndarray <https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html>`_
+    z: np.ndarray
         Projected z coordinates of points
     """
+
     all_data = None
     lat = None
     lon = None
@@ -79,6 +124,7 @@ class nmea_info:
     scans = None
 
     def get_all(self):
+        """Populate all the values from the input data."""
         self.glat()
         self.glon()
         self.gqual()
@@ -91,62 +137,98 @@ class nmea_info:
         self.get_dist()
 
     def glat(self):
+        """Populate lat(itude)."""
         if self.lat is None:
-            self.lat = self.all_data[:, 2] * ((self.all_data[:, 1] - self.all_data[:, 1] % 100) / 100 + (self.all_data[:, 1] % 100) / 60)
+            self.lat = self.all_data[:, 2] * (
+                (self.all_data[:, 1] - self.all_data[:, 1] % 100) / 100 + (
+                    self.all_data[:, 1] % 100) / 60)
         if self.y is None:
-            self.y = self.lat
+            self.y = self.lat * 110000.0  # Temporary guess using earths radius
         return self.lat
 
     def glon(self):
+        """Populate lon(gitude)."""
         if self.lon is None:
-            self.lon = self.all_data[:, 4] * ((self.all_data[:, 3] - self.all_data[:, 3] % 100) / 100 + (self.all_data[:, 3] % 100) / 60)
+            self.lon = self.all_data[:, 4] * (
+                (self.all_data[:, 3] - self.all_data[:, 3] % 100) / 100 + (
+                    self.all_data[:, 3] % 100) / 60)
         if self.x is None:
-            self.x = self.lon
+            # Temporary guess using radius of the earth
+            if self.lat is None:
+                self.glat()
+            self.x = self.lon * 110000.0 * \
+                np.abs(np.cos(self.lat * np.pi / 180.0))
         return self.lon
 
     def gqual(self):
+        """Populate qual(ity)."""
         self.qual = self.all_data[:, 5]
         return self.qual
 
     def gsats(self):
+        """Populate sats (number of satellites)."""
         self.sats = self.all_data[:, 6]
         return self.sats
 
     def gz(self):
+        """Populate z (elevation)."""
         self.z = self.all_data[:, 8]
         return self.z
 
     def ggeo_offset(self):
+        """Populate geo_offset (Distance between ellipsoid and geoid)."""
         self.geo_offset = self.all_data[:, 8]
         return self.geo_offset
 
     def gtimes(self):
+        """Populate times."""
         self.times = self.all_data[:, 0]
         return self.times
 
     def get_dist(self):
-        if self.x is None:
-            self.glon()
+        """Calculate distance."""
         if self.y is None:
             self.glat()
+        if self.x is None:
+            self.glon()
+        if conversions_enabled:
+            self.get_utm()
+
         self.dist = np.zeros((len(self.y), ))
-        self.dist[1:] = np.cumsum(np.sqrt((self.x[1:] - self.x[:-1]) ** 2.0 + (self.y[1:] - self.y[:-1]) ** 2.0)) / 1000.0
+        self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x) ** 2.0 + np.diff(self.y) ** 2.0)) / 1000.0
 
     def get_utm(self):
-        transform = get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.lon))
+        """Transform lat and lon to utm coords in a nice way."""
+        transform, _ = get_utm_conversion(np.nanmean(self.lat),
+                                          np.nanmean(self.lon))
         pts = np.array(transform(np.vstack((self.lon, self.lat)).transpose()))
         self.x, self.y = pts[:, 0], pts[:, 1]
 
     @property
     def dectime(self):
-        s = self.times % 100
-        m = (self.times % 10000 - s) / 100
-        h = (self.times - m * 100 - s) / 10000
-        return (h + m / 60.0 + s / 3600.0) / 24.0
+        """Convert the nasty 6-char time to something usable."""
+        return hhmmss2dec(self.times)
 
 
 def nmea_all_info(list_of_sentences):
-    """Return an object with the nmea info from a given list of sentences"""
+    """
+    Return an object with the nmea info from a given list of sentences.
+
+    Parameters
+    ----------
+    list_of_sentences : list of strs
+        NMEA output.
+
+    Raises
+    ------
+    ValueError
+        If the NMEA output does not contain GGA strings.
+
+    Returns
+    -------
+    np.ndarray
+        An array of the useful information in the NMEA sentences.
+    """
     def _gga_sentence_split(sentence):
         all = sentence.split(',')
         if len(all) > 5:
@@ -165,7 +247,8 @@ def nmea_all_info(list_of_sentences):
 
     if list_of_sentences[0].split(',')[0] == '$GPGGA':
         data = nmea_info()
-        data.all_data = np.array([_gga_sentence_split(sentence) for sentence in list_of_sentences])
+        data.all_data = np.array([_gga_sentence_split(sentence)
+                                  for sentence in list_of_sentences])
         return data
     else:
         print(list_of_sentences[0].split(',')[0])
@@ -173,27 +256,66 @@ def nmea_all_info(list_of_sentences):
 
 
 class RadarGPS(nmea_info):
+    """
+    A container to make nmea info useful.
+
+    This should handle frequency mismatch between radar and gps.
+
+    Parameters
+    ----------
+    gga : list of strs
+        The GPS data
+    scans : TYPE
+        DESCRIPTION.
+    trace_num : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
 
     def __init__(self, gga, scans, trace_num):
+
         self.nmea_info = nmea_all_info(gga)
         self.nmea_info.scans = scans
         self.nmea_info.get_all()
 
-        kgps_indx = np.hstack((np.array([0]), 1 + np.where(np.logical_and(np.diff(self.nmea_info.times) != 0, np.logical_and(~np.isnan(self.nmea_info.times[1:]), np.diff(self.nmea_info.scans) != 0)))[0]))
-        self.lat = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lat[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
-        self.lon = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.lon[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
-        self.z = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.z[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
-        self.times = interp1d(self.nmea_info.scans[kgps_indx], self.nmea_info.times[kgps_indx], kind='linear', fill_value='extrapolate')(trace_num)
+        kgps_mask = np.logical_and(~np.isnan(self.nmea_info.times[1:]),
+                                   np.diff(self.nmea_info.scans) != 0)
+        kgps_mask = np.logical_and(np.diff(self.nmea_info.times) != 0,
+                                   kgps_mask)
+        kgps_where = np.where(kgps_mask)[0]
+        kgps_indx = np.hstack((np.array([0]), 1 + kgps_where))
+        self.lat = interp1d(self.nmea_info.scans[kgps_indx],
+                            self.nmea_info.lat[kgps_indx],
+                            kind='linear',
+                            fill_value='extrapolate')(trace_num)
+        self.lon = interp1d(self.nmea_info.scans[kgps_indx],
+                            self.nmea_info.lon[kgps_indx],
+                            kind='linear',
+                            fill_value='extrapolate')(trace_num)
+        self.z = interp1d(self.nmea_info.scans[kgps_indx],
+                          self.nmea_info.z[kgps_indx], kind='linear',
+                          fill_value='extrapolate')(trace_num)
+        self.times = interp1d(self.nmea_info.scans[kgps_indx],
+                              self.nmea_info.times[kgps_indx],
+                              kind='linear',
+                              fill_value='extrapolate')(trace_num)
         if conversions_enabled:
             self.get_utm()
         self.get_dist()
 
 
-def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=False, guess_offset=True):
-    """Use new, better GPS data for lat, lon, and elevation
+def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
+                          extrapolate=False, guess_offset=True):
+    """Use new, better GPS data for lat, lon, and elevation.
 
-    The interpolation in this function is done using the time since the radar has accurate timing from its GPS.
-    The old version of this function in StoDeep required redundant variables (x_coord, y_coord, dist).
+    The interpolation in this function is done using the time since the radar
+    has accurate timing from its GPS.
+    The old version of this function in StoDeep required redundant variables
+    (x_coord, y_coord, dist).
     I've dropped that dependency.
 
     Parameters
@@ -207,17 +329,20 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
     elev: :class:`numpy.ndarray`
         Elevation from kinematic
     decday: :class:`numpy.ndarray`
-        Decimal day. You need to reference this to match up with what the radar uses using offset
+        Decimal day. You need to reference this to match up with what the
+        radar uses using offset
     offset: float, optional
         Translate the GPS times by this amount for alignment with the radar
     extrapoloate: bool, optional
         If true, extrapolate data to fill values rather than using NaNs.
-        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
-        the geolocation and not get an error.
+        Desirable for small offsets with the GPS, but dangerous since you
+        can totally screw up the geolocation and not get an error.
         USE WITH CAUTION.
     guess_offset: bool, optional
-        If true, ImpDAR will attempt to find the offset between the GPS and Radar times using the cross-correlation between
-        the x coordinates in the two datasets. If the guess at the offset is nonzero, we look at 1000 offsets within 10% of
+        If true, ImpDAR will attempt to find the offset between the GPS and
+        Radar times using the cross-correlation between
+        the x coordinates in the two datasets. If the guess at the offset is
+        nonzero, we look at 1000 offsets within 10% of
         the offset. Else we look at +/- 0.001 days
     """
     if extrapolate:
@@ -230,43 +355,53 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0, extrapolate=
 
     for in_dat in [lat, lon, elev]:
         if len(decday) != len(in_dat):
-            raise IndexError('lat, lon, elev, and decday must be the same length')
-
+            raise IndexError('lat, lon, elev, and decday must be the same len')
     offsets = [offset for i in dats]
     if guess_offset:
         print('CC search')
         for i in range(5):
             for j, dat in enumerate(dats):
-                if abs(max(lon)-min(dat.long)) > 360. or abs(max(dat.long)-min(lon)) > 360.:
-                    raise IndexError('The radar data object has different longitude than the input interpolation dataset.')
-
+                if (min(lon % 360) - max(dat.long % 360)) > 0. or (min(dat.long % 360) - max(lon % 360)) > 0.:
+                    raise ValueError('No overlap in longitudes')
                 if offsets[j] != 0.0:
-                    search_vals = np.linspace(-0.1 * abs(offsets[j]), 0.1 * abs(offsets[j]), 1001)
+                    search_vals = np.linspace(-0.1 * abs(offsets[j]),
+                                              0.1 * abs(offsets[j]),
+                                              1001)
                 else:
                     search_vals = np.linspace(-0.1, 0.1, 5001)
-                cc_coeffs = [np.corrcoef(interp1d(decday + offsets[j] + inc_offset, lat, kind='linear', fill_value=fill_value)(dat.decday), dat.lat)[0, 1] + np.corrcoef(interp1d(decday + offsets[j] + inc_offset, lon, kind='linear', fill_value=fill_value)(dat.decday), dat.long)[0, 1] for inc_offset in search_vals]
+                cc_coeffs = [np.corrcoef(
+                    interp1d(decday + offsets[j] + inc_offset, lat,
+                             kind='linear', fill_value=fill_value)(dat.decday),
+                    dat.lat)[1, 1] + np.corrcoef(
+                        interp1d(decday + offsets[j] + inc_offset, lon % 360,
+                                 kind='linear', fill_value=fill_value)(
+                                     dat.decday), dat.long % 360)[0, 1]
+                                     for inc_offset in search_vals]
                 offsets[j] += search_vals[np.argmax(cc_coeffs)]
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
 
     for j, dat in enumerate(dats):
-        int_lat = interp1d(decday + offsets[j], lat, kind='linear', fill_value=fill_value)
-        int_long = interp1d(decday + offsets[j], lon, kind='linear', fill_value=fill_value)
-        int_elev = interp1d(decday + offsets[j], elev, kind='linear', fill_value=fill_value)
+        int_lat = interp1d(decday + offsets[j],
+                           lat,
+                           kind='linear',
+                           fill_value=fill_value)
+        int_long = interp1d(decday + offsets[j],
+                            lon % 360, kind='linear',
+                            fill_value=fill_value)
+        int_elev = interp1d(decday + offsets[j],
+                            elev,
+                            kind='linear',
+                            fill_value=fill_value)
         dat.lat = int_lat(dat.decday)
         dat.long = int_long(dat.decday)
         dat.elev = int_elev(dat.decday)
-        gpsdat = nmea_info()
-        gpsdat.lat = dat.lat
-        gpsdat.lon = dat.long
         if conversions_enabled:
-            gpsdat.get_utm()
-            gpsdat.get_dist()
-            dat.x_coord, dat.y_coord = gpsdat.x, gpsdat.y
-            dat.dist = gpsdat.dist
+            dat.get_projected_coords()
 
 
-def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False, guess_offset=False):
-    """Use a matlab file with gps info to redo radar GPS
+def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False,
+                      guess_offset=False):
+    """Use a matlab file with gps info to redo radar GPS.
 
     Parameters
     ----------
@@ -278,22 +413,38 @@ def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False, guess_offset=
         Change decday by this much to match the radar's gps
     extrapoloate: bool, optional
         If true, extrapolate data to fill values rather than using NaNs.
-        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
-        the geolocation and not get an error.
+        Desirable for small offsets with the GPS,
+        but dangerous since you can totally screw up the geolocation and
+        not get an error.
         USE WITH CAUTION.
     """
     from scipy.io import loadmat
     mat = loadmat(mat_fn)
     for val in ['lat', 'long', 'elev', 'decday']:
         if val not in mat:
-            raise ValueError('{:s} needs to be contained in matlab input file'.format(val))
-    kinematic_gps_control(dats, mat['lat'].flatten(), mat['long'].flatten(), mat['elev'].flatten(), mat['decday'].flatten(), offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
+            raise ValueError('{:s} needs to be contained in matlab \
+                               input file'.format(val))
+    kinematic_gps_control(dats,
+                          mat['lat'].flatten(),
+                          mat['long'].flatten(),
+                          mat['elev'].flatten(),
+                          mat['decday'].flatten(),
+                          offset=offset, extrapolate=extrapolate,
+                          guess_offset=guess_offset)
 
 
-def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extrapolate=False, guess_offset=False, **genfromtxt_flags):
+def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev',
+                      extrapolate=False, guess_offset=False,
+                      **genfromtxt_flags):
     """Use a csv gps file to redo the GPS on radar data.
 
-    The csv is read using numpy.genfromtxt, which supports a number of options. One, 'names', is set explicitly by the argument 'names' to this function: you can change the value of that string to True to read column names from the first post-header line in the file. You can also manually change the column names by giving a different comma-separated string. The names must contain 'decday', 'long', 'lat', and 'elev'.
+    The csv is read using numpy.genfromtxt, which supports a number of options.
+    One, 'names', is set explicitly by the argument 'names' to this function:
+        you can change the value of that string to True to read column names
+        from the first post-header line in the file.
+        You can also manually change the column names by giving a different
+        comma-separated string.
+        The names must contain 'decday', 'long', 'lat', and 'elev'.
 
     Parameters
     ----------
@@ -307,7 +458,8 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extr
         names argument to numpy.genfromtxt used to read the csv.
     extrapoloate: bool, optional
         If true, extrapolate data to fill values rather than using NaNs.
-        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
+        Desirable for small offsets with the GPS, but dangerous since you can
+        totally screw up
         the geolocation and not get an error.
         USE WITH CAUTION.
 
@@ -315,20 +467,32 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev', extr
     Any additional kwargs are passed to numpy.genfromtxt
     """
     data = np.genfromtxt(csv_fn, names=names, **genfromtxt_flags)
-    kinematic_gps_control(dats, data['lat'].flatten(), data['long'].flatten(), data['elev'].flatten(), data['decday'].flatten(), offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
+    kinematic_gps_control(dats,
+                          data['lat'].flatten(),
+                          data['long'].flatten(),
+                          data['elev'].flatten(),
+                          data['decday'].flatten(),
+                          offset=offset,
+                          extrapolate=extrapolate,
+                          guess_offset=guess_offset)
 
 
-def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1.0e-2, genfromtxt_kwargs={}, extrapolate=False, guess_offset=False, **kwargs):
-    """Do kinematic GPS control then interpolate the data to constant spacing
+def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0,
+           min_movement=1.0e-2, genfromtxt_kwargs={}, extrapolate=False,
+           guess_offset=False, **kwargs):
+    """Do kinematic GPS control then interpolate the data to constant spacing.
 
     Parameters
     ----------
     spacing: float, optional
         Target distance spacing in meters
     fn: str, optional
-        If this is None, no control. Otherwise, this should be a mat or csv file with lat, long, elev, and decday fields
+        If this is None, no control.
+        Otherwise, this should be a mat or csv file with lat, long, elev,
+        and decday fields
     fn_type: str, optional
-        csv or mat? Ignored if fn is None. Will guess based on extension if this is None
+        csv or mat? Ignored if fn is None.
+        Will guess based on extension if this is None
     offset: float, optional
         move the decday by this much to match gps
     min_movement: float, optional
@@ -337,15 +501,25 @@ def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0, min_movement=1
         kwargs to pass to genfromtxt when reading a csv. Ignored otherwise.
     extrapoloate: bool, optional
         If true, extrapolate data to fill values rather than using NaNs.
-        Desirable for small offsets with the GPS, but dangerous since you can totally screw up
-        the geolocation and not get an error.
+        Desirable for small offsets with the GPS, but dangerous since you can
+        totally screw up the geolocation and not get an error.
         USE WITH CAUTION.
     """
     if fn is not None:
         if fn_type == 'mat' or ((fn_type is None) and (fn[-4:] == '.mat')):
-            kinematic_gps_mat(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset)
-        elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv', '.txt']):
-            kinematic_gps_csv(dats, fn, offset=offset, extrapolate=extrapolate, guess_offset=guess_offset, **genfromtxt_kwargs)
+            kinematic_gps_mat(dats,
+                              fn,
+                              offset=offset,
+                              extrapolate=extrapolate,
+                              guess_offset=guess_offset)
+        elif fn_type == 'csv' or (fn_type is None and fn[-4:] in ['.csv',
+                                                                  '.txt']):
+            kinematic_gps_csv(dats,
+                              fn,
+                              offset=offset,
+                              extrapolate=extrapolate,
+                              guess_offset=guess_offset,
+                              **genfromtxt_kwargs)
         else:
             raise ValueError('Cannot identify fn filetype, must be mat or csv')
     if spacing is not None:

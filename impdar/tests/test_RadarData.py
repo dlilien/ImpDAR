@@ -9,11 +9,18 @@
 """
 Test the basics of RadarData
 """
+import sys
 import os
 import unittest
 import numpy as np
-from impdar.lib.RadarData import RadarData
-from impdar.lib import process
+from impdar.lib.RadarData import RadarData, _RadarDataProcessing
+from impdar.lib.Picks import Picks
+from impdar.lib.ImpdarError import ImpdarError
+
+if sys.version_info[0] >= 3:
+    from unittest.mock import patch
+else:
+    from mock import patch
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,9 +31,23 @@ class TestRadarDataLoading(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
         self.assertEqual(data.data.shape, (20, 40))
 
+    def test_ReadLegacyStodeep(self):
+        # This one has data and other attrs
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_otherstodeepattrs.mat'))
+        self.assertEqual(data.data.shape, (20, 40))
+
+        # This one has has only other attrs
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_just_otherstodeepattrs.mat'))
+        self.assertEqual(data.data.shape, (20, 40))
+
     def test_badread(self):
+        # Data but not other attrs
         with self.assertRaises(KeyError):
             data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_matlab.mat'))
+
+        # All other attrs, no data
+        with self.assertRaises(KeyError):
+            data = RadarData(os.path.join(THIS_DIR, 'input_data', 'nonimpdar_justmissingdat.mat'))
 
     def tearDown(self):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_out.mat')):
@@ -41,7 +62,7 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.nmo_depth = None
         self.data.travel_time = np.arange(0, 0.2, 0.01)
         self.data.dt = 1.0e-8
-        self.data.trig = 0.
+        self.data.trig = self.data.trig * 0.
 
     def test_Reverse(self):
         data_unrev = self.data.data.copy()
@@ -49,15 +70,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
         self.assertTrue(np.allclose(self.data.x_coord, np.arange(39, -1, -1)))
         self.data.reverse()
-        self.assertTrue(np.allclose(self.data.data, data_unrev))
-        self.assertTrue(np.allclose(self.data.x_coord, np.arange(40)))
-
-    def test_process_Reverse(self):
-        data_unrev = self.data.data.copy()
-        process.process([self.data], rev=True)
-        self.assertTrue(np.allclose(self.data.data, np.fliplr(data_unrev)))
-        self.assertTrue(np.allclose(self.data.x_coord, np.arange(39, -1, -1)))
-        process.process([self.data], rev=True)
         self.assertTrue(np.allclose(self.data.data, data_unrev))
         self.assertTrue(np.allclose(self.data.x_coord, np.arange(40)))
 
@@ -109,20 +121,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.crop(0.165, 'bottom', dimension='depth')
         self.assertTrue(self.data.data.shape == (17, 40))
         self.data.crop(0.055, 'top', dimension='depth')
-        self.assertTrue(self.data.data.shape == (11, 40))
-
-    def test_process_Crop(self):
-        with self.assertRaises(TypeError):
-            process.process([self.data], crop=True)
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=(1.0, 'top', 'dum'))
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=(1.0, 'bot', 'snum'))
-        with self.assertRaises(ValueError):
-            process.process([self.data], crop=('ugachacka', 'top', 'snum'))
-        process.process([self.data], crop=(17, 'bottom', 'snum'))
-        self.assertTrue(self.data.data.shape == (17, 40))
-        process.process([self.data], crop=(6, 'top', 'snum'))
         self.assertTrue(self.data.data.shape == (11, 40))
 
     def test_HCropTnum(self):
@@ -182,29 +180,53 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.rangegain(1.0)
         self.assertTrue(self.data.flags.rgain)
 
-    def test_NMO_noexcpetion(self):
+        # Deprecated for trig not to be a vector, but check it anyway
+        self.data.trig = 0.0
+        self.data.rangegain(1.0)
+        self.assertTrue(self.data.flags.rgain)
+
+    def test_NMO(self):
         # If velocity is 2
         self.data.nmo(0., uice=2.0, uair=2.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
+
         # shouldn't care about uair if offset=0
+        self.setUp()
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
 
-        self.data.flags.nmo = False
+        self.setUp()
         self.data.nmo(0., uice=2.0, uair=200.0)
         self.assertEqual(self.data.flags.nmo.shape, (2,))
         self.assertTrue(self.data.flags.nmo[0])
 
-    def test_process_NMO(self):
-        # If velocity is 2
-        process.process([self.data], nmo=(0., 2.0, 2.0))
-        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
-        # shouldn't care about uair if offset=0
-        process.process([self.data], nmo=(0., 2.0, 200.0))
-        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
+        self.setUp()
+        self.data.nmo(0., uice=2.0, uair=2.0, const_firn_offset=3.0)
+        self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6 + 3.0, self.data.nmo_depth))
 
-        # Just make sure we can use one arg
-        process.process([self.data], nmo=0.)
+        self.setUp()
+        self.data.trig = np.ones((self.data.tnum, ))
+        with self.assertRaises(ImpdarError):
+            self.data.nmo(0., uice=2.0, uair=2.0)
+
+        # Good rho profile
+        self.setUp()
+        self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'rho_profile.txt'))
+
+        # bad rho profile
+        self.setUp()
+        with self.assertRaises(Exception):
+            self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
+
+    def test_optimize_moveout_depth(self):
+        d = _RadarDataProcessing.optimize_moveout_depth(100.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
+        self.assertFalse(np.isnan(d))
+
+        d = _RadarDataProcessing.optimize_moveout_depth(2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
+        self.assertFalse(np.isnan(d))
+
+        with self.assertRaises(ValueError):
+            d = _RadarDataProcessing.optimize_moveout_depth(-2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
 
     def test_restack_odd(self):
         self.data.restack(5)
@@ -214,12 +236,6 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.restack(4)
         self.assertTrue(self.data.data.shape == (20, 8))
 
-    def test_process_restack(self):
-        process.process([self.data], restack=3)
-        self.assertTrue(self.data.data.shape == (20, 13))
-        process.process([self.data], restack=[3])
-        self.assertTrue(self.data.data.shape == (20, 4))
-
     def test_elev_correct(self):
         self.data.elev = np.arange(self.data.data.shape[1]) * 0.002
         with self.assertRaises(ValueError):
@@ -228,25 +244,77 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.elev_correct(v_avg=2.0e6)
         self.assertTrue(self.data.data.shape == (27, 40))
 
-    def test_constant_space(self):
+    def test_constant_space_real(self):
+        # Basic check where there is movement every step
         distlims = (self.data.dist[0], self.data.dist[-1])
         space = 100.
+        targ_size = np.ceil((distlims[-1] - distlims[0]) * 1000. / space)
         self.data.constant_space(space)
-        self.assertTrue(self.data.data.shape == (20, np.ceil((distlims[-1] - distlims[0]) * 1000. / space)))
-        self.assertTrue(self.data.x_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.y_coord.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.lat.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.long.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.elev.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
-        self.assertTrue(self.data.decday.shape == (np.ceil((distlims[-1] - distlims[0]) * 1000. / space), ))
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
+
+        # Make sure we can have some bad values from no movement
+        # This will delete some distance so, be careful with checks
+        self.setUp()
+        self.data.constant_space(space, min_movement=35.)
+        self.assertEqual(self.data.data.shape[0], 20)
+        self.assertLessEqual(self.data.data.shape[1], targ_size)
+        self.assertLessEqual(self.data.x_coord.shape[0], targ_size)
+        self.assertLessEqual(self.data.y_coord.shape[0], targ_size)
+        self.assertLessEqual(self.data.lat.shape[0], targ_size)
+        self.assertLessEqual(self.data.long.shape[0], targ_size)
+        self.assertLessEqual(self.data.elev.shape[0], targ_size)
+        self.assertLessEqual(self.data.decday.shape[0], targ_size)
 
         # do not fail because flags structure is weird from matlab
-        space = 100.
+        self.setUp()
         self.data.flags.interp = False
         self.data.constant_space(space)
         self.assertTrue(self.data.flags.interp.shape == (2,))
         self.assertTrue(self.data.flags.interp[0])
         self.assertEqual(self.data.flags.interp[1], space)
+
+        # Want to be able to do picks too
+        self.setUp()
+        self.data.pick = Picks(self.data)
+        self.data.picks.samp1 = np.ones((2, self.data.tnum))
+        self.data.picks.samp2 = np.ones((2, self.data.tnum))
+        self.data.picks.samp3 = np.ones((2, self.data.tnum))
+        self.data.picks.power = np.ones((2, self.data.tnum))
+        self.data.picks.time = np.ones((2, self.data.tnum))
+        self.data.constant_space(space)
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
+        self.assertTrue(self.data.picks.samp1.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.samp2.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.samp3.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.power.shape == (2, targ_size))
+        self.assertTrue(self.data.picks.time.shape == (2, targ_size))
+        
+    def test_constant_space_complex(self):
+        # One of the few functions that really differs with complex data.
+        self.data.data = self.data.data + 1.0j * self.data.data
+        distlims = (self.data.dist[0], self.data.dist[-1])
+        space = 100.
+        targ_size = np.ceil((distlims[-1] - distlims[0]) * 1000. / space)
+        self.data.constant_space(space)
+        self.assertTrue(self.data.data.shape == (20, targ_size))
+        self.assertTrue(self.data.x_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.y_coord.shape == (targ_size, ))
+        self.assertTrue(self.data.lat.shape == (targ_size, ))
+        self.assertTrue(self.data.long.shape == (targ_size, ))
+        self.assertTrue(self.data.elev.shape == (targ_size, ))
+        self.assertTrue(self.data.decday.shape == (targ_size, ))
 
     def test_constant_sample_depth_spacing(self):
         # first check that it fails if we are not set up

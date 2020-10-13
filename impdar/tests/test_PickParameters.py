@@ -28,7 +28,7 @@ class TestPickParameters(unittest.TestCase):
         pick_params.freq_update(1000.0)
         self.assertEqual(pick_params.FWW, 1)
         self.assertEqual(pick_params.plength, 3)
-        self.assertEqual(pick_params.scst, 0)
+        self.assertEqual(pick_params.scst, 1)
 
         rd = NoInitRadarData.NoInitRadarDataFiltering()
         pick_params = PickParameters.PickParameters(rd)

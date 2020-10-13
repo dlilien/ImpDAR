@@ -13,12 +13,11 @@ import sys
 import os
 import unittest
 from impdar.bin import impdarexec
-from impdar.lib import NoInitRadarData
 
 if sys.version_info[0] >= 3:
-    from unittest.mock import patch, ANY, MagicMock
+    from unittest.mock import patch, MagicMock
 else:
-    from mock import patch, ANY, MagicMock
+    from mock import patch, MagicMock
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,9 +33,11 @@ class TestMain(unittest.TestCase):
         self.assertEqual(kwca['fns_in'], ['fn.mat'])
         self.assertEqual(kwca['filetype'], 'mat')
 
-        with self.assertRaises(SystemExit):
-            impdarexec.sys.argv = ['dummy', 'load', 'notanintype', 'fn.mat']
-            impdarexec.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impdarexec.sys.argv = ['dummy', 'load', 'notanintype', 'fn.mat']
+                impdarexec.main()
 
     @patch('impdar.bin.impdarexec.process.process_and_exit')
     def test_process(self, process_patch):
@@ -64,9 +65,11 @@ class TestMain(unittest.TestCase):
         self.assertEqual(kwca['fns_in'], ['fn.mat'])
         self.assertEqual(kwca['out_fmt'], 'shp')
 
-        with self.assertRaises(SystemExit):
-            impdarexec.sys.argv = ['dummy', 'convert', 'fn.mat', 'notanoutput']
-            impdarexec.main()
+        argparse_mock = MagicMock()
+        with patch('argparse.ArgumentParser._print_message', argparse_mock):
+            with self.assertRaises(SystemExit):
+                impdarexec.sys.argv = ['dummy', 'convert', 'fn.mat', 'notanoutput']
+                impdarexec.main()
 
 
 if __name__ == '__main__':

@@ -2,11 +2,13 @@
 
 # Form implementation generated from reading ui file 'RawPickGUI.ui'
 #
-# Created by: PyQt5 UI code generator 5.9.2
+# Created by: PyQt5 UI code generator 5.14.2
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -38,6 +40,7 @@ class Ui_MainWindow(object):
         self.pickNumberBox = QtWidgets.QSpinBox(self.groupBox_5)
         self.pickNumberBox.setGeometry(QtCore.QRect(7, 20, 100, 24))
         self.pickNumberBox.setMaximumSize(QtCore.QSize(100, 40))
+        self.pickNumberBox.setMaximum(1000)
         self.pickNumberBox.setObjectName("pickNumberBox")
         self.verticalLayout_5.addWidget(self.groupBox_5)
         self.groupBox_3 = QtWidgets.QGroupBox(self.groupBox_2)
@@ -174,6 +177,8 @@ class Ui_MainWindow(object):
         self.actionshp.setObjectName("actionshp")
         self.actioncsv = QtWidgets.QAction(MainWindow)
         self.actioncsv.setObjectName("actioncsv")
+        self.actionFlatten_layer = QtWidgets.QAction(MainWindow)
+        self.actionFlatten_layer.setObjectName("actionFlatten_layer")
         self.menuSave_mat.addAction(self.actionSave_pick)
         self.menuSave_mat.addAction(self.actionSave_as)
         self.menuSave_figure.addAction(self.actionSave_as_png)
@@ -181,8 +186,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.menuSave_figure.menuAction())
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionClose)
-        self.menuView.addAction(self.actionColor_limits)
-        self.menuView.addAction(self.actionColor_map)
+        self.menuView.addAction(self.actionFlatten_layer)
         self.menuExport.addAction(self.actionshp)
         self.menuExport.addAction(self.actioncsv)
         self.menuPick.addAction(self.actionNext)
@@ -249,8 +253,9 @@ class Ui_MainWindow(object):
         self.actionLoad_crossprofile.setText(_translate("MainWindow", "Load crossprofile"))
         self.actionshp.setText(_translate("MainWindow", "shp..."))
         self.actioncsv.setText(_translate("MainWindow", "csv..."))
-
+        self.actionFlatten_layer.setText(_translate("MainWindow", "Flatten layer"))
 from .mplfigcanvaswidget import MplFigCanvasWidget
+
 
 if __name__ == "__main__":
     import sys
@@ -260,4 +265,3 @@ if __name__ == "__main__":
     ui.setupUi(MainWindow)
     MainWindow.show()
     sys.exit(app.exec_())
-

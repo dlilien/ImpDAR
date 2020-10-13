@@ -158,7 +158,7 @@ class TestRadarDataExports(unittest.TestCase):
         rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test3.shp'), target_out='elev')
 
         # Check geometry
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs=3413)
+        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs='EPSG:3413')
 
     @unittest.skipIf(CONVERSIONS_ENABLED, 'Version has GDAL, just checking we fail without')
     def test_output_shp_nolayers_nogdal(self):

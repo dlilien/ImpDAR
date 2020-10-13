@@ -12,31 +12,24 @@ A wrapper around the other loading utilities
 
 import os.path
 import numpy as np
-from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_delores, load_osu, load_ramac
+from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_mcords, load_segy, load_UoA_mat, load_ramac, load_bsi
+from . import load_delores, load_osu, load_stomat
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
-FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'gprMax', 'gecko', 'segy', 'mcords_mat', 'mcords_nc','delores','osu','ramac']
+FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
+                    'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
-def load(filetype, fns_in, channel=1):
+def load(filetype, fns_in, channel=1, *args, **kwargs):
     """Load a list of files of a certain type
 
     Parameters
     ----------
     filetype: str
-        The type of file to load. Options are:
-                        'mat' (StODeep matlab format)
-                        'pe' (pulse ekko)
-                        'gssi' (from sir controller)
-                        'gprMax' (synthetics)
-                        'gecko' (St Olaf Radar)
-                        'segy' (SEG Y)
-                        'mcords_nc' (MCoRDS netcdf)
-                        'mcords_mat' (MCoRDS matlab format)
-                        'mat' (StODeep matlab format)
+        The type of file to load.
     fns: list
         List of files to load
     channel: Receiver channel that the data were recorded on
@@ -56,11 +49,22 @@ def load(filetype, fns_in, channel=1):
         dat = [load_pulse_ekko.load_pe(fn) for fn in fns_in]
     elif filetype == 'mat':
         dat = [RadarData(fn) for fn in fns_in]
+    elif filetype == 'stomat':
+        dat = [load_stomat.load_stomat(fn) for fn in fns_in]
     elif filetype == 'gprMax':
         if load_gprMax.H5:
             dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]
         else:
             raise ImportError('You need h5py for gprmax')
+    elif filetype == 'bsi':
+        # BSI data are slightly different since we may have multiple profiles per file
+        if load_bsi.H5:
+            data_nestedlist = [load_bsi.load_bsi(fn) for fn in fns_in]
+            dat = []
+            for data in data_nestedlist:
+                dat.extend(data)
+        else:
+            raise ImportError('You need h5py for bsi')
     elif filetype == 'gecko':
         # Slightly different because we assume that we want to concat
         dat = [load_olaf.load_olaf(fns_in, channel=channel)]
@@ -78,6 +82,15 @@ def load(filetype, fns_in, channel=1):
             raise ImportError('You need netCDF4 in order to read the MCoRDS files')
     elif filetype == 'mcords_mat':
         dat = [load_mcords.load_mcords_mat(fn) for fn in fns_in]
+    elif filetype == 'UoA_mat':
+        if load_UoA_mat.H5:
+            if 'gps_offset' in kwargs:
+                gps_offset = kwargs['gps_offset']
+            else:
+                gps_offset = 0.0
+            dat = [load_UoA_mat.load_UoA_mat(fn, gps_offset=gps_offset) for fn in fns_in]
+        else:
+            raise ImportError('You need h5py for UoA_mat')
     elif filetype == 'delores':
         dat = [load_delores.load_delores(fn, channel=channel) for fn in fns_in]
     elif filetype == 'osu':
@@ -89,7 +102,7 @@ def load(filetype, fns_in, channel=1):
     return dat
 
 
-def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -106,8 +119,11 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
                         'mat' (StODeep matlab format)
     fn: list or str
         List of files to load (or a single file)
-    channel: Receiver channel that the data were recorded on
+    channel: int, optional
+        Receiver channel that the data were recorded on
         This is primarily for the St. Olaf HF data
+    t_srs: str, optional
+        Convert to this coordinate system. Requires GDAL.
     """
 
     if not isinstance(fns_in, (list, tuple)):
@@ -133,7 +149,15 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
                 os.rename(fn,'../'+fn)
         return
     else:
-        dat = load(filetype, fns_in, channel=channel)
+        dat = load(filetype, fns_in, channel=channel, *args, **kwargs)
+
+    if t_srs is not None:
+        try:
+            for d in dat:
+                d.get_projected_coords(t_srs=t_srs)
+        except ImportError:
+            pass
+
 
     if (filetype == 'gecko' or filetype == 'osu') and len(fns_in) > 1:
         f_common = fns_in[0]
@@ -145,8 +169,8 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
         dat[0].save(fn_out)
     elif 'o' in kwargs and kwargs['o'] is not None:
         if len(fns_in) > 1:
-            for d_i, f_i in zip(dat, fns_in):
-                fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(f_i)[0] + '_raw.mat')[-1])
+            for d_i in dat:
+                fn_out = os.path.join(kwargs['o'], os.path.split(os.path.splitext(d_i.fn)[0] + '_raw.mat')[-1])
                 d_i.save(fn_out)
         elif os.path.isdir(kwargs['o']):
             fn_out = kwargs['o'] + os.path.splitext(fns_in[0])[0] + '_raw.mat'
@@ -155,14 +179,13 @@ def load_and_exit(filetype, fns_in, channel=1, *args, **kwargs):
             fn_out = kwargs['o']
             dat[0].save(fn_out)
     else:
-        for d_i, f_i in zip(dat, fns_in):
-            fn_out = os.path.splitext(f_i)[0] + '_raw.mat'
+        for d_i in dat:
+            fn_out = os.path.splitext(d_i.fn)[0] + '_raw.mat'
             d_i.save(fn_out)
 
 
 def _common_start(string_a, string_b):
     """ returns the longest common substring from the beginning of sa and sb
-
     from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
     """
     def _iter():

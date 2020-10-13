@@ -6,6 +6,4 @@
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
-"""
-Skeleton import bin
-"""
+"""Skeleton import bin."""

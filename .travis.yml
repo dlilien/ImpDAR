@@ -5,18 +5,23 @@ python:
 - '3.5'
 - '3.6'
 - '3.7'
+- '3.8'
+
+git:
+    submodules: false
 
 services:
       - xvfb
 
 env:
-    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
-    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
-    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true
-    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true
-    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false
-    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=false
-    - segyio_inc=true qt5_inc=true gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=true
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false h5py_inc=false
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false h5py_inc=true
+    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false h5py_inc=false
+    - segyio_inc=true qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true h5py_inc=false
+    - segyio_inc=false qt5_inc=false gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=true h5py_inc=false
+    - segyio_inc=false qt5_inc=true gdal_inc=false COVERALLS_PARALLEL=true seisunix_inc=false h5py_inc=false
+    - segyio_inc=false qt5_inc=false gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=false h5py_inc=false
+    - segyio_inc=true qt5_inc=true gdal_inc=true COVERALLS_PARALLEL=true seisunix_inc=true h5py_inc=true
 
 before_install:
  - export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
@@ -27,6 +32,7 @@ before_install:
 
 install:
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
+- if [ "$h5py_inc" = true ] ; then pip install h5py; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
 - if [ "$gdal_inc" = true ] ; then sudo apt-get install libgdal-dev; export CPLUS_INCLUDE_PATH=/usr/include/gdal; export C_INCLUDE_PATH=/usr/include/gdal; pip install gdal==1.10.0; fi
   # for seisunix we need to spoof the license to prevent prompting
@@ -38,6 +44,11 @@ install:
 - pip install mock
 - pip install .
 
+matrix:
+  allow_failures:
+      - python: 2.7
+        env: seisunix_inc=true
+
 cache:
     directories:
       - /home/travis/build/dlilien/ImpDAR/PyQt5_gpl-5.7.1
@@ -45,20 +56,18 @@ cache:
       - $CWPROOT
       - $HOME/.cache/pip
 
-matrix:
-    allow_failures:
-        - python: 2.7
-          env: seisunix_inc=true
-
 deploy:
   provider: pypi
   user: dlilien
   password:
     secure: DuqiQ+NBz4tTa+1Ej8wu7beC7xy2iOcRK5q63iMdYc2Qn6US1VW54rYiKUjEpn35XTwNRD/2zY5hqRn3GMWfoODE8pNS27gBnEtXQgg091ElHNXWXB261lkusslRLNVYd1iOPMOfl96YpZm9HipTwo0Npr0jLRMG8xbwletBkJRDXtZvrEhWIQ2CSfX5WWvx5IOKT65ZTsOxpzU4R7F0vrWE+J45e6doMsuSpMwNgtTdjh7RiCbB+FmQ0xmYk48r0DQ1optMsoLKaXfGLdhBDMbUhDEYHPDGZZARnTiBzR5Q1DdSYdoNTGqQwfiDKhePuh9g4eLw41MqXgzhdW/FI7FJtYBT5XLVhHCnPyRRkeC8E78V71Cz78fCSCIfhGVHGrOyHOUW3vq/3YYOuS/Ild4bocJdfONNQRqGBwUsrAIVnloSyEyvwQj0BexVX0huz9Tdx29vlpa04oKKEWND2qb1WUhO4uSk089WwLWVQzlCukA3GhkRzQ7OpUM1xyLvfSLskiOXnf8hvzH5TwMOFrl9bmsUPprzRNZ32fPP32lsiLazK9pIEIfHrptD6Bhaa1nQNMaiYQwpHvzGxYehHw0cRcYCtAm+/sMeO0ijBdbET+8GZe++5kbpIpZzcoT0xizteqwTUf0EPd+p+YcrfYwOLcmb4HzLffqkJy7LWcI=
+  on:
+    tags: true
+    all_branches: true
   skip_existing: true
-  distributions: "sdist bdist_wheel"
+  distributions: "sdist"
 
-script: coverage run --source impdar --omit=impdar/tests/* setup.py test
+script: coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* setup.py test
 
 
 after_success:
