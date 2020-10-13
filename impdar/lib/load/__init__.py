@@ -11,7 +11,7 @@ A wrapper around the other loading utilities
 """
 
 import os.path
-import numpy as np
+import glob
 from . import load_mcords  # needs to be imported first and alone due to opaque h5py/netcdf4 error
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_segy, load_UoA_mat
 from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi
@@ -47,7 +47,31 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     if filetype == 'gssi':
         dat = [load_gssi.load_gssi(fn) for fn in fns_in]
     elif filetype == 'pe':
-        dat = [load_pulse_ekko.load_pe(fn) for fn in fns_in]
+        dat = []
+        for fn in fns_in:
+            # If a pulse ekko project file is input. We need to partition it first.
+            if os.path.splitext(fn)[-1] == '.GPZ':
+                bn_pe = os.path.splitext(fn)[0]
+                print(fn,'is a Pulse Ekko project file.\n'+\
+                    'We will partition it into the respective data and header files at ./'+\
+                    bn_pe)
+                if not os.path.isdir(bn_pe):
+                    os.mkdir(bn_pe)
+                os.rename(fn, os.path.join(bn_pe, fn))
+                os.chdir(bn_pe)
+                load_pulse_ekko.partition_project_file(fn)
+                os.rename(fn, os.path.join('..', fn))
+                os.chdir('..')
+                # load each file from within the project
+                fns_part = glob.glob(bn_pe+'/*.DT1')
+                for fn in fns_part:
+                    dat.append(load_pulse_ekko.load_pe(fn))
+            # If a standard pulse ekko file is input, try to load it
+            else:
+                try:
+                    dat.append(load_pulse_ekko.load_pe(fn))
+                except IOError:
+                    print('Could not load ',fn, 'as a Pulse Ekko file.')
     elif filetype == 'mat':
         dat = [RadarData(fn) for fn in fns_in]
     elif filetype == 'stomat':
@@ -148,26 +172,7 @@ def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwar
             raise FileNotFoundError('The output directory does not exist')
 
         for fn_i in fns_in:
-            # If a pulse ekko project file is input. We need to partition it first
-            # TODO @benhills can you look at moving the following bit to load above.
-            if filetype =='pe' and np.any(np.array([os.path.splitext(fn)[-1] for fn in fn_in]) == '.GPZ'):
-                if os.path.splitext(fn)[-1] != '.GPZ':
-                    print(fn,'is NOT a Pulse Ekko Project File but we are partitioning now.'+\
-                            'It is ignored now. Go back and load it on its own.')
-                    continue
-                else:
-                    bn_pe = os.path.splitext(fn)[0]
-                    print(fn,'is a Pulse Ekko project file.\n'+\
-                    'We will partition it into the respective data and header files at ./'+\
-                    bn_pe)
-                    if not os.path.isdir(bn_pe):
-                        os.mkdir(bn_pe)
-                    os.rename(fn, os.path.join(bn_pe, fn))
-                    os.chdir(bn_pe)
-                    load_pulse_ekko.partition_project_file(fn)
-                    os.rename(fn, os.path.join('..', fn))
-            else:
-                rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, *args, **kwargs)
+            rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, *args, **kwargs)
             _save(rd_list, outpath=o)
 
 
