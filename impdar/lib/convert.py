@@ -18,7 +18,7 @@ def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
     # This is really simple because I'm not converting from one proprietary
     # form to another
     if t_srs == 'wgs84':
-        t_srs = 'EPSG:3413'
+        t_srs = 'EPSG:4326'
 
     if out_fmt not in ['shp', 'mat', 'sgy']:
         raise ValueError('Can only convert to shp, mat, or sgy')

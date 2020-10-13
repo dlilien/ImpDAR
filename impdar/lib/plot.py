@@ -18,10 +18,10 @@ COLORS_NONGRAY = ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE',
                   '#882255', '#44AA99', '#999933', '#AA4499']
 
 def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
-         x_range=(0, -1), power=None, spectra=None, freq_limit=None,
-         window=None, scaling='spectrum', filetype='mat', pick_colors=None,
-         ft=False, hft=False, clims=None, cmap=plt.cm.gray, flatten_layer=None,
-         *args, **kwargs):
+         dualy=False, x_range=(0, -1), power=None, spectra=None,
+         freq_limit=None, window=None, scaling='spectrum', filetype='mat',
+         pick_colors=None, ft=False, hft=False, clims=None, cmap=plt.cm.gray,
+         flatten_layer=None, *args, **kwargs):
     """Wrap a number of plot types.
 
     This should really only be used by the exectuables.
@@ -52,7 +52,11 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
     else:
         xdat = 'tnum'
     if yd:
+        if dualy:
+            raise ValueError('Only one of yd and dualy can be true')
         ydat = 'depth'
+    elif dualy:
+        ydat = 'dual'
     else:
         ydat = 'twtt'
 
@@ -96,7 +100,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                    y_range=(0, -1), cmap=plt.cm.gray, fig=None, ax=None,
                    return_plotinfo=False, pick_colors=None, clims=None,
-                   flatten_layer=None, middle_picks_only=False):
+                   data_name='data', flatten_layer=None, middle_picks_only=False):
     """Plot a radio echogram.
 
     This function is a little weird since I want to be able to plot on top of
@@ -124,6 +128,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         Figure canvas that should be plotted upon
     ax: matplotlib.pyplot.Axes
         Axes that should be plotted upon
+    data_name: str, optional
+        The name of the data attribute. Default 'data'. Must exist.
     flatten_layer: int, optional
         Distort so this layer is flat
     middle_picks_only: bool, optional
@@ -152,6 +158,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         clims: 2-tuple
             The limits of the colorbar
     """
+    plotting_data = getattr(dat, data_name)
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
     elif (xdat == 'dist') and dat.dist is None:
@@ -164,7 +171,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
 
     if y_range is None:
         y_range = (0, -1)
-    elif y_range[-1] == -1:
+
+    if y_range[-1] == -1:
         y_range = (y_range[0], dat.data.shape[0])
 
     if dat.data.dtype in [np.complex128]:
@@ -175,13 +183,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
             return x
 
     if clims is None:
-        clims = np.percentile(norm(dat.data[y_range[0]:y_range[-1],
-                                            x_range[0]:x_range[-1]])[~np.isnan(
-                                                dat.data[y_range[0]:
-                                                         y_range[-1],
-                                                         x_range[0]:
-                                                             x_range[-1]])],
-                              (10, 90))
+        clims = np.percentile(norm(plotting_data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]][~np.isnan(dat.data[y_range[0]:y_range[-1], x_range[0]:x_range[-1]])]), (10, 90))
 
     if fig is not None:
         if ax is None:
@@ -197,6 +199,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
     else:
         ax.invert_yaxis()
         if ydat == 'twtt':
+            # we have a chance that there are NaNs after NMO correction...
+            y_range = (max(y_range[0], np.min(np.where(~np.isnan(dat.travel_time))[0])), y_range[1])
             yd = dat.travel_time[y_range[0]:y_range[-1]]
             ax.set_ylabel('Two way travel time (usec)')
         elif ydat == 'depth':
@@ -206,9 +210,23 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                 yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * (
                     1.69e8 * 1.0e-6)
             ax.set_ylabel('Depth (m)')
+        elif ydat == 'dual':
+            # we have a chance that there are NaNs after NMO correction...
+            y_range = (max(y_range[0], np.min(np.where(~np.isnan(dat.travel_time))[0])), y_range[1])
+
+            yd = dat.travel_time[y_range[0]:y_range[-1]]
+            ax.set_ylabel('Two way travel time (usec)')
+            ax2 = ax.twinx()
+            if dat.nmo_depth is not None:
+                yd2 = dat.nmo_depth[y_range[0]:y_range[-1]]
+            else:
+                yd2 = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * (
+                    1.69e8 * 1.0e-6)
+            ax2.set_ylabel('Approximate depth (m)')
+            ax2.set_ylim(yd2[-1], yd2[0])
         else:
             raise ValueError('Unrecognized ydat, choices are elev, twtt, \
-                             or depth')
+                             depth, or dual')
 
     if xdat == 'tnum':
         xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
@@ -379,7 +397,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
     elif tr[0] == tr[1]:
         tr = (tr[0], tr[0] + 1)
 
-    if ydat not in ['twtt', 'depth']:
+    if ydat not in ['twtt', 'depth', 'dual']:
         raise ValueError('y axis choices are twtt or depth')
     if fig is not None:
         if ax is None:
@@ -401,6 +419,19 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
         else:
             yd = dat.nmo_depth
         ax.set_ylabel('Depth (m)')
+    elif ydat == 'dual':
+        # we have a chance that there are NaNs after NMO correction...
+        yd = dat.travel_time
+        ax.set_ylabel('Two way travel time (usec)')
+        ax2 = ax.twinx()
+        if dat.nmo_depth is not None:
+            yd2 = dat.nmo_depth
+        else:
+            yd2 = dat.travel_time / 2.0 * (1.69e8 * 1.0e-6)
+        ax2.set_ylabel('Approximate depth (m)')
+        ax2.set_ylim(yd2[-1], yd2[0])
+    else:
+        raise ValueError('Unrecognized y scale')
 
     for j in range(*tr):
         ax.plot(dat.data[:, j], yd, linewidth=linewidth, linestyle=linestyle)

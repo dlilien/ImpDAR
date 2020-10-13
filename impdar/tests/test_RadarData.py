@@ -185,10 +185,8 @@ class TestRadarDataMethods(unittest.TestCase):
         self.data.rangegain(1.0)
         self.assertTrue(self.data.flags.rgain)
 
-    @patch('impdar.lib.RadarData._RadarDataProcessing.optimize_moveout_depth', returns=[1000.])
-    def test_NMO(self, mock_omd):
+    def test_NMO(self):
         # If velocity is 2
-
         self.data.nmo(0., uice=2.0, uair=2.0)
         self.assertTrue(np.allclose(self.data.travel_time * 1.0e-6, self.data.nmo_depth))
 

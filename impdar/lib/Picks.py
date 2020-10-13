@@ -52,6 +52,30 @@ class Picks():
     flatten = [False, False, False, False, False, True]
     spec_attrs = ['lasttrace', 'lt', 'pickparams']
 
+    def __str__(self):
+        try:
+            if self.samp1 is not None:
+                approx_indices = np.nanmean(self.samp1, axis=1).astype(int)
+                approx_indices[approx_indices < 0] = 0  # for NaNs
+                mean_twtts = self.radardata.travel_time[approx_indices]
+                if self.radardata.nmo_depth is not None:
+                    assume_depth = ''
+                    mean_depths = self.radardata.nmo_depth[approx_indices]
+                else:
+                    assume_depth = ' assuming 1.68e8 m/s vel'
+                    mean_depths = mean_twtts / 2.0 * 1.68e3
+                string = 'Pick object with {:d} picks:'.format(len(self.picknums))
+                for i in range(len(self.picknums)):
+                    if approx_indices[i] != 0:
+                        string += '\n    pick {:d} at ~{:4.2f} us (~{:4.2f} m{:s})'.format(int(self.picknums[i]), mean_twtts[i], mean_depths[i], assume_depth)
+                    else:
+                        string += '\n    empty pick {:d}'.format(int(self.picknums[i]))
+            else:
+                string = 'Empty pick object'
+        except (ValueError, TypeError, IndexError):
+            string = 'Picks Object'
+        return string
+
     def __init__(self, radardata, pick_struct=None):
         if pick_struct is not None:
             # Loading from a file

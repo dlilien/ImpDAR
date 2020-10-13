@@ -328,6 +328,7 @@
      <string>View</string>
     </property>
     <addaction name="actionFlatten_layer"/>
+    <addaction name="actionSwitch_data_matrix"/>
    </widget>
    <widget class="QMenu" name="menuPick">
     <property name="title">
@@ -463,6 +464,11 @@
   <action name="actionFlatten_layer">
    <property name="text">
     <string>Flatten layer</string>
+   </property>
+  </action>
+  <action name="actionSwitch_data_matrix">
+   <property name="text">
+    <string>Switch data matrix</string>
    </property>
   </action>
  </widget>

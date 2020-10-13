@@ -188,6 +188,8 @@ class Ui_MainWindow(object):
         self.actioncsv.setObjectName("actioncsv")
         self.actionFlatten_layer = QtWidgets.QAction(MainWindow)
         self.actionFlatten_layer.setObjectName("actionFlatten_layer")
+        self.actionSwitch_data_matrix = QtWidgets.QAction(MainWindow)
+        self.actionSwitch_data_matrix.setObjectName("actionSwitch_data_matrix")
         self.menuSave_mat.addAction(self.actionSave_pick)
         self.menuSave_mat.addAction(self.actionSave_as)
         self.menuSave_figure.addAction(self.actionSave_as_png)
@@ -196,6 +198,7 @@ class Ui_MainWindow(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionClose)
         self.menuView.addAction(self.actionFlatten_layer)
+        self.menuView.addAction(self.actionSwitch_data_matrix)
         self.menuExport.addAction(self.actionshp)
         self.menuExport.addAction(self.actioncsv)
         self.menuPick.addAction(self.actionNext)
@@ -267,6 +270,7 @@ class Ui_MainWindow(object):
         self.actionshp.setText(_translate("MainWindow", "shp..."))
         self.actioncsv.setText(_translate("MainWindow", "csv..."))
         self.actionFlatten_layer.setText(_translate("MainWindow", "Flatten layer"))
+        self.actionSwitch_data_matrix.setText(_translate("MainWindow", "Switch data matrix"))
 from .mplfigcanvaswidget import MplFigCanvasWidget
 
 
