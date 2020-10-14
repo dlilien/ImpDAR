@@ -212,6 +212,25 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
 
 # --------------------------------------------------------------------------------------------
 
+def coherence(s1,s2):
+    """
+    phase correlation between two elements of the scattering matrix
+    Jodan et al. (2019) eq. 13
+
+    Parameters
+    ---------
+    s1: array
+        first acquisition
+    s2:
+        second acquisition
+    """
+    top = np.dot(s1,np.conj(s2))
+    bottom = np.sqrt(np.abs(s1)**2.)*np.sqrt(np.abs(s2)**2.)
+    c = top/bottom
+    return c
+
+# --------------------------------------------------------------------------------------------
+
 def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertainty='CR'):
     """
     Calculate the vertical motion using a correlation coefficient.
@@ -264,7 +283,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
         # correlation coefficient to get the motion
         # the amplitude indicates how well the reflections match between acquisitions
         # the phase is a measure of the offset
-        co[i] = np.corrcoef(arr1,arr2)[1,0]
+        co[i] = coherence(arr1,arr2)
 
     # convert the phase offset to a distance vector
     r_diff = phase2range(np.angle(co),
@@ -321,3 +340,55 @@ def stacking(self,num_chirps=None):
         self.cnum = 1
 
     self.flags.stack = num_chirps
+
+# --------------------------------------------------------------------------------------------
+
+def rotational_transform(S,theta):
+    """
+    Azimuthal (rotational) shift of principal axes
+    at the transmitting and receiving antennas
+    Mott, 2006
+
+    Parameters
+    --------
+    S : array
+        2-d array with [[shh,svh][shv,svv]] of complex numbers
+    theta : complex
+            rotational offset
+    """
+
+    shh = S[0,0]
+    svh = S[0,1]
+    shv = S[1,0]
+    svv = S[1,1]
+
+    S_ = np.empty_like(S)
+    S_[0,0] = shh*np.cos(theta)**2.+(svh+shv)*np.sin(theta)*np.cos(theta)+svv*np.sin(theta)**2
+    S_[0,1] = shv*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-svh*np.sin(theta)**2
+    S_[1,0] = svh*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-shv*np.sin(theta)**2
+    S_[1,1] = svv*np.cos(theta)**2.-(svh+shv)*np.sin(theta)*np.cos(theta)+shh*np.sin(theta)**2
+
+    return S_
+
+# --------------------------------------------------------------------------------------------
+
+def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
+    """
+    Two-way birefringent phase shift
+    Jordan et al. (2019)
+
+    Parameters
+    ---------
+    z: float
+        depth
+    freq: float
+        center frequency
+    eps_bi: float
+        birefringent permittivity difference (i.e. eps_parallel - eps_perpendicular)
+    eps: float
+        mean permittivity (relative)
+    c: float
+        light speed in vacuum
+    """
+    delta = 4.*np.pi*freq/c*(z*eps_bi/(2.*np.sqrt(eps)))
+    return delta
