@@ -130,15 +130,8 @@ def output_shp(self, fn, t_srs=None, target_out=None):
         cT, t_srs = get_conversion(t_srs=t_srs)
         pts = np.array(cT(np.vstack((self.long, self.lat)).transpose()))
     else:
-        if (self.x_coord is not None) and hasattr(self, 't_srs') and (self.t_srs is not None):
-            pts = np.vstack((self.x_coord, self.y_coord)).transpose()
-            t_srs = self.t_srs
-        else:
-            if self.x_coord is not None:
-                print('RadarData has projected coordinates but projection information is unknown.')
-                print('Writing wgs84; specify t_srs for projected output.')
-            pts = np.vstack((self.long, self.lat)).transpose()
-            t_srs = 'EPSG:3426'
+        pts = np.vstack((self.long, self.lat)).transpose()
+        t_srs = 'EPSG:3426'
 
     driver = ogr.GetDriverByName('ESRI Shapefile')
     data_source = driver.CreateDataSource(fn)

@@ -63,9 +63,9 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
                 os.rename(fn, os.path.join('..', fn))
                 os.chdir('..')
                 # load each file from within the project
-                fns_part = glob.glob(bn_pe+'/*.DT1')
-                for fn in fns_part:
-                    dat.append(load_pulse_ekko.load_pe(fn))
+                fns_partition = glob.glob(bn_pe+'/*.DT1')
+                for fn_i in fns_partition:
+                    dat.append(load_pulse_ekko.load_pe(fn_i))
             # If a standard pulse ekko file is input, try to load it
             else:
                 try:
@@ -84,7 +84,7 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     elif filetype == 'bsi':
         # BSI data are slightly different since we may have multiple profiles per file
         if load_bsi.H5:
-            data_nestedlist = [load_bsi.load_bsi(fn) for fn in fns_in]
+            data_nestedlist = [load_bsi.load_bsi(fn, nans=nans) for fn in fns_in]
             dat = []
             for data in data_nestedlist:
                 dat.extend(data)
@@ -134,7 +134,6 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
 
     return dat
 
-
 def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
@@ -175,7 +174,7 @@ def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwar
             rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, *args, **kwargs)
             _save(rd_list, outpath=o)
 
-
+            
 def _save(rd_list, outpath=None):
     """Save a list of RadarData objects with optional output directory."""
     if outpath is not None:

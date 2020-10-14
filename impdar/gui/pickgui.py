@@ -256,7 +256,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     #######
     def _click(self, event):
         # This will handle both edit mode and select mode clicks
-        if self.FigCanvasWidget.mpl_toolbar._active is not None:
+        # Using private attributes so this is amess
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, '_active') and (self.FigCanvasWidget.mpl_toolbar._active is not None):
+            return
+        # mpl >= 3.3.2
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, 'Mode') and (self.FigCanvasWidget.mpl_toolbar.Mode is not None) and (self.FigCanvasWidget.mpl_toolbar.Mode != ''):
             return
         if self.pick_mode == 'edit':
             self._edit_lines_click(event)
@@ -312,6 +316,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _delete_picks(self, snum, tnum):
         self.current_pick[:, tnum:] = np.nan
+        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+        if not np.isnan(self.current_pick[1, tnum - 1]):
+            self.dat.picks.lasttrace.snum[self._pick_ind] = self.current_pick[1, tnum - 1]
 
     def update_lines(self, colors='gmm', picker=None):
         """Update the plotting of the current pick.
@@ -565,7 +572,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(
                 self.dat, xdat=self.x, ydat=self.y, x_range=self.x_range,
                 cmap=plt.cm.gray, fig=self.fig, ax=self.ax, flatten_layer=self.flatten_layer,
-                data_name=data_name, clims=self.lims, return_plotinfo=True)
+                data_name=self.data_name, clims=self.lims, return_plotinfo=True)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             self.progressBar.setProperty("value", 50)
@@ -621,7 +628,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(
                     self.dat, xdat=self.x, ydat=self.y, x_range=self.x_range,
                     cmap=plt.cm.gray, fig=self.fig, ax=self.ax, flatten_layer=self.flatten_layer,
-                    data_name=data_name, clims=self.lims, return_plotinfo=True)
+                    data_name=self.data_name, clims=self.lims, return_plotinfo=True)
                 self.fig.canvas.draw()
                 self.fig.canvas.flush_events()
             self.progressBar.setProperty("value", 100)
@@ -858,7 +865,7 @@ class SwitchMatrixInputDialog(QDialog):
         self.data_name_input = QtWidgets.QComboBox()
 
         for name in data_names:
-                self.data_name_input.addItem(name)
+            self.data_name_input.addItem(name)
         layout.addRow(self.inputlabel, self.data_name_input)
 
         self.cancel = QtWidgets.QPushButton("Cancel")

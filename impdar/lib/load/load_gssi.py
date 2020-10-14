@@ -127,8 +127,10 @@ def load_gssi(fn_dzt, *args, **kwargs):
     n_bytes = bits // 8
     if bits == 32:
         us_dattype = 'I'
+        np_dtype = np.int32
     elif bits == 16:
         us_dattype = 'H'
+        np_dtype = np.int16
     # if bits == 32:
     #     s_dattype = 'i'
     # elif bits == 16:
@@ -178,12 +180,10 @@ def load_gssi(fn_dzt, *args, **kwargs):
     #     processing = ''
     try:
         header_len = 32768*n_bytes # TODO: David originally had this as 36*4096, we still need to figure out when it changes
-        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype,
-                                  lines[header_len:])).reshape((dzt_data.snum, -1), order='F')
+        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
     except:
         header_len = 512*n_bytes
-        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype,
-                                  lines[header_len:])).reshape((dzt_data.snum, -1), order='F')
+        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
     data[0, :] = data[2, :]
     data[1, :] = data[2, :]
     # data = data + dzt_data.trig
