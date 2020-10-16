@@ -21,11 +21,11 @@ Sept 24 2019
 
 """
 
-
 import datetime
 import numpy as np
 from scipy.io import loadmat
 from .ApresFlags import ApresFlags
+from .QuadPolFlags import QuadPolFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
@@ -33,7 +33,6 @@ class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.
 
     We keep track of processing steps with the flags attribute.
-    This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
     """
     #: Attributes that every ApresData object should have and should not be None.
     attrs_guaranteed = ['data',
@@ -49,9 +48,6 @@ class ApresData(object):
                         'frequencies']
 
     #: Optional attributes that may be None without affecting processing.
-    #: These may not have existed in old StoDeep files that we are compatible with,
-    #: and they often cannot be set at the initial data load.
-    #: If they exist, they all have units of meters.
     attrs_optional = ['lat',
                       'long',
                       'x_coord',
@@ -95,15 +91,12 @@ class ApresData(object):
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
 
-            #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
+            #: float Optional. Projected coordinates of the acquisition location
             self.x_coord = None
-            #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
             self.y_coord = None
-            #: np.ndarray(tnum,) Optional. Elevation along the profile.
             self.elev = None
 
             # Special attributes
-            #: impdar.lib.RadarFlags object containing information about the processing steps done.
             self.flags = ApresFlags()
             self.header = ApresHeader()
 
@@ -136,6 +129,136 @@ class ApresData(object):
         self.fn = fn_mat
         self.flags = ApresFlags()
         self.header = ApresHeader()
+        self.flags.from_matlab(mat['flags'])
+        self.header.from_matlab(mat['header'])
+        self.check_attrs()
+
+    def check_attrs(self):
+        """Check if required attributes exist.
+
+        This is largely for development only; loaders should generally call this method last,
+        so that they can confirm that they have defined the necessary attributes.
+
+        Raises
+        ------
+        ImpdarError
+            If any required attribute is None or any optional attribute is fully absent"""
+        for attr in self.attrs_guaranteed:
+            if not hasattr(self, attr):
+                raise ImpdarError('{:s} is missing. \
+                    It appears that this is an ill-defined ApresData object'.format(attr))
+            if getattr(self, attr) is None:
+                raise ImpdarError('{:s} is None. \
+                    It appears that this is an ill-defined ApresData object'.format(attr))
+
+        for attr in self.attrs_optional:
+            if not hasattr(self, attr):
+                raise ImpdarError('{:s} is missing. \
+                    It appears that this is an ill-defined ApresData object'.format(attr))
+
+        if not hasattr(self, 'data_dtype') or self.data_dtype is None:
+            self.data_dtype = self.data.dtype
+        return
+
+    @property
+    def datetime(self):
+        """A python operable version of the time of acquisition of each trace"""
+        return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
+                         for dd in self.decday], dtype=np.datetime64)
+
+# -------------------------------------------------------------------------------------------------------------
+
+class QuadPolData(object):
+    """A class that holds the relevant information for an quad-polarized ApRES acquisition.
+
+    We keep track of processing steps with the flags attribute.
+    This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
+    """
+    #: Attributes that every ApresData object should have and should not be None.
+    attrs_guaranteed = ['shh',
+                        'shv',
+                        'svh',
+                        'svv',
+                        'decday',
+                        'dt',
+                        'snum',
+                        'travel_time']
+
+    #: Optional attributes that may be None without affecting processing.
+    #: These may not have existed in old StoDeep files that we are compatible with,
+    #: and they often cannot be set at the initial data load.
+    #: If they exist, they all have units of meters.
+    attrs_optional = ['lat',
+                      'long',
+                      'x_coord',
+                      'y_coord',
+                      'elev',
+                      'thetas',
+                      'HH',
+                      'HV',
+                      'VH',
+                      'VV',
+                      'chhvv',
+                      'dphi_dz']
+
+    # Now make some load/save methods that will work with the matlab format
+    def __init__(self, fn_mat):
+        if fn_mat is None:
+            # Write these out so we can document them
+            # Very basics
+            self.snum = None  #: int number of samples per chirp
+            self.dt = None  #: float, The spacing between samples in travel time, in seconds
+
+            # Sample-wise attributes
+            #: np.ndarray(snum,)
+            self.shh = None  #: returned amplitude for hh polarization
+            self.shv = None  #: returned amplitude for hv polarization
+            self.svh = None  #: returned amplitude for vh polarization
+            self.svv = None  #: returned amplitude for vv polarization
+            self.travel_time = None #: The two way travel time to each sample, in us
+
+            # Float attributes relative to the time and location of the acquisition
+            #: note that decimal days are referenced to Jan 1, 0 CE (matlabe datenum)
+            #: for convenience, use the `datetime` attribute to access a python version of the day
+            self.decday = None #: acquisition time in days
+            self.lat = None #: latitude along the profile. Generally not in projected coordinates
+            self.long = None #: longitude along the profile. Generally not in projected coordinates
+            self.x_coord = None #: Optional. Projected x-coordinate along the profile.
+            self.y_coord = None #: Optional. Projected y-coordinate along the profile.
+            self.elev = None  #: Optional. Elevation along the profile.
+
+            # Special attributes
+            #: impdar.lib.RadarFlags object containing information about the processing steps done.
+            self.flags = QuadPolFlags()
+
+            self.data_dtype = None
+            return
+
+        # TODO: add a matlab load
+        mat = loadmat(fn_mat)
+        for attr in self.attrs_guaranteed:
+            if mat[attr].shape == (1, 1):
+                setattr(self, attr, mat[attr][0][0])
+            elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                setattr(self, attr, mat[attr].flatten())
+            else:
+                setattr(self, attr, mat[attr])
+        # We may have some additional variables
+        for attr in self.attrs_optional:
+            if attr in mat:
+                if mat[attr].shape == (1, 1):
+                    setattr(self, attr, mat[attr][0][0])
+                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                    setattr(self, attr, mat[attr].flatten())
+                else:
+                    setattr(self, attr, mat[attr])
+            else:
+                setattr(self, attr, None)
+
+        self.data_dtype = self.data.dtype
+
+        self.fn = fn_mat
+        self.flags = QuadPolFlags()
         self.flags.from_matlab(mat['flags'])
         self.check_attrs()
 

@@ -12,24 +12,39 @@ Flags to keep track of processing steps
 
 import numpy as np
 
-class ApresFlags():
+class QuadPolFlags():
     """Flags that indicate the processing that has been used on the data.
 
     These are used for figuring out whether different processing steps have been performed. They also contain some information about the input arguments for some (but not all) of the processing steps.
 
     Attributes
     ----------
-    file_read_code
-    range
-    stack
-    """
+    batch: bool
+        Legacy indication of whether we are batch processing. Always False.
+    agc: bool
+        Automatic gain control has been applied.
+    reverse: bool
+        Data have been reversed.
+    restack: bool
+        Data have been restacked.
+    rgain: bool
+        Data have a linear range gain applied.
+    bpass: 3x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
+    hfilt: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if horizontally filtered; (2) Filter type
+    interp: 2x1 :class:`numpy.ndarray`
+        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
+    mig: 2x1 :class: String
+        None if no migration done, mtype if migration done.
+     """
 
     def __init__(self):
-        self.file_read_code = False
-        self.range = np.zeros((2,))
-        self.stack = np.zeros((2,))
-        self.attrs = ['file_read_code','range','stack']
-        self.attr_dims = [None,2,2]
+        self.file_read_code = None
+        self.range = 0
+        self.stack = 1
+        self.attrs = ['file_read_code','phase2range','stack']
+        self.attr_dims = [None,None,None]
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`

@@ -60,7 +60,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     Modified frequencies 10 April 2014
     """
 
-    if self.flags.range != 0:
+    if self.flags.range[0] != 0:
         raise TypeError('The range filter has already been done on these data.')
 
     # Processing settings
@@ -127,7 +127,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.spec = self.spec[:,:,:n]
     self.snum = n
 
-    self.flags.range = max_range
+    self.flags.range = np.array([1,max_range])
 
 # --------------------------------------------------------------------------------------------
 
@@ -339,56 +339,5 @@ def stacking(self,num_chirps=None):
         self.bnum = 1
         self.cnum = 1
 
-    self.flags.stack = num_chirps
+    self.flags.stack = np.array([1,num_chirps])
 
-# --------------------------------------------------------------------------------------------
-
-def rotational_transform(S,theta):
-    """
-    Azimuthal (rotational) shift of principal axes
-    at the transmitting and receiving antennas
-    Mott, 2006
-
-    Parameters
-    --------
-    S : array
-        2-d array with [[shh,svh][shv,svv]] of complex numbers
-    theta : complex
-            rotational offset
-    """
-
-    shh = S[0,0]
-    svh = S[0,1]
-    shv = S[1,0]
-    svv = S[1,1]
-
-    S_ = np.empty_like(S)
-    S_[0,0] = shh*np.cos(theta)**2.+(svh+shv)*np.sin(theta)*np.cos(theta)+svv*np.sin(theta)**2
-    S_[0,1] = shv*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-svh*np.sin(theta)**2
-    S_[1,0] = svh*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-shv*np.sin(theta)**2
-    S_[1,1] = svv*np.cos(theta)**2.-(svh+shv)*np.sin(theta)*np.cos(theta)+shh*np.sin(theta)**2
-
-    return S_
-
-# --------------------------------------------------------------------------------------------
-
-def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
-    """
-    Two-way birefringent phase shift
-    Jordan et al. (2019)
-
-    Parameters
-    ---------
-    z: float
-        depth
-    freq: float
-        center frequency
-    eps_bi: float
-        birefringent permittivity difference (i.e. eps_parallel - eps_perpendicular)
-    eps: float
-        mean permittivity (relative)
-    c: float
-        light speed in vacuum
-    """
-    delta = 4.*np.pi*freq/c*(z*eps_bi/(2.*np.sqrt(eps)))
-    return delta

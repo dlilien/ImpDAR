@@ -41,7 +41,7 @@ def load_apres(fns_apres,burst=1,fs=40000, *args, **kwargs):
 
     Returns
     -------
-    RadarData
+    ApresData
         A single, concatenated output.
     """
 
@@ -115,48 +115,48 @@ def load_apres_single_file(fn_apres,burst=1,fs=40000, *args, **kwargs):
         apres_data.header.update_parameters(fn_apres)
         start_ind,end_ind = load_burst(apres_data, burst, fs)
 
-    # Extract just good chirp data from voltage record and rearrange into
-    # matrix with one chirp per row
-    # note: you can't just use reshape as we are also cropping the 20K samples
-    # of sync tone etc which occur after each 40K of chirp.
-    AttSet = apres_data.header.attenuator1 + 1j*apres_data.header.attenuator2 # unique code for attenuator setting
+        # Extract just good chirp data from voltage record and rearrange into
+        # matrix with one chirp per row
+        # note: you can't just use reshape as we are also cropping the 20K samples
+        # of sync tone etc which occur after each 40K of chirp.
+        AttSet = apres_data.header.attenuator1 + 1j*apres_data.header.attenuator2 # unique code for attenuator setting
 
-    ## Add metadata to structure
+        ## Add metadata to structure
 
-    # Sampling parameters
-    if apres_data.header.file_format is None:
-        raise TypeError("File format is 'None', cannot load")
-    else:
-        if apres_data.header.file_format != 5:
-            raise TypeError('Loading functions have only been written for rmb5 data.\
-                            Look back to the original Matlab scripts if you need to implement earlier formats.')
+        # Sampling parameters
+        if apres_data.header.file_format is None:
+            raise TypeError("File format is 'None', cannot load")
         else:
-            apres_data.header.f1 = apres_data.header.f0 + apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
-            apres_data.header.bandwidth = apres_data.header.chirp_length * apres_data.header.chirp_grad/2/np.pi
-            apres_data.header.fc = apres_data.header.f0 + apres_data.header.bandwidth/2.
-            apres_data.dt = 1./apres_data.header.fs
-            apres_data.header.er = 3.18
-            apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er);
-            apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc;
+            if apres_data.header.file_format != 5:
+                raise TypeError('Loading functions have only been written for rmb5 data.\
+                                Look back to the original Matlab scripts if you need to implement earlier formats.')
+            else:
+                apres_data.header.f1 = apres_data.header.f0 + apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
+                apres_data.header.bandwidth = apres_data.header.chirp_length * apres_data.header.chirp_grad/2/np.pi
+                apres_data.header.fc = apres_data.header.f0 + apres_data.header.bandwidth/2.
+                apres_data.dt = 1./apres_data.header.fs
+                apres_data.header.er = 3.18
+                apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er);
+                apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc;
 
-            # Load each chirp into a row
-            data_load = np.zeros((apres_data.cnum,apres_data.snum)) # preallocate array
-            apres_data.chirp_num = np.arange(apres_data.cnum)
-            apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
-            apres_data.chirp_time = np.zeros((apres_data.cnum))
-            chirp_interval = 1.6384/(24.*3600.); # days TODO: why is this assigned directly?
-            for chirp in range(apres_data.cnum):
-                data_load[chirp,:] = apres_data.data[start_ind[chirp]:end_ind[chirp]]
-                apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]             # attenuator setting for chirp
-                apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)  # time of chirp
-            apres_data.data = data_load
+                # Load each chirp into a row
+                data_load = np.zeros((apres_data.cnum,apres_data.snum)) # preallocate array
+                apres_data.chirp_num = np.arange(apres_data.cnum)
+                apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
+                apres_data.chirp_time = np.zeros((apres_data.cnum))
+                chirp_interval = 1.6384/(24.*3600.); # days TODO: why is this assigned directly?
+                for chirp in range(apres_data.cnum):
+                    data_load[chirp,:] = apres_data.data[start_ind[chirp]:end_ind[chirp]]
+                    apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]             # attenuator setting for chirp
+                    apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)  # time of chirp
+                apres_data.data = data_load
 
-    # Create time and frequency stamp for samples
-    apres_data.travel_time = apres_data.dt*np.arange(apres_data.snum) # sampling times (rel to first)
-    apres_data.frequencies = apres_data.header.f0 + apres_data.travel_time*apres_data.header.chirp_grad/(2.*np.pi)
-    apres_data.travel_time *= 1e6
+        # Create time and frequency stamp for samples
+        apres_data.travel_time = apres_data.dt*np.arange(apres_data.snum) # sampling times (rel to first)
+        apres_data.frequencies = apres_data.header.f0 + apres_data.travel_time*apres_data.header.chirp_grad/(2.*np.pi)
+        apres_data.travel_time *= 1e6
 
-    apres_data.data_dtype = apres_data.data.dtype
+        apres_data.data_dtype = apres_data.data.dtype
 
     return apres_data
 
