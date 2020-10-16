@@ -26,7 +26,6 @@ Sept 23 2019
 
 import numpy as np
 from . import QuadPolData, ApresData
-from ._ApresDataProcessing import stacking,apres_range
 
 # -----------------------------------------------------------------------------------------------------
 
@@ -66,10 +65,10 @@ def load_quadpol(fn, load_single_pol=True, *args, **kwargs):
         # If they haven't do range conversion and stack to one trace
         for i,xx in enumerate(single_acquisitions):
             print('Restacking acquisition #',i+1,'to a 1-d array...')
-            stacking(xx)
+            xx.stacking()
             if xx.flags.range[0] == 0:
                 print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
-                apres_range(xx,2)
+                xx.apres_range(2)
 
         # Check that all four acquisitions have the same attributes
         from copy import deepcopy

@@ -20,7 +20,7 @@ Sept 23 2019
 """
 
 import numpy as np
-from _ApresDataProcessing import coherence
+from ._ApresDataProcessing import coherence
 
 def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
     """
@@ -51,67 +51,67 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
 
 # --------------------------------------------------------------------------------------------
 
-def copolarized_coherence(self,theta_start=0,theta_end=np.pi,n_thetas=100,
-                            delta_theta = 20*np.pi/180.,delta_d = 100):
+def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
 
-    nd = int(delta_d//abs(d[0]-d[1]))
-    ntheta = int(delta_theta//abs(thetas[0]-thetas[1]))
+    THs,Rs = np.meshgrid(self.thetas,self.range)
 
-    theta_start = thetas[:,1:ntheta+1]
-    theta_end = thetas[:,-ntheta-1:-1]
-    theta_ = np.append(thetas,theta_start+np.pi,axis=1)
-    theta_ = np.append(theta_end-np.pi,theta_,axis=1)
+    nrange = int(delta_range//abs(self.range[0]-self.range[1]))
+    ntheta = int(delta_theta//abs(self.thetas[0]-self.thetas[1]))
 
-    D_start = Ds[:,1:ntheta+1]
-    D_end = Ds[:,-ntheta-1:-1]
-    D_ = np.append(Ds,D_start,axis=1)
-    D_ = np.append(D_end,D_,axis=1)
+    theta_start = THs[:,1:ntheta+1]
+    theta_end = THs[:,-ntheta-1:-1]
+    THs = np.append(THs,theta_start+np.pi,axis=1)
+    THs = np.append(theta_end-np.pi,THs,axis=1)
 
-    HH_start = HH[:,1:ntheta+1]
-    HH_end = HH[:,-ntheta-1:-1]
-    HH_ = np.append(HH,HH_start,axis=1)
+    R_start = Rs[:,1:ntheta+1]
+    R_end = Rs[:,-ntheta-1:-1]
+    Rs = np.append(Rs,R_start,axis=1)
+    Rs = np.append(R_end,Rs,axis=1)
+
+    HH_start = self.HH[:,1:ntheta+1]
+    HH_end = self.HH[:,-ntheta-1:-1]
+    HH_ = np.append(self.HH,HH_start,axis=1)
     HH_ = np.append(HH_end,HH_,axis=1)
 
-    VV_start = VV[:,1:ntheta+1]
-    VV_end = VV[:,-ntheta-1:-1]
-    VV_ = np.append(VV,VV_start,axis=1)
+    VV_start = self.VV[:,1:ntheta+1]
+    VV_end = self.VV[:,-ntheta-1:-1]
+    VV_ = np.append(self.VV,VV_start,axis=1)
     VV_ = np.append(VV_end,VV_,axis=1)
 
     chhvv = np.nan*np.ones_like(HH_).astype(np.complex)
 
-    for i,θ in enumerate(theta_[0]):
-        for j in range(len(D_[:,0])):
-            if j < nd or j > len(D_[:,0])-nd or i < ntheta or i > len(theta_[0])-ntheta-1:
+    for i,θ in enumerate(THs[0]):
+        for j in range(len(Rs[:,0])):
+            if j < nrange or j > len(Rs[:,0])-nrange or i < ntheta or i > len(THs[0])-ntheta-1:
                 continue
             else:
-                chhvv[j,i] = coherence(HH_[j-nd:j+nd,i-ntheta:i+ntheta].flatten(),
-                                         VV_[j-nd:j+nd,i-ntheta:i+ntheta].flatten())[1,0]
+                chhvv[j,i] = coherence(HH_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten(),
+                                         VV_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten())
 
-    chhvv = chhvv[:,ntheta:-ntheta]
+    self.chhvv = chhvv[:,ntheta:-ntheta]
 
 # --------------------------------------------------------------------------------------------
 
-def copolarized_phase_gradient(self):
-    R = np.real(chhvv)
-    I = np.imag(chhvv)
+def copolarized_phase_gradient(self,delta_theta=20*np.pi/180.,delta_range=100):
 
-    Δd = 100
-    Δθ = 20*np.pi/180.
-    nd = int(Δd//abs(d[0]-d[1]))
-    nθ = int(Δθ//abs(θs[0]-θs[1]))
+    THs,Rs = np.meshgrid(self.thetas,self.range)
+    nrange = int(delta_range//abs(self.range[0]-self.range[1]))
 
-    dRdz = np.nan*np.ones_like(chhvv).astype(np.float)
-    dIdz = np.nan*np.ones_like(chhvv).astype(np.float)
+    R = np.real(self.chhvv)
+    I = np.imag(self.chhvv)
 
-    for i,θ in enumerate(θs):
-        print('i:',i,'θ:',np.round(θ,2))
-        for j in range(len(d)):
-            if j < nd or j > len(d)-nd:
+    dRdz = np.nan*np.ones_like(self.chhvv).astype(np.float)
+    dIdz = np.nan*np.ones_like(self.chhvv).astype(np.float)
+
+    for i,theta in enumerate(self.thetas):
+        print('i:',i,'theta:',np.round(theta,2))
+        for j in range(len(self.range)):
+            if j < nrange or j > len(self.range)-nrange:
                 continue
             else:
-                Rs_ij = R[j-nd:j+nd,i]
-                Is_ij = I[j-nd:j+nd,i]
-                ds_ij = Ds[j-nd:j+nd,i]
+                Rs_ij = R[j-nrange:j+nrange,i]
+                Is_ij = I[j-nrange:j+nrange,i]
+                ds_ij = Rs[j-nrange:j+nrange,i]
 
                 Ridxs = ~np.isnan(Rs_ij) & ~np.isnan(ds_ij)
                 Iidxs = ~np.isnan(Is_ij) & ~np.isnan(ds_ij)
@@ -123,7 +123,7 @@ def copolarized_phase_gradient(self):
                     dRdz[j,i] = np.polyfit(ds_ij[Ridxs],Rs_ij[Ridxs],1)[0]
                     dIdz[j,i] = np.polyfit(ds_ij[Iidxs],Is_ij[Iidxs],1)[0]
 
-    dϕdz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
+    self.dphi_dz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
 
 # --------------------------------------------------------------------------------------------
 

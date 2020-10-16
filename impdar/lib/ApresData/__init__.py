@@ -58,6 +58,9 @@ class ApresData(object):
                       'battery_voltage',
                       'Rcoarse']
 
+    from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, coherence, range_diff, stacking
+    from ._ApresDataSaving import save_apres
+
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
         if fn_mat is None:
@@ -199,6 +202,9 @@ class QuadPolData(object):
                       'VV',
                       'chhvv',
                       'dphi_dz']
+
+    from ._QuadPolProcessing import rotational_transform, copolarized_coherence, copolarized_phase_gradient
+    from ._ApresDataSaving import save_apres
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):

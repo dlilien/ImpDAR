@@ -224,9 +224,14 @@ def coherence(s1,s2):
     s2:
         second acquisition
     """
-    top = np.dot(s1,np.conj(s2))
-    bottom = np.sqrt(np.abs(s1)**2.)*np.sqrt(np.abs(s2)**2.)
-    c = top/bottom
+    if hasattr(s1,'__len__') and hasattr(s2,'__len__'):
+        top = np.sum(np.dot(s1,np.conj(s2)))
+        bottom = np.sqrt(np.sum(np.abs(s1)**2.))*np.sqrt(np.sum(np.abs(s2)**2.))
+        c = top/bottom
+    else:
+        top = np.dot(s1,np.conj(s2))
+        bottom = np.sqrt(np.abs(s1)**2.)*np.sqrt(np.abs(s2)**2.)
+        c = top/bottom
     return c
 
 # --------------------------------------------------------------------------------------------
