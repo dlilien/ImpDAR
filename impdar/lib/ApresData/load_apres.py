@@ -75,7 +75,6 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
     out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
     out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
-    out.time_stamp = np.hstack([dat.time_stamp for dat in apres_data])
     out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
     out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
     out.battery_voltage = np.hstack(
