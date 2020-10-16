@@ -105,7 +105,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                     # sometimes, there are bad entries that are unmarked
                     try:
                         lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
-                        lon[location_num] = -1. * float(
+                        lon[location_num] = float(
                             _xmlGetVal(gps_data, 'Long_ W'))
                         time[location_num] = float(
                             _xmlGetVal(gps_data, 'GPS_timestamp_UTC'))
@@ -135,7 +135,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                                        _dm2dec(lat[mask]),
                                        fill_value='extrapolate')(h5_data.trace_num)
                 h5_data.long = interp1d(h5_data.trace_num[mask],
-                                        _dm2dec(lon[mask]),
+                                        -_dm2dec(lon[mask]),
                                         fill_value='extrapolate')(h5_data.trace_num)
                 h5_data.elev = interp1d(h5_data.trace_num[mask],
                                         h5_data.elev[mask],
@@ -144,7 +144,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                 if np.any(~mask):
                     print('Deleting traces with bad GPS in {:s}'.format(dset_name))
                 h5_data.lat = _dm2dec(lat[mask])
-                h5_data.long = _dm2dec(lon[mask])
+                h5_data.long = -_dm2dec(lon[mask])
                 h5_data.elev = h5_data.elev[mask]
                 h5_data.data = h5_data.data[:, mask]
                 time = time[mask]
@@ -154,7 +154,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                 h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
             else:
                 h5_data.lat = _dm2dec(lat)
-                h5_data.long = _dm2dec(lon)
+                h5_data.long = -_dm2dec(lon)
                 h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
 
             h5_data.trig = np.floor(np.ones((h5_data.tnum, )) * np.abs(
