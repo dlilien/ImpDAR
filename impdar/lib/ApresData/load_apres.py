@@ -69,7 +69,6 @@ def load_apres(fns_apres,burst=1,fs=40000, *args, **kwargs):
     out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
     out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
     out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
-    out.time_stamp = np.hstack([dat.time_stamp for dat in apres_data])
     out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
     out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
     out.battery_voltage = np.hstack([dat.battery_voltage for dat in apres_data])
@@ -108,7 +107,6 @@ def load_apres_single_file(fn_apres,burst=1,fs=40000, *args, **kwargs):
 
     ## Load data and reshape array
     if fn_apres[-4:] == '.mat':
-        # TODO: fix this in the __init__ file
         apres_data = ApresData(fn_apres)
     else:
         apres_data = ApresData(None)
@@ -277,9 +275,9 @@ def load_burst(self,burst=1,fs=40000,max_header_len=2000,burst_pointer=0):
     if 'Time stamp' not in self.header.header_string:
         self.flags.file_read_code = 'Burst' + str(self.bnum) + 'not found in file' + self.header.fn
     else:
-        self.time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
+        time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
-        day_offset = self.time_stamp - timezero
+        day_offset = time_stamp - timezero
         self.decday = np.array([offset.days for offset in day_offset]) + 377. # Matlab compatable
 
     self.temperature1 = np.array(output[1]).astype(float)

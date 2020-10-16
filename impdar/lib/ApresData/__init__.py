@@ -55,11 +55,8 @@ class ApresData(object):
                       'elev',
                       'temperature1',
                       'temperature2',
-                      'battery_voltage']
-
-    # TODO: add imports
-    #from ._ApresDataProcessing import
-    #from ._ApresDataSaving import
+                      'battery_voltage',
+                      'Rcoarse']
 
     # Now make some load/save methods that will work with the matlab format
     def __init__(self, fn_mat):
@@ -90,6 +87,7 @@ class ApresData(object):
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
+            self.Rcoarse = None
 
             #: float Optional. Projected coordinates of the acquisition location
             self.x_coord = None
@@ -103,7 +101,7 @@ class ApresData(object):
             self.data_dtype = None
             return
 
-        # TODO: add a matlab load
+        ### Load from a matlab file that has already been initialized in ImpDAR ###
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
             if mat[attr].shape == (1, 1):
@@ -179,6 +177,7 @@ class QuadPolData(object):
                         'shv',
                         'svh',
                         'svv',
+                        'range',
                         'decday',
                         'dt',
                         'snum',
@@ -234,7 +233,7 @@ class QuadPolData(object):
             self.data_dtype = None
             return
 
-        # TODO: add a matlab load
+        ### Load from a matlab file that has already been initialized in ImpDAR ###
         mat = loadmat(fn_mat)
         for attr in self.attrs_guaranteed:
             if mat[attr].shape == (1, 1):
@@ -255,7 +254,7 @@ class QuadPolData(object):
             else:
                 setattr(self, attr, None)
 
-        self.data_dtype = self.data.dtype
+        self.data_dtype = self.shh.dtype
 
         self.fn = fn_mat
         self.flags = QuadPolFlags()
@@ -286,7 +285,7 @@ class QuadPolData(object):
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.data.dtype
+            self.data_dtype = self.shh.dtype
         return
 
     @property

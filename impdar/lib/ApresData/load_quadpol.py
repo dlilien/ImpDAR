@@ -30,7 +30,7 @@ from ._ApresDataProcessing import stacking,apres_range
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_quadpol(fn, *args, **kwargs):
+def load_quadpol(fn, load_single_pol=True, *args, **kwargs):
     """Load processed apres profiles from all four polarizations: hh, hv, vh, vv
     into one data object for a quad polarized acquisition.
 
@@ -45,52 +45,56 @@ def load_quadpol(fn, *args, **kwargs):
         quad-polarized apres data object
     """
 
-    # Load each of the individual polarizations as their own ApresData object
-    single_acquisitions = []
-    if type(fn) is str:
-        single_acquisitions.append(ApresData(fn+'_HH.mat'))
-        single_acquisitions.append(ApresData(fn+'_HV.mat'))
-        single_acquisitions.append(ApresData(fn+'_VH.mat'))
-        single_acquisitions.append(ApresData(fn+'_VV.mat'))
-    elif hasattr(fn,'__len__') and len(fn) == 4:
-        # TODO: Ask the user to check that the files are correct
-        single_acquisitions.append(ApresData(fn[0]))
-        single_acquisitions.append(ApresData(fn[1]))
-        single_acquisitions.append(ApresData(fn[2]))
-        single_acquisitions.append(ApresData(fn[3]))
+    if not load_single_pol:
+        quadpol_data = QuadPolData(fn)
+    else:
+        # Load each of the individual polarizations as their own ApresData object
+        single_acquisitions = []
+        if type(fn) is str:
+            single_acquisitions.append(ApresData(fn+'_HH.mat'))
+            single_acquisitions.append(ApresData(fn+'_HV.mat'))
+            single_acquisitions.append(ApresData(fn+'_VH.mat'))
+            single_acquisitions.append(ApresData(fn+'_VV.mat'))
+        elif hasattr(fn,'__len__') and len(fn) == 4:
+            # TODO: Ask the user to check that the files are correct
+            single_acquisitions.append(ApresData(fn[0]))
+            single_acquisitions.append(ApresData(fn[1]))
+            single_acquisitions.append(ApresData(fn[2]))
+            single_acquisitions.append(ApresData(fn[3]))
 
-    # Check that the data have gone through the initial processing steps
-    # If they haven't do range conversion and stack to one trace
-    for i,xx in enumerate(single_acquisitions):
-        print('Restacking acquisition #',i+1,'to a 1-d array...')
-        stacking(xx)
-        if xx.flags.range[0] == 0:
-            print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
-            apres_range(xx,2)
+        # Check that the data have gone through the initial processing steps
+        # If they haven't do range conversion and stack to one trace
+        for i,xx in enumerate(single_acquisitions):
+            print('Restacking acquisition #',i+1,'to a 1-d array...')
+            stacking(xx)
+            if xx.flags.range[0] == 0:
+                print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
+                apres_range(xx,2)
 
-    # Check that all four acquisitions have the same attributes
-    from copy import deepcopy
-    hh = deepcopy(single_acquisitions[0])
-    for xx in single_acquisitions[1:]:
-        if hh.snum != xx.snum:
-            raise ValueError('Need the same number of vertical samples in each file')
-        if not np.all(hh.travel_time == xx.travel_time):
-            raise ValueError('Need matching travel time vectors')
-        if not np.all(abs(hh.decday - xx.decday)<1.):
-            # TODO: ask to proceed
-            raise ValueError('It looks like these acquisitions were not all taken on the same day.')
+        # Check that all four acquisitions have the same attributes
+        from copy import deepcopy
+        hh = deepcopy(single_acquisitions[0])
+        for xx in single_acquisitions[1:]:
+            if hh.snum != xx.snum:
+                raise ValueError('Need the same number of vertical samples in each file')
+            if not np.all(hh.travel_time == xx.travel_time):
+                raise ValueError('Need matching travel time vectors')
+            if not np.all(abs(hh.decday - xx.decday)<1.):
+                # TODO: ask to proceed
+                raise ValueError('It looks like these acquisitions were not all taken on the same day.')
 
-    # load into the QuadPolData object
-    quadpol_data = QuadPolData(None)
-    quadpol_data.snum = hh.snum
-    quadpol_data.shh = hh.data.flatten()
-    quadpol_data.shv = single_acquisitions[1].data.flatten()
-    quadpol_data.svh = single_acquisitions[2].data.flatten()
-    quadpol_data.svv = single_acquisitions[3].data.flatten()
-    quadpol_data.decday = hh.decday
-    quadpol_data.dt = hh.dt
-    quadpol_data.travel_time = hh.travel_time
+        # load into the QuadPolData object
+        quadpol_data = QuadPolData(None)
+        quadpol_data.snum = hh.snum
+        quadpol_data.shh = hh.data.flatten()
+        quadpol_data.shv = single_acquisitions[1].data.flatten()
+        quadpol_data.svh = single_acquisitions[2].data.flatten()
+        quadpol_data.svv = single_acquisitions[3].data.flatten()
+        quadpol_data.decday = hh.decday
+        quadpol_data.range = hh.Rcoarse
+        quadpol_data.dt = hh.dt
+        quadpol_data.travel_time = hh.travel_time
 
-    quadpol_data.data_dtype = quadpol_data.shh.dtype
+        quadpol_data.data_dtype = quadpol_data.shh.dtype
 
     return quadpol_data

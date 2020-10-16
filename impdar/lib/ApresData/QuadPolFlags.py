@@ -21,29 +21,13 @@ class QuadPolFlags():
     ----------
     batch: bool
         Legacy indication of whether we are batch processing. Always False.
-    agc: bool
-        Automatic gain control has been applied.
-    reverse: bool
-        Data have been reversed.
-    restack: bool
-        Data have been restacked.
-    rgain: bool
-        Data have a linear range gain applied.
-    bpass: 3x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
-    hfilt: 2x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if horizontally filtered; (2) Filter type
-    interp: 2x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
-    mig: 2x1 :class: String
-        None if no migration done, mtype if migration done.
      """
 
     def __init__(self):
-        self.file_read_code = None
-        self.range = 0
-        self.stack = 1
-        self.attrs = ['file_read_code','phase2range','stack']
+        self.rotation = np.zeros((2,))
+        self.coherence = np.zeros((2,))
+        self.phasegradient = np.zeros((2,))
+        self.attrs = ['rotation','coherence','phasegradient']
         self.attr_dims = [None,None,None]
 
     def to_matlab(self):

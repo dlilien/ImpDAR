@@ -22,7 +22,7 @@ Sept 23 2019
 import numpy as np
 from _ApresDataProcessing import coherence
 
-def rotational_transform(S,theta):
+def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
     """
     Azimuthal (rotational) shift of principal axes
     at the transmitting and receiving antennas
@@ -36,39 +36,23 @@ def rotational_transform(S,theta):
             rotational offset
     """
 
-    shh = S[0,0]
-    svh = S[0,1]
-    shv = S[1,0]
-    svv = S[1,1]
+    self.thetas = np.linspace(theta_start,theta_end,n_thetas)
 
-    S_ = np.empty_like(S)
-    S_[0,0] = shh*np.cos(theta)**2.+(svh+shv)*np.sin(theta)*np.cos(theta)+svv*np.sin(theta)**2
-    S_[0,1] = shv*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-svh*np.sin(theta)**2
-    S_[1,0] = svh*np.cos(theta)**2.+(svv-shh)*np.sin(theta)*np.cos(theta)-shv*np.sin(theta)**2
-    S_[1,1] = svv*np.cos(theta)**2.-(svh+shv)*np.sin(theta)*np.cos(theta)+shh*np.sin(theta)**2
+    self.HH = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
+    self.HV = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
+    self.VH = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
+    self.VV = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
 
-    return S_
+    for i,theta in enumerate(self.thetas):
+        self.HH[:,i] = self.shh*np.cos(theta)**2.+(self.svh+self.shv)*np.sin(theta)*np.cos(theta)+self.svv*np.sin(theta)**2
+        self.HV[:,i] = self.shv*np.cos(theta)**2.+(self.svv-self.shh)*np.sin(theta)*np.cos(theta)-self.svh*np.sin(theta)**2
+        self.VH[:,i] = self.svh*np.cos(theta)**2.+(self.svv-self.shh)*np.sin(theta)*np.cos(theta)-self.shv*np.sin(theta)**2
+        self.VV[:,i] = self.svv*np.cos(theta)**2.-(self.svh+self.shv)*np.sin(theta)*np.cos(theta)+self.shh*np.sin(theta)**2
 
 # --------------------------------------------------------------------------------------------
 
 def copolarized_coherence(self,theta_start=0,theta_end=np.pi,n_thetas=100,
                             delta_theta = 20*np.pi/180.,delta_d = 100):
-
-    thetas = np.linspace(theta_start,theta_end,n_thetas)
-    Thetas,Ds = np.meshgrid(thetas,d)
-
-    HH = np.empty((len(d),len(thetas))).astype(np.complex)
-    VH = np.empty((len(d),len(thetas))).astype(np.complex)
-    HV = np.empty((len(d),len(thetas))).astype(np.complex)
-    VV = np.empty((len(d),len(thetas))).astype(np.complex)
-
-    for i,θ in enumerate(thetas):
-        S = np.array([[self.hh,self.vh],[self.hv,self.vv]])
-        S_ = rotational_transform(S,θ)
-        HH[:,i] = S_[0,0]
-        HV[:,i] = S_[0,1]
-        VH[:,i] = S_[1,0]
-        VV[:,i] = S_[1,1]
 
     nd = int(delta_d//abs(d[0]-d[1]))
     ntheta = int(delta_theta//abs(thetas[0]-thetas[1]))
@@ -100,7 +84,7 @@ def copolarized_coherence(self,theta_start=0,theta_end=np.pi,n_thetas=100,
             if j < nd or j > len(D_[:,0])-nd or i < ntheta or i > len(theta_[0])-ntheta-1:
                 continue
             else:
-                chhvv[j,i] = np.corrcoef(HH_[j-nd:j+nd,i-ntheta:i+ntheta].flatten(),
+                chhvv[j,i] = coherence(HH_[j-nd:j+nd,i-ntheta:i+ntheta].flatten(),
                                          VV_[j-nd:j+nd,i-ntheta:i+ntheta].flatten())[1,0]
 
     chhvv = chhvv[:,ntheta:-ntheta]
@@ -166,7 +150,7 @@ def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
 
 # --------------------------------------------------------------------------------------------
 
-def phase_gradient_to_cof(self,c = 300e6,fc = 200e6,Δϵ = 0.035,ϵ = 3.12):
+def phase_gradient_to_fabric(self,c = 300e6,fc = 200e6,Δϵ = 0.035,ϵ = 3.12):
     max_idx = np.argmax(self.dϕdz,axis=1)
     min_idx = np.argmin(self.dϕdz,axis=1)
 

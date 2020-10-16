@@ -70,13 +70,12 @@ class ApresHeader():
                     'f0','f_stop','ramp_up_step','ramp_down_step','tstep_up','tstep_down','snum','nsteps_DDS',
                     'chirp_length','chirp_grad','nchirp_samples','ramp_dir','f1','bandwidth','fc','er','ci','lambdac',
                     'n_attenuators','attenuator1','attenuator2','tx_ant','rx_ant']
-        self.attr_dims = [None,None,None,None,None,
-                        None,None,None,None,None,
-                        None,None,None,None,None,
-                        None,None,None,None,None,
-                        None,None,None,None,None,
-                        None,None,None,None,None]
-
+        self.attr_dims = ['none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none']
 
     # --------------------------------------------------------------------------------------------
 
@@ -255,5 +254,5 @@ class ApresHeader():
             setattr(self, attr, matlab_struct[attr][0][0][0])
             # Use this because matlab inputs may have zeros for flags that
             # were lazily appended to be arrays, but we preallocate
-            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+            if attr_dim != 'none' and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
