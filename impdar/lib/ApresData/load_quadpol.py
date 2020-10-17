@@ -7,12 +7,7 @@
 # Distributed under terms of the GNU GPL3 license.
 
 """
-Load ApRES data
-
-This code is based on a series of Matlab scripts from Craig Stewart,
-Keith Nicholls, and others.
-The ApRES (Automated phase-sensitive Radio Echo Sounder) is a self-contained
-instrument from BAS.
+Load quad-polarized data
 
 Author:
 Benjamin Hills
@@ -20,16 +15,17 @@ bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 
-Sept 23 2019
-
+Oct 15 2019
 """
 
 import numpy as np
-from . import QuadPolData, ApresData
+import glob
+from . import QuadPolData
+from .load_apres import load_apres
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_quadpol(fn, load_single_pol=True, *args, **kwargs):
+def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
     """Load processed apres profiles from all four polarizations: hh, hv, vh, vv
     into one data object for a quad polarized acquisition.
 
@@ -50,16 +46,16 @@ def load_quadpol(fn, load_single_pol=True, *args, **kwargs):
         # Load each of the individual polarizations as their own ApresData object
         single_acquisitions = []
         if type(fn) is str:
-            single_acquisitions.append(ApresData(fn+'_HH.mat'))
-            single_acquisitions.append(ApresData(fn+'_HV.mat'))
-            single_acquisitions.append(ApresData(fn+'_VH.mat'))
-            single_acquisitions.append(ApresData(fn+'_VV.mat'))
+            single_acquisitions.append(load_apres(glob.glob(fn+'_HH*')))
+            single_acquisitions.append(load_apres(glob.glob(fn+'_HV*')))
+            single_acquisitions.append(load_apres(glob.glob(fn+'_VH*')))
+            single_acquisitions.append(load_apres(glob.glob(fn+'_VV*')))
         elif hasattr(fn,'__len__') and len(fn) == 4:
             # TODO: Ask the user to check that the files are correct
-            single_acquisitions.append(ApresData(fn[0]))
-            single_acquisitions.append(ApresData(fn[1]))
-            single_acquisitions.append(ApresData(fn[2]))
-            single_acquisitions.append(ApresData(fn[3]))
+            single_acquisitions.append(load_apres(fn[0]))
+            single_acquisitions.append(load_apres(fn[1]))
+            single_acquisitions.append(load_apres(fn[2]))
+            single_acquisitions.append(load_apres(fn[3]))
 
         # Check that the data have gone through the initial processing steps
         # If they haven't do range conversion and stack to one trace
