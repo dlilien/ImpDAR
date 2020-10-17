@@ -60,16 +60,14 @@ def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     mask = self.travel_time <= 0.3 * np.max(self.travel_time)
     mtt = np.max(self.travel_time)
     transition = 0.1 * mtt
-    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
-    #   self.travel_time[mask] - transition) / mtt ** 2. + 1
-    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
-    #   ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
-    #   (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
     avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
         self.travel_time[mask] - transition) / mtt ** 2. + 1
     avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
         ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
             (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+
+    transition = 0.15 * mtt
+    avg_trace_scale = (1.-np.tanh(.5*(self.travel_time-transition)))/2.
 
     # preallocate array
     hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
