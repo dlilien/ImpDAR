@@ -49,6 +49,8 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
         self.VH[:,i] = self.svh*np.cos(theta)**2.+(self.svv-self.shh)*np.sin(theta)*np.cos(theta)-self.shv*np.sin(theta)**2
         self.VV[:,i] = self.svv*np.cos(theta)**2.-(self.svh+self.shv)*np.sin(theta)*np.cos(theta)+self.shh*np.sin(theta)**2
 
+    self.flags.rotation = np.array([1,n_thetas])
+
 # --------------------------------------------------------------------------------------------
 
 def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
@@ -90,6 +92,8 @@ def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
 
     self.chhvv = chhvv[:,ntheta:-ntheta]
 
+    self.flags.coherence = np.array([1,delta_theta,delta_range])
+
 # --------------------------------------------------------------------------------------------
 
 def copolarized_phase_gradient(self,delta_theta=20*np.pi/180.,delta_range=100):
@@ -125,6 +129,8 @@ def copolarized_phase_gradient(self,delta_theta=20*np.pi/180.,delta_range=100):
 
     self.dphi_dz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
 
+    self.flags.phasegradient= np.array([1,delta_theta,delta_range])
+
 # --------------------------------------------------------------------------------------------
 
 def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
@@ -152,7 +158,5 @@ def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
 
 def phase_gradient_to_fabric(self,c = 300e6,fc = 200e6,Δϵ = 0.035,ϵ = 3.12):
     max_idx = np.argmax(self.dϕdz,axis=1)
-    min_idx = np.argmin(self.dϕdz,axis=1)
-
-    E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(ϵ)/Δϵ)*self.dϕdz[max_idx,np.arange(len(d))]
+    E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(ϵ)/Δϵ)*self.dϕdz[max_idx,np.arange(len(self.range))]
     return E2E1
