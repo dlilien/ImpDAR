@@ -69,6 +69,7 @@ def save_mat(self, fn):
         else:
             # We want the structure available to prevent read errors from corrupt files
             mat['header'] = ApresHeader().to_matlab()
+
         # Make sure not to expand the size of the data due to type conversion
         if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
             # Be carefuly of obliterating NaNs

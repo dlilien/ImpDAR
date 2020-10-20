@@ -58,6 +58,9 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
         except ImpdarError:
             Warning('Cannot load file: '+fn)
 
+    if len(apres_data)==1:
+        return apres_data[0]
+
     from copy import deepcopy
     out = deepcopy(apres_data[0])
 
