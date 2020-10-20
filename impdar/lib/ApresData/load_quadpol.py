@@ -60,8 +60,11 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         # Check that the data have gone through the initial processing steps
         # If they haven't do range conversion and stack to one trace
         for i,xx in enumerate(single_acquisitions):
-            print('Restacking acquisition #',i+1,'to a 1-d array...')
-            xx.stacking()
+            try:
+                xx.stacking()
+                print('Restacked acquisition #',i+1,'to a 1-d array.')
+            except:
+                print('Acquisition #',i+1,'is already stacked to shape:',np.shape(xx.data))
             if xx.flags.range[0] == 0:
                 print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
                 xx.apres_range(2)
@@ -76,15 +79,15 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
                 raise ValueError('Need matching travel time vectors')
             if not np.all(abs(hh.decday - xx.decday)<1.):
                 # TODO: ask to proceed
-                raise ValueError('It looks like these acquisitions were not all taken on the same day.')
+                Warning('It looks like these acquisitions were not all taken on the same day.')
 
         # load into the QuadPolData object
         quadpol_data = QuadPolData(None)
         quadpol_data.snum = hh.snum
-        quadpol_data.shh = hh.data.flatten()
-        quadpol_data.shv = single_acquisitions[1].data.flatten()
-        quadpol_data.svh = single_acquisitions[2].data.flatten()
-        quadpol_data.svv = single_acquisitions[3].data.flatten()
+        quadpol_data.shh = hh.data.flatten().astype(np.complex)
+        quadpol_data.shv = single_acquisitions[1].data.flatten().astype(np.complex)
+        quadpol_data.svh = single_acquisitions[2].data.flatten().astype(np.complex)
+        quadpol_data.svv = single_acquisitions[3].data.flatten().astype(np.complex)
         quadpol_data.decday = hh.decday
         quadpol_data.range = hh.Rcoarse
         quadpol_data.dt = hh.dt

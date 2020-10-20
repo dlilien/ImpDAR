@@ -113,6 +113,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     self.data = spec_cor.copy()
     self.spec = spec.copy()
+    self.data_dtype = self.data.dtype
 
     # precise range measurement
     self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
