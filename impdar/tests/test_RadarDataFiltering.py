@@ -251,8 +251,8 @@ class TestRadarDataHfiltWrapper(unittest.TestCase):
     def test_adaptive(self):
         radardata = NoInitRadarData()
         radardata.adaptivehfilt = MagicMock()
-        radardata.hfilt(ftype='adaptive')
-        radardata.adaptivehfilt.assert_called_with()
+        radardata.hfilt(ftype='adaptive', window_size=1000)
+        radardata.adaptivehfilt.assert_called_with(window_size=1000)
 
     def test_horizontalfilt(self):
         radardata = NoInitRadarData()
@@ -267,11 +267,12 @@ class TestRadarDataHfiltWrapper(unittest.TestCase):
 
 
 class TestProcessWrapper(unittest.TestCase):
+
     def test_process_ahfilt(self):
         radardata = NoInitRadarData()
         radardata.adaptivehfilt = MagicMock()
-        process.process([radardata], ahfilt=True)
-        radardata.adaptivehfilt.assert_called_with()
+        process.process([radardata], ahfilt=1000)
+        radardata.adaptivehfilt.assert_called_with(window_size=1000)
 
     def test_process_hfilt(self):
         radardata = NoInitRadarData()
