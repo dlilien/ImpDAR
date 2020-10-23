@@ -81,7 +81,7 @@ def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
 
 
 def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
-            ahfilt=False, nmo=None, crop=None, hcrop=None, restack=None,
+            ahfilt=None, nmo=None, crop=None, hcrop=None, restack=None,
             denoise=None, migrate=None, **kwargs):
     """Perform one or more processing steps on a list of RadarData .
 
@@ -158,7 +158,7 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
 
     if ahfilt:
         for dat in RadarDataList:
-            dat.hfilt(ftype='adaptive')
+            dat.hfilt(ftype='adaptive',window_size=ahfilt)
         done_stuff = True
 
     if nmo is not None:

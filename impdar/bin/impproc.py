@@ -417,7 +417,7 @@ def hfilt(dat, start_trace=0, end_trace=-1, **kwargs):
 
 def ahfilt(dat, window_size=1000, **kwargs):
     """Adaptive horizontal filter."""
-    dat.hfilt(ftype='adaptive', window_size=1000)
+    dat.hfilt(ftype='adaptive', window_size=window_size)
 
 
 def rev(dat, **kwargs):

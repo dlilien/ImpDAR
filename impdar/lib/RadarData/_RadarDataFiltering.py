@@ -14,7 +14,7 @@ from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
 
-def adaptivehfilt(self, window_size=1000, *args, **kwargs):
+def adaptivehfilt(self, window_size, *args, **kwargs):
     """Adaptively filter to reduce noise in upper layers
 
     This subtracts the average of traces around an individual trace in order to filter it.
