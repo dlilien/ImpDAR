@@ -43,11 +43,15 @@ def _get_args():
     _add_def_args(parser_hfilt)
 
     # Adaptive horizontal filter
-    _add_simple_procparser(subparsers,
+    parser_ahfilt = _add_procparser(subparsers,
                            'ahfilt',
                            'Horizontally filter the data adaptively',
                            ahfilt,
                            defname='ahfilt')
+    parser_ahfilt.add_argument('win',
+                                type=int,
+                                help='Number of traces to include in the moving average')
+    _add_def_args(parser_ahfilt)
 
     # Simply reverse the files
     _add_simple_procparser(subparsers,
@@ -411,9 +415,9 @@ def hfilt(dat, start_trace=0, end_trace=-1, **kwargs):
     dat.hfilt(ftype='hfilt', bounds=(start_trace, end_trace))
 
 
-def ahfilt(dat, **kwargs):
+def ahfilt(dat, window_size=1000, **kwargs):
     """Adaptive horizontal filter."""
-    dat.hfilt(ftype='adaptive')
+    dat.hfilt(ftype='adaptive', window_size=1000)
 
 
 def rev(dat, **kwargs):
