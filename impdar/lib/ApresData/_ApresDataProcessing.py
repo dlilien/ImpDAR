@@ -150,7 +150,7 @@ def phase_uncertainty(self):
 
     """
 
-    if self.flags.range == 0:
+    if self.flags.range[0] == 0:
         raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
 
 
@@ -162,15 +162,15 @@ def phase_uncertainty(self):
     noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
     noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
     # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
-    phase_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
+    p_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
     # Convert phase to range
-    r_uncertainty = phase2range(phase_uncertainty,
+    r_uncertainty = phase2range(p_uncertainty,
             self.header.lambdac,
             self.Rcoarse,
             self.header.chirp_grad,
             self.header.ci)
 
-    return phase_uncertainty, r_uncertainty
+    return p_uncertainty, r_uncertainty
 
 
 # --------------------------------------------------------------------------------------------
