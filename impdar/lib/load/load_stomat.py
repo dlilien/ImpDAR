@@ -33,20 +33,23 @@ def load_stomat(fn_sto, dname=None, *args, **kwargs):
     sto_data.chan = sto_mat['chan'][0][0]
     sto_data.snum = sto_mat['snum'][0][0]
     sto_data.tnum = sto_mat['tnum'][0][0]
-    sto_data.trace_num = sto_mat['trace_num'][0]
-    sto_data.trig_level = sto_mat['trig_level'][0]
-    sto_data.pressure = sto_mat['pressure'][0]
+    sto_data.trace_num = np.squeeze(sto_mat['trace_num'])
+    sto_data.trig_level = np.squeeze(sto_mat['trig_level'])
     sto_data.travel_time = sto_data.dt * 1.0e6 * np.arange(sto_data.snum)
-    sto_data.lat = sto_mat['lat'][0]
-    sto_data.long = sto_mat['long'][0]
-    sto_data.elev = sto_mat['elev'][0]
-    sto_data.decday = sto_mat['decday'][0]
-    sto_data.trace_int = sto_mat['trace_int'][0]
-    sto_data.dist = sto_mat['dist'][0]
+    sto_data.lat = np.squeeze(sto_mat['lat'])
+    sto_data.long = np.squeeze(sto_mat['long'])
+    sto_data.elev = np.squeeze(sto_mat['elev'])
+    sto_data.decday = np.squeeze(sto_mat['decday'])
+    sto_data.trace_int = np.squeeze(sto_mat['trace_int'])
+    sto_data.dist = np.squeeze(sto_mat['dist'])
+    # The pressure variable is deprecated and always gives issues
+    sto_data.pressure = np.squeeze(sto_mat['pressure'])
+    if len(sto_data.pressure) != sto_data.tnum:
+        sto_data.pressure = np.zeros(sto_data.tnum)
     # Try the x/y coordinates but not neccesarry
     try:
-        sto_data.x_coord = sto_mat['x_coord'][0]
-        sto_data.y_coord = sto_mat['y_coord'][0]
+        sto_data.x_coord = np.squeeze(sto_mat['x_coord'])
+        sto_data.y_coord = np.squeeze(sto_mat['y_coord'])
     except:
         Warning('No projected coordinate system (x,y).')
     # Sometimes the trigger is saved as a number and sometimes as an array
@@ -70,8 +73,8 @@ def load_stomat(fn_sto, dname=None, *args, **kwargs):
                 continue
 
     # TODO: Import the flags
-    """
     sto_data.flags = RadarFlags()
+    """
     sto_flags = sto_mat['flags']
     'bpass'
     'hfilt'
