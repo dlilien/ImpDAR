@@ -14,14 +14,14 @@ import os.path
 import glob
 from . import load_mcords  # needs to be imported first and alone due to opaque h5py/netcdf4 error
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_segy, load_UoA_mat
-from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi
+from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi, load_tek
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
 # executables that accept multiple ftypes should use this
 # to figure out what the available options are
 FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
-                    'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
+                    'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac', 'tek']
 
 
 def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
@@ -126,6 +126,8 @@ def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
         dat = [load_osu.load_osu(fns_in)]
     elif filetype == 'ramac':
         dat = [load_ramac.load_ramac(fn) for fn in fns_in]
+    elif filetype == 'tek':
+        dat = [load_tek.load_tek(fn) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
 
