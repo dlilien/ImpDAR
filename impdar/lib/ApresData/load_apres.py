@@ -58,21 +58,20 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
         except ImpdarError:
             Warning('Cannot load file: '+fn)
 
-    if len(apres_data)==1:
-        return apres_data[0]
-
     from copy import deepcopy
     out = deepcopy(apres_data[0])
 
-    for dat in apres_data[1:]:
-        if out.snum != dat.snum:
-            raise ValueError('Need the same number of vertical samples in each file')
-        if out.cnum != dat.cnum:
-            raise ValueError('Need the same number of chirps in each file')
-        if not np.all(out.travel_time == dat.travel_time):
-            raise ValueError('Need matching travel time vectors')
-        if not np.all(out.frequencies == dat.frequencies):
-            raise ValueError('Need matching frequency vectors')
+    if len(apres_data)>1:
+
+        for dat in apres_data[1:]:
+            if out.snum != dat.snum:
+                raise ValueError('Need the same number of vertical samples in each file')
+            if out.cnum != dat.cnum:
+                raise ValueError('Need the same number of chirps in each file')
+            if not np.all(out.travel_time == dat.travel_time):
+                raise ValueError('Need matching travel time vectors')
+            if not np.all(out.frequencies == dat.frequencies):
+                raise ValueError('Need matching frequency vectors')
 
     out.data = np.vstack([[dat.data] for dat in apres_data])
     out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
