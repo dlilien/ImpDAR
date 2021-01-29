@@ -26,9 +26,9 @@ class QuadPolFlags():
     def __init__(self):
         self.rotation = np.zeros((2,))
         self.coherence = np.zeros((3,))
-        self.phasegradient = np.zeros((2,))
+        self.phasegradient = False
         self.attrs = ['rotation','coherence','phasegradient']
-        self.attr_dims = [2,3,3]
+        self.attr_dims = [2,3,None]
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`

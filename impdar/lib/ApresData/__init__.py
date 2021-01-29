@@ -203,7 +203,7 @@ class QuadPolData(object):
                       'chhvv',
                       'dphi_dz']
 
-    from ._QuadPolProcessing import rotational_transform, copolarized_coherence, copolarized_phase_gradient
+    from ._QuadPolProcessing import rotational_transform, coherence2d, phase_gradient2d
     from ._ApresDataSaving import save_apres
 
     # Now make some load/save methods that will work with the matlab format

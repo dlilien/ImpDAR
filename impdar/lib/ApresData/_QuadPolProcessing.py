@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3 license.
 
 """
-Process ApRES data
+Process quad-polarized ApRES data
 
 Author:
 Benjamin Hills
@@ -15,12 +15,13 @@ bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 
-Sept 23 2019
+Oct 13 2020
 
 """
 
 import numpy as np
 from ._ApresDataProcessing import coherence
+from scipy.signal import butter, filtfilt
 
 def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
     """
@@ -53,8 +54,18 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
 
 # --------------------------------------------------------------------------------------------
 
-def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
+def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
+    """
 
+    Parameters
+    --------
+    delta_theta : float
+            window size in the azimuthal dimension; default: 20 degrees
+    delta_range: float
+            window size in the vertical; default: 100.
+    """
+
+    # Create a me
     THs,Rs = np.meshgrid(self.thetas,self.range)
 
     nrange = int(delta_range//abs(self.range[0]-self.range[1]))
@@ -81,7 +92,6 @@ def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
     VV_ = np.append(VV_end,VV_,axis=1)
 
     chhvv = np.nan*np.ones_like(HH_).astype(np.complex)
-
     for i,θ in enumerate(THs[0]):
         for j in range(len(Rs[:,0])):
             if j < nrange or j > len(Rs[:,0])-nrange or i < ntheta or i > len(THs[0])-ntheta-1:
@@ -96,44 +106,41 @@ def copolarized_coherence(self,delta_theta=20*np.pi/180.,delta_range=100):
 
 # --------------------------------------------------------------------------------------------
 
-def copolarized_phase_gradient(self,delta_theta=20*np.pi/180.,delta_range=100):
+def phase_gradient2d(self,filt=None,Wn=0):
 
-    THs,Rs = np.meshgrid(self.thetas,self.range)
-    nrange = int(delta_range//abs(self.range[0]-self.range[1]))
+    R = np.real(self.chhvv).copy()
+    I = np.imag(self.chhvv).copy()
 
-    R = np.real(self.chhvv)
-    I = np.imag(self.chhvv)
+    if filt is not None:
+        if filt == 'lowpass':
+            R = lowpass(R,Wn,1./self.dt)
+            I = lowpass(I,Wn,1./self.dt)
+        else:
+            raise TypeError('Filter: %s has not been implemented yet.'%filt)
 
-    dRdz = np.nan*np.ones_like(self.chhvv).astype(np.float)
-    dIdz = np.nan*np.ones_like(self.chhvv).astype(np.float)
-
-    for i,theta in enumerate(self.thetas):
-        print('i:',i,'theta:',np.round(theta,2))
-        for j in range(len(self.range)):
-            if j < nrange or j > len(self.range)-nrange:
-                continue
-            else:
-                Rs_ij = R[j-nrange:j+nrange,i]
-                Is_ij = I[j-nrange:j+nrange,i]
-                ds_ij = Rs[j-nrange:j+nrange,i]
-
-                Ridxs = ~np.isnan(Rs_ij) & ~np.isnan(ds_ij)
-                Iidxs = ~np.isnan(Is_ij) & ~np.isnan(ds_ij)
-
-                if len(Rs_ij[Ridxs])<3 or len(Is_ij[Iidxs])<3:
-                    dRdz[j,i] = np.nan
-                    dIdz[j,i] = np.nan
-                else:
-                    dRdz[j,i] = np.polyfit(ds_ij[Ridxs],Rs_ij[Ridxs],1)[0]
-                    dIdz[j,i] = np.polyfit(ds_ij[Iidxs],Is_ij[Iidxs],1)[0]
+    dRdz = np.gradient(R,self.range,axis=0)
+    dIdz = np.gradient(I,self.range,axis=0)
 
     self.dphi_dz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
 
-    self.flags.phasegradient= np.array([1,delta_theta,delta_range])
+    self.flags.phasegradient = True
 
 # --------------------------------------------------------------------------------------------
 
-def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
+def power_anomaly(self):
+    """
+    """
+
+    # Calculate Power
+    P = 10.*np.log10((self.HH)**2.)
+    # Remove the mean for each row
+    Pa = np.transpose(np.transpose(P) - np.mean(P,axis=1))
+
+    return Pa
+
+# --------------------------------------------------------------------------------------------
+
+def birefringent_phase_shift(z,freq=300e6,eps_bi=0.00354,eps=3.15,c=3e8):
     """
     Two-way birefringent phase shift
     Jordan et al. (2019)
@@ -151,12 +158,39 @@ def birefringent_phase_shift(z,freq=200e6,eps_bi=0.00354,eps=3.15,c=3e8):
     c: float
         light speed in vacuum
     """
+
+    #TODO: This function is not updated for ImpDAR yet
     delta = 4.*np.pi*freq/c*(z*eps_bi/(2.*np.sqrt(eps)))
+
     return delta
 
 # --------------------------------------------------------------------------------------------
 
-def phase_gradient_to_fabric(self,c = 300e6,fc = 200e6,Δϵ = 0.035,ϵ = 3.12):
-    max_idx = np.argmax(self.dϕdz,axis=1)
-    E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(ϵ)/Δϵ)*self.dϕdz[max_idx,np.arange(len(self.range))]
+def phase_gradient_to_fabric(self,c=300e6,fc=300e6,delta_eps=0.035,eps=3.12):
+    """
+    """
+
+    #TODO: This function is not updated for ImpDAR yet
+    max_idx = np.argmax(self.dphi_dz,axis=1)
+    E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(eps)/delta_eps)*self.dphi_dz[max_idx,np.arange(len(self.range))]
+
     return E2E1
+
+# --------------------------------------------------------------------------------------------
+
+def lowpass(data, Wn, fs, order=3):
+    """
+    """
+
+    # Subset the array around nan values
+    nan_idx = next(k for k, value in enumerate(data[:,0]) if ~np.isnan(value))
+    data_sub = data[nan_idx:-nan_idx+1]
+
+    # Get the filter coefficients
+    b, a = butter(order, Wn, btype='low', fs=fs)
+    # Filter (need to transpose to filter along depth axis)
+    data_filtered = filtfilt(b, a, data_sub, axis=0)
+    # Insert into original array
+    data[nan_idx:-nan_idx+1] = data_filtered
+
+    return data
