@@ -15,7 +15,7 @@ bhills@uw.edu
 University of Washington
 Earth and Space Sciences
 
-Oct 15 2019
+Oct 13 2020
 """
 
 import numpy as np
