@@ -56,6 +56,8 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
 
 def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
     """
+    Coherence between two 2-d images (e.g. c_hhvv).
+    Jordan et al. (2019) eq. 19
 
     Parameters
     --------
@@ -65,7 +67,6 @@ def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
             window size in the vertical; default: 100.
     """
 
-    # Create a me
     THs,Rs = np.meshgrid(self.thetas,self.range)
 
     nrange = int(delta_range//abs(self.range[0]-self.range[1]))
@@ -107,7 +108,19 @@ def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
 # --------------------------------------------------------------------------------------------
 
 def phase_gradient2d(self,filt=None,Wn=0):
+    """
+    Depth-gradient of hhvv coherence image.
+    Jordan et al. (2019) eq 23
 
+    Parameters
+    --------
+    filt : string
+            filter type; default lowpass
+    Wn : float
+            filter frequency
+    """
+
+    # Real and imaginary parts of the hhvv coherence
     R = np.real(self.chhvv).copy()
     I = np.imag(self.chhvv).copy()
 
@@ -127,16 +140,59 @@ def phase_gradient2d(self,filt=None,Wn=0):
 
 # --------------------------------------------------------------------------------------------
 
-def power_anomaly(self):
+def power_anomaly(data):
     """
+    Calculate the power anomaly from mean for a given image.
+    Ershadi et al. (2021) eq 21
+
+    Parameters
+    --------
+    data : array
+            2-d array of azimuth-depth return
     """
 
     # Calculate Power
-    P = 10.*np.log10((self.HH)**2.)
+    P = 10.*np.log10((data)**2.)
     # Remove the mean for each row
     Pa = np.transpose(np.transpose(P) - np.mean(P,axis=1))
 
     return Pa
+
+# --------------------------------------------------------------------------------------------
+
+def lowpass(data, Wn, fs, order=3):
+    """
+    lowpass filter
+
+    Parameters
+    --------
+    data : array
+            2-d array of azimuth-depth return
+    Wn : float
+            filter frequency
+    fs : float
+            sample frequency
+    order : int
+            order of filter
+    """
+
+    # Subset the array around nan values
+    nan_idx = next(k for k, value in enumerate(data[:,0]) if ~np.isnan(value))
+    if nan_idx != 0:
+        data_sub = data[nan_idx:-nan_idx+1]
+    else:
+        data_sub = data.copy()
+
+    # Get the filter coefficients
+    b, a = butter(order, Wn, btype='low', fs=fs)
+    # Filter (need to transpose to filter along depth axis)
+    data_filtered = filtfilt(b, a, data_sub, axis=0)
+    # Insert into original array
+    if nan_idx != 0:
+        data[nan_idx:-nan_idx+1] = data_filtered
+        return data
+    else:
+        return data_filtered
 
 # --------------------------------------------------------------------------------------------
 
@@ -175,22 +231,3 @@ def phase_gradient_to_fabric(self,c=300e6,fc=300e6,delta_eps=0.035,eps=3.12):
     E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(eps)/delta_eps)*self.dphi_dz[max_idx,np.arange(len(self.range))]
 
     return E2E1
-
-# --------------------------------------------------------------------------------------------
-
-def lowpass(data, Wn, fs, order=3):
-    """
-    """
-
-    # Subset the array around nan values
-    nan_idx = next(k for k, value in enumerate(data[:,0]) if ~np.isnan(value))
-    data_sub = data[nan_idx:-nan_idx+1]
-
-    # Get the filter coefficients
-    b, a = butter(order, Wn, btype='low', fs=fs)
-    # Filter (need to transpose to filter along depth axis)
-    data_filtered = filtfilt(b, a, data_sub, axis=0)
-    # Insert into original array
-    data[nan_idx:-nan_idx+1] = data_filtered
-
-    return data
