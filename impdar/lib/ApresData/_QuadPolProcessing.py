@@ -117,8 +117,8 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
             for j in range(HH_.shape[0]):
                 imin, imax = i - ntheta, i + ntheta
                 jmin, jmax = max(0, j - nrange), min(HH_.shape[0], j + nrange)
-                chhvv[j, i] = coherence(HH_[jmin:jmax, imin:imax].flatten(),
-                                        VV_[jmin:jmax, imin:imax].flatten())
+                chhvv[j,i] = coherence(VV_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten(),
+                                        HH_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten())
         print('coherence calculation done')
     t1 = time.time()
     print('Execution with c code={:s} took {:6.2f}'.format(str(USE_C), t1 - t0))
