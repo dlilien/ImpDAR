@@ -322,7 +322,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
             str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = self.time_stamp - timezero
-        self.decday = np.array([offset.days for offset in day_offset]) + 366. # Matlab compatable
+        self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
 
     self.temperature1 = np.array(output[1]).astype(float)
     self.temperature2 = np.array(output[2]).astype(float)
