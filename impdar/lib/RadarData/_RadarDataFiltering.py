@@ -580,7 +580,6 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
     ------
 
     """
-    print(ftype)
     if ftype == 'wiener':
         if noise is None:
             # We want an error if there is no variance

@@ -33,7 +33,7 @@ def load_segy(fn_sgy, *args, **kwargs):
     segy_data.fn = fn_sgy
     f = segyio.open(fn_sgy, ignore_geometry=True)
 
-    segy_data.data = 10.0 * np.log10(segyio.tools.collect(f.trace).transpose())
+    segy_data.data = segyio.tools.collect(f.trace).transpose()
     segy_data.snum = f.bin[segyio.BinField.Samples]
     segy_data.tnum = segy_data.data.shape[1]
     segy_data.dt = f.bin[segyio.BinField.Interval] * 1.0e-9

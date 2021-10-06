@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 from .load import load
+from matplotlib.colors import is_color_like
 
 # define a set of non-gray colors (from Paul Tol)
 COLORS_NONGRAY = ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE',
@@ -589,8 +590,10 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, j
         if variable_colors:
             if hasattr(colors[j], '__len__') and len(colors[j]) == 3 and not just_middle:
                 cl = colors[j]
-            else:
+            elif is_color_like(colors[j]):
                 cl = ('none', colors[j], 'none')
+            else:
+                raise ValueError('Color ', colors[j], ' not defined')
         c = np.zeros(xd.shape)
         c[:] = np.nan
         comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp2[i, :]))
