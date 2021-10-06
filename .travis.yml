@@ -32,6 +32,7 @@ before_install:
 
 install:
 - pip install --upgrade pip
+- pip install scikit-build
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$h5py_inc" = true ] ; then pip install h5py; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
