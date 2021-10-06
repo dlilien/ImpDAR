@@ -19,7 +19,7 @@ Easiest is `pip install impdar`. Some explanation of other options is available 
 ### Dependencies
 
 #### Required
-*Python 2 or 3* The package is tested on Python 2.7, and 3.5+. Other versions may work, but they are not tested.
+*Python 3* The package is tested on Python 3.5+. Older versions may work, but we have stopped testing on 2.7 since it has reached end of life. You can probably get 2.7 to work still, but no guarantees.
 
 [numpy](http://www.scipy.org)
 
