@@ -24,7 +24,7 @@ FILETYPE_OPTIONS = ['mat', 'pe', 'gssi','stomat', 'gprMax', 'gecko', 'segy',
                     'mcords_mat', 'mcords_nc', 'UoA_mat', 'ramac', 'bsi', 'delores', 'osu', 'ramac']
 
 
-def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
+def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
     """Load a list of files of a certain type
 
     Parameters
@@ -125,6 +125,13 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
     else:
         raise ValueError('Unrecognized filetype')
 
+    if s_srs is not None:
+        try:
+            for d in dat:
+                d.get_ll(s_srs=s_srs)
+        except ImportError:
+            pass
+
     if t_srs is not None:
         try:
             for d in dat:
@@ -134,7 +141,7 @@ def load(filetype, fns_in, channel=1, t_srs=None, *args, **kwargs):
 
     return dat
 
-def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwargs):
+def load_and_exit(filetype, fns_in, channel=1, t_srs=None, s_srs=None, o=None, *args, **kwargs):
     """Load a list of files of a certain type, save them as StODeep mat files, exit
 
     Parameters
@@ -171,10 +178,9 @@ def load_and_exit(filetype, fns_in, channel=1, t_srs=None, o=None, *args, **kwar
             raise FileNotFoundError('The output directory does not exist')
 
         for fn_i in fns_in:
-            rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, *args, **kwargs)
+            rd_list = load(filetype, fn_i, channel=channel, t_srs=t_srs, s_srs=s_srs, *args, **kwargs)
             _save(rd_list, outpath=o)
 
-            
 def _save(rd_list, outpath=None):
     """Save a list of RadarData objects with optional output directory."""
     if outpath is not None:

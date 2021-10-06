@@ -491,9 +491,9 @@ def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
                guess_offset=guess)
 
 
-def denoise(dat, vert_win=1, hor_dim=10, noise=None, ftype='wiener', **kwargs):
+def denoise(dat, vert_win=1, hor_win=10, noise=None, filter_type='wiener', **kwargs):
     """Despeckle."""
-    dat.denoise(vert_win=vert_win, hor_dim=hor_dim, noise=noise, ftype=ftype)
+    dat.denoise(vert_win=vert_win, hor_win=hor_win, noise=noise, ftype=filter_type)
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0,

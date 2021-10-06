@@ -216,7 +216,7 @@ def concat(radar_data):
     for dat in radar_data[1:]:
         if out.snum != dat.snum:
             raise ValueError('Need the same number of samples in each file')
-        if not np.all(out.travel_time == dat.travel_time):
+        if not np.allclose(out.travel_time, dat.travel_time):
             raise ValueError('Need matching travel time vectors')
 
     out.data = np.hstack([dat.data for dat in radar_data])

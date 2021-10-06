@@ -192,7 +192,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         fig, ax = plt.subplots(figsize=(12, 8))
     if ydat == 'elev':
         if hasattr(dat.flags, 'elev') and dat.flags.elev:
-            yd = dat.elev[y_range[0]:y_range[-1]]
+            yd = dat.elevation[y_range[0]:y_range[-1]]
             ax.set_ylabel('Elevation (m)')
         else:
             raise ValueError('Elevation plot requested but we have none')

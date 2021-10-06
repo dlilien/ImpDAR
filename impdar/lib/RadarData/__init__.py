@@ -350,10 +350,24 @@ class RadarData(object):
         self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x_coord) ** 2.0
             + np.diff(self.y_coord) ** 2.0)) / 1000.0
 
+    def get_ll(self, s_srs):
+        """Convert to projected coordinates
+
+        Parameters
+        ----------
+        t_srs: str, optional
+            A text string accepted by GDAL (e.g. EPSG:3031)
+            If None (default) use UTM.
+        """
+        transform, self.t_srs = gpslib.get_rev_conversion(t_srs=s_srs)
+
+        pts = np.array(transform(np.vstack((self.x_coord, self.y_coord)).transpose()))
+        self.long, self.lat = pts[:, 0], pts[:, 1]
+
     @property
     def datetime(self):
         """Get pythonic version of the acquisition time of each trace."""
-        return np.array([datetime.datetime.fromordinal(int(dd)) +
-                         datetime.timedelta(days=dd % 1) -
-                         datetime.timedelta(days=366)
+        return np.array([datetime.datetime(1970, 1, 1) +
+                         datetime.timedelta(days=int(dd)) + 
+                         datetime.timedelta(days=dd % 1)
                          for dd in self.decday], dtype=np.datetime64)

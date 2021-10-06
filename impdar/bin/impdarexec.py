@@ -33,6 +33,8 @@ def _get_args():
                              default=0.0)
     parser_load.add_argument('-t_srs', type=str, default=None,
                              help='Convert to this coordinate reference system. (GDAL required), default UTM')
+    parser_load.add_argument('-s_srs', type=str, default=None,
+                             help='Convert from this system. (GDAL required), default UTM')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
     parser_load.add_argument('--nans', type=str, choices=['interp', 'delete'], default=None,
                              help='Interpolate or delete bad GPS. Only used by BSI.')
