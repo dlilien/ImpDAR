@@ -101,9 +101,16 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                 h5_data.data[:, location_num] = dset[
                     'location_{:d}'.format(location_num)][
                         'datacapture_0']['echogram_0']
-                gps_data = dset['location_{:d}'.format(location_num)][
+                if type(dset['location_{:d}'.format(location_num)][
                     'datacapture_0']['echogram_0'].attrs[
-                        'GPS Cluster- MetaData_xml'].decode('utf-8')
+                        'GPS Cluster- MetaData_xml'] == str:
+                    gps_data = dset['location_{:d}'.format(location_num)][
+                        'datacapture_0']['echogram_0'].attrs[
+                            'GPS Cluster- MetaData_xml']
+                else:
+                    gps_data = dset['location_{:d}'.format(location_num)][
+                        'datacapture_0']['echogram_0'].attrs[
+                            'GPS Cluster- MetaData_xml'].decode('utf-8')
                 if (float(_xmlGetVal(gps_data, 'GPS Fix valid')) > 0) and (
                         float(_xmlGetVal(gps_data, 'GPS Message ok')) > 0):
                     # sometimes, there are bad entries that are unmarked
