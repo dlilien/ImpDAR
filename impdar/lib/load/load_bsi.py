@@ -75,8 +75,12 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
             h5_data.snum = len(
                 dset['location_0']['datacapture_0']['echogram_0'])
             h5_data.data = np.zeros((h5_data.snum, h5_data.tnum))
-            digitizer_data = dset['location_0']['datacapture_0'][
-                'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
+            if type(dset['location_0']['datacapture_0']['echogram_0'].attrs['Digitizer-MetaData_xml']) == str:
+                digitizer_data = dset['location_0']['datacapture_0'][
+                    'echogram_0'].attrs['Digitizer-MetaData_xml']
+            else:
+                digitizer_data = dset['location_0']['datacapture_0'][
+                    'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
             h5_data.dt = 1.0 / float(
                 _xmlGetVal(digitizer_data, ' Sample Rate'))
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
