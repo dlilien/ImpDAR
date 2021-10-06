@@ -103,7 +103,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                         'datacapture_0']['echogram_0']
                 if type(dset['location_{:d}'.format(location_num)][
                     'datacapture_0']['echogram_0'].attrs[
-                        'GPS Cluster- MetaData_xml'] == str:
+                        'GPS Cluster- MetaData_xml']) == str:
                     gps_data = dset['location_{:d}'.format(location_num)][
                         'datacapture_0']['echogram_0'].attrs[
                             'GPS Cluster- MetaData_xml']
