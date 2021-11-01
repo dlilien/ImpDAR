@@ -15,6 +15,7 @@ import numpy as np
 
 from ..RadarData import RadarData
 from ..RadarFlags import RadarFlags
+from .loading_utils import common_start
 
 def load_osu(fns_osu,*args,**kwargs):
     """ load data from OSU deep radar files, written as .txt """
@@ -22,9 +23,9 @@ def load_osu(fns_osu,*args,**kwargs):
     # We want to be able to use this step concatenate a series of files numbered by the controller
     if isinstance(fns_osu, str):
         fns_osu = [fns_osu]
+    osu_data.fn = common_start(fns_osu)
 
     dt_s = []
-    osu_data.fn = fns_osu[0]
     osu_data.trace_num = []
     osu_data.lat = []
     osu_data.long = []

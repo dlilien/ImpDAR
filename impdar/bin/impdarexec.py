@@ -33,7 +33,11 @@ def _get_args():
                              default=0.0)
     parser_load.add_argument('-t_srs', type=str, default=None,
                              help='Convert to this coordinate reference system. (GDAL required), default UTM')
+    parser_load.add_argument('-s_srs', type=str, default=None,
+                             help='Convert from this system. (GDAL required), default UTM')
     parser_load.add_argument('-o', type=str, help='Write to this filename')
+    parser_load.add_argument('--nans', type=str, choices=['interp', 'delete'], default=None,
+                             help='Interpolate or delete bad GPS. Only used by BSI.')
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
@@ -97,8 +101,9 @@ def _get_args():
                                      meters. Second argument is the filename \
                                      (csv or mat) with the new GPS data')
     parser_proc.add_argument('-denoise',
-                             type=str,
-                             help='Denoising filter (scipy wiener for now)')
+                             nargs=2,
+                             type=int,
+                             help='Denoising filter vertical and horizontal (scipy wiener for now)')
     parser_proc.add_argument('-migrate',
                              type=str,
                              help='Migrate with the indicated routine.')

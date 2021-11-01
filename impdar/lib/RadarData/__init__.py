@@ -20,6 +20,8 @@ from ..ImpdarError import ImpdarError
 from ..Picks import Picks
 from .. import gpslib
 
+STODEEP_ATTRS = ['data', 'migdata', 'interp_data', 'nmo_data', 'filtdata', 'hfilt_data']
+
 
 class RadarData(object):
     """A class that holds the relevant information for a radar profile.
@@ -55,7 +57,58 @@ class RadarData(object):
                       'dist',
                       'x_coord',
                       'y_coord',
-                      'fn']
+                      'fn',
+                      't_srs']
+
+    #: The names of the optional StoDeep data matrices
+    stodeep_attrs = STODEEP_ATTRS
+
+    def __str__(self):
+        try:
+            if (self.snum is not None) and (self.tnum is not None):
+                string = '{:d}x{:d} RadarData object'.format(self.snum, self.tnum)
+                proc = False
+                if (self.flags.bpass is not None) and (self.flags.bpass[0]):
+                    proc = True
+                    string += ', vertically bandpassed {:4.1f}:{:4.1f} Mhz'.format(self.flags.bpass[0], self.flags.bpass[1])
+                if (self.flags.hfilt is not None) and (self.flags.hfilt[0]):
+                    proc = True
+                    string += ', horizontally filtered'
+                if (self.flags.interp is not None) and (self.flags.interp[0]):
+                    proc = True
+                    string += ', re-interpolated to {:4.2f}-m spacing'.format(self.flags.interp[1])
+                if (self.flags.crop is not None) and (self.flags.crop[0]):
+                    proc = True
+                    string += ', cropped to {:d}:{:d}'.format(int(self.flags.crop[1]), int(self.flags.crop[2]))
+                if self.nmo_depth is not None:
+                    string += ', moveout-corrected'
+                if (self.flags.restack is not None) and self.flags.restack > 0:
+                    proc = True
+                    string += ', restacked by {:d}'.format(int(self.flags.restack))
+                if (self.flags.mig is not None) and (self.flags.mig != 'none'):
+                    proc = True
+                    string += ', migrated'
+                if not proc:
+                    string += ', unprocessed'
+                string += '.\n'
+
+                if self.fn is not None:
+                    string += '\n    from file {:s}'.format(self.fn)
+                if self.x_coord is not None:
+                    string += '\n    Projected geographic coordinates'
+                    if self.t_srs is not None:
+                        string += (': ' + self.t_srs)
+                elif self.lat is not None:
+                    string += '\n    Unprojected geographic coordinates'
+                if (self.picks is not None) and (self.picks.samp1 is not None):
+                    string += ('\nAssociate picks are: ' + str(self.picks))
+                else:
+                    string += '\nno picks'
+            else:
+                string = 'RadarData object, undefined dimensions'
+        except (ValueError, TypeError, IndexError):
+            string = 'RadarData Object'
+        return string
 
     from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
         rangegain, agc, constant_space, elev_correct, \
@@ -122,6 +175,8 @@ class RadarData(object):
             # Optional attributes
             #: str, the input filename. May be left as None.
             self.fn = None
+            #: str, the projected coordinate system of the data
+            self.t_srs = None
             #: np.ndarray(tnum,) Optional.
             #: Projected x-coordinate along the profile.
             self.x_coord = None
@@ -187,13 +242,8 @@ class RadarData(object):
 
         self.check_attrs()
 
-    def _parse_stodeepdata(self, mat, data_attrs=['data',
-                                                  'migdata',
-                                                  'interp_data',
-                                                  'nmo_data',
-                                                  'filtdata',
-                                                  'hfilt_data']):
-        """Set data attribute in a prioritized order"""
+    def _parse_stodeepdata(self, mat, data_attrs=STODEEP_ATTRS):
+        """Set data attribute in a prioritized order."""
         data_dict = {}
         for data_attr in data_attrs:
             if data_attr in mat:
@@ -300,10 +350,24 @@ class RadarData(object):
         self.dist[1:] = np.cumsum(np.sqrt(np.diff(self.x_coord) ** 2.0
             + np.diff(self.y_coord) ** 2.0)) / 1000.0
 
+    def get_ll(self, s_srs):
+        """Convert to projected coordinates
+
+        Parameters
+        ----------
+        t_srs: str, optional
+            A text string accepted by GDAL (e.g. EPSG:3031)
+            If None (default) use UTM.
+        """
+        transform, self.t_srs = gpslib.get_rev_conversion(t_srs=s_srs)
+
+        pts = np.array(transform(np.vstack((self.x_coord, self.y_coord)).transpose()))
+        self.long, self.lat = pts[:, 0], pts[:, 1]
+
     @property
     def datetime(self):
         """Get pythonic version of the acquisition time of each trace."""
-        return np.array([datetime.datetime.fromordinal(int(dd)) +
-                         datetime.timedelta(days=dd % 1) -
-                         datetime.timedelta(days=366)
+        return np.array([datetime.datetime(1970, 1, 1) +
+                         datetime.timedelta(days=int(dd)) + 
+                         datetime.timedelta(days=dd % 1)
                          for dd in self.decday], dtype=np.datetime64)

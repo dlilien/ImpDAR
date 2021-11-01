@@ -76,12 +76,35 @@ if conversions_enabled:
 
         transform_WGS84_To_srs = osr.CoordinateTransformation(wgs84_cs, out_cs)
         return transform_WGS84_To_srs.TransformPoints, out_cs.ExportToPrettyWkt()
+
+    def get_rev_conversion(t_srs):
+        out_cs = osr.SpatialReference()
+        out_cs.SetFromUserInput(t_srs)
+        try:
+            out_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
+        wgs84_cs = out_cs.CloneGeogCS()
+        wgs84_cs.ExportToPrettyWkt()
+        try:
+            wgs84_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        except AttributeError:
+            pass
+
+        transform_srs_to_WGS84 = osr.CoordinateTransformation(out_cs, wgs84_cs)
+        return transform_srs_to_WGS84.TransformPoints, out_cs.ExportToPrettyWkt()
+
 else:
     def get_utm_conversion(lat, lon):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 
     def get_conversion(t_srs):
+        """Just raise an exception since we cannot really convert."""
+        raise ImportError('Cannot convert coordinates: osr not importable')
+
+    def get_rev_conversion(t_srs):
         """Just raise an exception since we cannot really convert."""
         raise ImportError('Cannot convert coordinates: osr not importable')
 

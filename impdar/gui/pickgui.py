@@ -78,16 +78,16 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.offset, self.offset_mask = get_offset(dat, flatten_layer)
 
         # line is the matplotlib object of the current pick
-        #: That matplotlib line objects for the central picks, retained in this way for select mode
+        #: The matplotlib line objects for the central picks, retained in this way for select mode
         self.cline = []
-        #: That matplotlib line objects for the top of picks, retained in this way for select mode
+        #: The matplotlib line objects for the top of picks, retained in this way for select mode
         self.tline = []
-        #: That matplotlib line objects for bottom picks, retained in this way for select mode
+        #: The matplotlib line objects for bottom picks, retained in this way for select mode
         self.bline = []
 
-        # pick_pts contains our picked points,
-        # which may differ from what we want to save in the file.
-        # Need to have one per line.
+        #: Our picked points,
+        #: which may differ from what we want to save in the file.
+        #: Need to have one per line.
         self.pick_pts = []
         #: The RadarData object being plotted
         self.dat = dat
@@ -95,8 +95,12 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.current_pick = None
         self._pick_ind = 0
 
-        # For loading cross profiles, we want to use multiple symbols, so need to index
+        #: For loading cross profiles, we want to use multiple symbols, so need to index
         self.cross_profile = 0
+
+        #: We now allow additional data matrices with other processing for comparison,
+        #: so we need to keep track of which we are using
+        self.data_name = 'data'
 
         # Check if we need to plot some picks
         if self.dat.picks is not None and self.dat.picks.samp1 is not None:
@@ -111,6 +115,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                                    fig=self.fig,
                                                    ax=self.ax,
                                                    flatten_layer=flatten_layer,
+                                                   data_name=self.data_name,
                                                    return_plotinfo=True)
 
         # Store some info that we need for later
@@ -155,6 +160,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.actionReverse.triggered.connect(self._reverse)
         self.actionCrop.triggered.connect(self._crop)
         self.actionFlatten_layer.triggered.connect(self._flatten_layer)
+        self.actionSwitch_data_matrix.triggered.connect(self._switch_data_matrix)
 
         self.minSpinner.valueChanged.connect(self._lim_update)
         self.maxSpinner.valueChanged.connect(self._lim_update)
@@ -256,6 +262,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         # mpl >= 3.3.2
         if hasattr(self.FigCanvasWidget.mpl_toolbar, 'Mode') and (self.FigCanvasWidget.mpl_toolbar.Mode is not None) and (self.FigCanvasWidget.mpl_toolbar.Mode != ''):
             return
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, 'mode') and (self.FigCanvasWidget.mpl_toolbar.mode is not None) and  hasattr(self.FigCanvasWidget.mpl_toolbar.mode, 'name') and (self.FigCanvasWidget.mpl_toolbar.mode.name != '') and (self.FigCanvasWidget.mpl_toolbar.mode.name != 'NONE'):
+            return
         if self.pick_mode == 'edit':
             self._edit_lines_click(event)
         elif self.pick_mode == 'select':
@@ -274,7 +282,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self._add_pick(snum=snum, tnum=tnum)
         else:
             if event.button == 1:
+                modifiers = QtWidgets.QApplication.keyboardModifiers()
                 if self._n_pressed:
+                    warn('Deprecated', 'n for NaN is deprecated, will be removed in version 1.1, use shift')
+                    self._add_nanpick(snum, tnum)
+                elif (QtCore.Qt.ShiftModifier == modifiers):
                     self._add_nanpick(snum, tnum)
                 else:
                     self._add_point_pick(snum, tnum)
@@ -289,7 +301,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     def _add_point_pick(self, snum, tnum):
         """We are given a snum, tnum location in the image: follow layer to that point, plot it."""
         try:
-            picks = picklib.pick(self.dat.data[:,
+            picks = picklib.pick(getattr(self.dat, self.data_name)[:,
                                  self.dat.picks.lasttrace.tnum[self._pick_ind]:tnum],
                                  self.dat.picks.lasttrace.snum[self._pick_ind],
                                  snum,
@@ -310,6 +322,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
 
     def _delete_picks(self, snum, tnum):
         self.current_pick[:, tnum:] = np.nan
+        self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
+        if not np.isnan(self.current_pick[1, tnum - 1]):
+            self.dat.picks.lasttrace.snum[self._pick_ind] = self.current_pick[1, tnum - 1]
 
     def update_lines(self, colors='gmm', picker=None):
         """Update the plotting of the current pick.
@@ -433,9 +448,13 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                             self.dat.fn,
                                             "All Files (*);;mat Files (*.mat)")
         if fn:
-            dat_cross = RadarData.RadarData(fn)
             try:
-                out_tnums, out_snums = picklib.get_intersection(self.dat, dat_cross)
+                dat_cross = RadarData.RadarData(fn)
+            except ValueError:
+                warn('Cannot load', 'Cannot load this crossprofile file')
+                return
+            try:
+                out_tnums, out_snums = picklib.get_intersection(self.dat, dat_cross, cutoff=np.mean(np.diff(self.dat.dist)) * 1500)
             except AttributeError:
                 warn('No picks', 'There are no picks in the crossprofile for us to load')
                 return
@@ -456,20 +475,43 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 x_coords_plot = self.dat.dist
 
             for tnum, snum, pnum in zip(out_tnums, out_snums, dat_cross.picks.picknums):
-                if ~np.isnan(tnum):
-                    self.ax.plot([x_coords_plot[int(tnum)]],
-                                 [y_coords_plot[int(snum)]],
+                if out_tnums.ndim == 1:
+                    if ~np.isnan(tnum):
+                        self.ax.plot([x_coords_plot[int(tnum)]],
+                                     [y_coords_plot[int(snum)]],
+                                     linestyle='none',
+                                     marker=SYMBOLS_FOR_CPS[self.cross_profile],
+                                     color='k',
+                                     markersize=10)
+                        self.ax.text(x_coords_plot[int(tnum)],
+                                     y_coords_plot[int(snum)],
+                                     str(pnum),
+                                     color='w',
+                                     ha='center',
+                                     va='center',
+                                     fontsize=8)
+                else:
+                    self.ax.plot(x_coords_plot[tnum[~np.isnan(tnum)].astype(int)],
+                                 y_coords_plot[snum[~np.isnan(tnum)].astype(int)],
                                  linestyle='none',
                                  marker=SYMBOLS_FOR_CPS[self.cross_profile],
-                                 color='k',
-                                 markersize=10)
-                    self.ax.text(x_coords_plot[int(tnum)],
-                                 y_coords_plot[int(snum)],
-                                 str(pnum),
-                                 color='w',
-                                 ha='center',
-                                 va='center',
-                                 fontsize=8)
+                                 color='orange',
+                                 markersize=2)
+                    if np.any(~np.isnan(tnum)):
+                        j = np.argmin(tnum[~np.isnan(tnum)].astype(int))
+                        self.ax.plot([x_coords_plot[tnum[~np.isnan(tnum)].astype(int)[j]]],
+                                     [y_coords_plot[snum[~np.isnan(tnum)].astype(int)[j]]],
+                                     linestyle='none',
+                                     marker=SYMBOLS_FOR_CPS[self.cross_profile],
+                                     color='k',
+                                     markersize=10)
+                        self.ax.text(x_coords_plot[tnum[~np.isnan(tnum)].astype(int)[j]],
+                                     y_coords_plot[snum[~np.isnan(tnum)].astype(int)[j]],
+                                     str(pnum),
+                                     color='w',
+                                     ha='center',
+                                     va='center',
+                                     fontsize=8)
 
             self.cross_profile += 1
             self.fig.canvas.draw()
@@ -496,7 +538,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
     ######
     def update_radardata(self):
         """Make the plot reflect updates to the data."""
-        self.im.set_data(self.dat.data[:, self.x_range[0]:self.x_range[-1]])
+        self.im.set_data(getattr(self.dat, self.data_name)[:, self.x_range[0]:self.x_range[-1]])
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self._saved = False
@@ -563,7 +605,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(
                 self.dat, xdat=self.x, ydat=self.y, x_range=self.x_range,
                 cmap=plt.cm.gray, fig=self.fig, ax=self.ax, flatten_layer=self.flatten_layer,
-                clims=self.lims, return_plotinfo=True)
+                data_name=self.data_name, clims=self.lims, return_plotinfo=True)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             self.progressBar.setProperty("value", 50)
@@ -596,6 +638,34 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             QtWidgets.QApplication.processEvents()
             self.progressLabel.setText('Done...')
             self.progressBar.setProperty("value", 100)
+
+    def _switch_data_matrix(self, event):
+        data_names = []
+        for attr in RadarData.STODEEP_ATTRS:
+            if hasattr(self.dat, attr):
+                data_names.append(attr)
+        if len(data_names) == 1:
+            warn('Cannot switch', 'only one recognized dataset')
+            return 1
+
+        dialog = SwitchMatrixInputDialog(input_widget=self)
+        result = dialog.exec_()
+        if result != 0:
+            self.progressLabel.setText('Switching data...')
+            self.progressBar.setProperty("value", 50)
+            QtWidgets.QApplication.processEvents()
+            self.data_name = dialog.data_name
+            if self.flatten_layer is None:
+                self.update_radardata()
+            else:
+                self.im, self.xd, self.yd, self.x_range, self.lims = plot_radargram(
+                    self.dat, xdat=self.x, ydat=self.y, x_range=self.x_range,
+                    cmap=plt.cm.gray, fig=self.fig, ax=self.ax, flatten_layer=self.flatten_layer,
+                    data_name=self.data_name, clims=self.lims, return_plotinfo=True)
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
+            self.progressBar.setProperty("value", 100)
+            QtWidgets.QApplication.processEvents()
 
     #######
     # Enable the key presses from the old stointerpret
@@ -640,7 +710,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             if tnum is None:
                 tnum = 0
             try:
-                self.current_pick[:, tnum] = picklib.packet_pick(self.dat.data[:, tnum],
+                self.current_pick[:, tnum] = picklib.packet_pick(getattr(self.dat, self.data_name)[:, tnum],
                                                                  self.dat.picks.pickparams,
                                                                  snum - self.offset[tnum])
                 self.dat.picks.lasttrace.tnum[self._pick_ind] = tnum
@@ -810,6 +880,40 @@ class FlattenLayerInputDialog(QDialog):
                 t.set_color('y')
         self.widget.fig.canvas.draw()
         self.widget.fig.canvas.flush_events()
+
+
+class SwitchMatrixInputDialog(QDialog):
+    """Get input information to switch background."""
+
+    def __init__(self, parent=None, input_widget=None):
+        data_names = []
+        for attr in RadarData.STODEEP_ATTRS:
+            if hasattr(input_widget.dat, attr):
+                data_names.append(attr)
+        super(SwitchMatrixInputDialog, self).__init__(parent)
+        layout = QtWidgets.QFormLayout()
+
+        self.inputlabel = QtWidgets.QLabel()
+        self.inputlabel.setText('Attribute name:')
+        self.data_name_input = QtWidgets.QComboBox()
+
+        for name in data_names:
+            self.data_name_input.addItem(name)
+        layout.addRow(self.inputlabel, self.data_name_input)
+
+        self.cancel = QtWidgets.QPushButton("Cancel")
+        self.ok_button = QtWidgets.QPushButton("Ok")
+        layout.addRow(self.cancel, self.ok_button)
+        self.ok_button.clicked.connect(self._click_ok)
+        self.cancel.clicked.connect(self.close)
+        self.setLayout(layout)
+        self.setWindowTitle("Switch data")
+
+        self.lims = None
+
+    def _click_ok(self):
+        self.data_name = self.data_name_input.currentText()
+        self.accept()
 
 
 def warn(message, long_message):
