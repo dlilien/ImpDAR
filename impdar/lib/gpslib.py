@@ -342,7 +342,7 @@ class RadarGPS(nmea_info):
 
 
 def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
-                          extrapolate=False, guess_offset=True):
+                          extrapolate=False, guess_offset=True, old_gps_gaps=False):
     """Use new, better GPS data for lat, lon, and elevation.
 
     The interpolation in this function is done using the time since the radar
@@ -377,6 +377,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
         the x coordinates in the two datasets. If the guess at the offset is
         nonzero, we look at 1000 offsets within 10% of
         the offset. Else we look at +/- 0.001 days
+
     """
     if extrapolate:
         fill_value = 'extrapolate'
@@ -392,48 +393,67 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
     offsets = [offset for i in dats]
     if guess_offset:
         print('CC search')
-        for i in range(5):
-            for j, dat in enumerate(dats):
+        for j, dat in enumerate(dats):
+            decday_interp = dat.decday.copy()
+            if old_gps_gaps:
+                for i,dday in enumerate(decday_interp):
+                    if np.min(abs(dday-decday))>1./(24*3600.):
+                        decday_interp[i] = np.nan
+                dat.lat[dat.lat == 0.] = np.nan
+                dat.long[dat.long == 0.] = np.nan
+            for i in range(5):
                 if (min(lon % 360) - max(dat.long % 360)) > 0. or (min(dat.long % 360) - max(lon % 360)) > 0.:
                     raise ValueError('No overlap in longitudes')
+
                 if offsets[j] != 0.0:
                     search_vals = np.linspace(-0.1 * abs(offsets[j]),
-                                              0.1 * abs(offsets[j]),
-                                              1001)
+                                              0.1 * abs(offsets[j]),1001)
                 else:
                     search_vals = np.linspace(-0.1, 0.1, 5001)
-                cc_coeffs = [np.corrcoef(
-                    interp1d(decday + offsets[j] + inc_offset, lat,
-                             kind='linear', fill_value=fill_value)(dat.decday),
-                    dat.lat)[1, 1] + np.corrcoef(
-                        interp1d(decday + offsets[j] + inc_offset, lon % 360,
-                                 kind='linear', fill_value=fill_value)(
-                                     dat.decday), dat.long % 360)[0, 1]
-                                     for inc_offset in search_vals]
+
+                cc_coeffs = np.zeros_like(search_vals)
+                for i_search,inc_offset in enumerate(search_vals):
+                    lat_interp = interp1d(decday + inc_offset + offsets[j], lat, kind='linear', fill_value=fill_value)(decday_interp)
+                    long_interp = interp1d(decday + inc_offset + offsets[j], lon%360, kind='linear', fill_value=fill_value)(decday_interp)
+                    idxs_lat = ~np.isnan(lat_interp) & ~np.isnan(dat.lat)
+                    idxs_long = ~np.isnan(long_interp) & ~np.isnan(dat.long)
+                    cc_coeffs[i_search] = np.corrcoef(lat_interp[idxs_lat], dat.lat[idxs_lat])[0, 1] + \
+                                 np.corrcoef(long_interp[idxs_long], dat.long[idxs_long] % 360)[0, 1]
                 offsets[j] += search_vals[np.argmax(cc_coeffs)]
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
 
     for j, dat in enumerate(dats):
-        int_lat = interp1d(decday + offsets[j],
+        lat_interpolator = interp1d(decday + offsets[j],
                            lat,
                            kind='linear',
                            fill_value=fill_value)
-        int_long = interp1d(decday + offsets[j],
+        long_interpolator = interp1d(decday + offsets[j],
                             lon % 360, kind='linear',
                             fill_value=fill_value)
-        int_elev = interp1d(decday + offsets[j],
+        elev_interpolator = interp1d(decday + offsets[j],
                             elev,
                             kind='linear',
                             fill_value=fill_value)
-        dat.lat = int_lat(dat.decday)
-        dat.long = int_long(dat.decday)
-        dat.elev = int_elev(dat.decday)
+        if old_gps_gaps:
+            lat_interp = lat_interpolator(decday_interp)
+            long_interp = long_interpolator(decday_interp)
+            elev_interp = elev_interpolator(decday_interp)
+            lat_interp[np.isnan(decday_interp)] = dat.lat[np.isnan(decday_interp)]
+            long_interp[np.isnan(decday_interp)] = dat.long[np.isnan(decday_interp)]
+            elev_interp[np.isnan(decday_interp)] = dat.elev[np.isnan(decday_interp)]
+            dat.lat = lat_interp
+            dat.long = long_interp%360
+            dat.elev = elev_interp
+        else:
+            dat.lat = lat_interpolator(decday_interp)
+            dat.long = long_interpolator(decday_interp)
+            dat.elev = elev_interpolator(decday_interp)
         if conversions_enabled:
             dat.get_projected_coords()
 
 
 def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False,
-                      guess_offset=False):
+                      guess_offset=False, old_gps_gaps=False):
     """Use a matlab file with gps info to redo radar GPS.
 
     Parameters
@@ -463,11 +483,11 @@ def kinematic_gps_mat(dats, mat_fn, offset=0.0, extrapolate=False,
                           mat['elev'].flatten(),
                           mat['decday'].flatten(),
                           offset=offset, extrapolate=extrapolate,
-                          guess_offset=guess_offset)
+                          guess_offset=guess_offset, old_gps_gaps=old_gps_gaps)
 
 
 def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev',
-                      extrapolate=False, guess_offset=False,
+                      extrapolate=False, guess_offset=False, old_gps_gaps=False,
                       **genfromtxt_flags):
     """Use a csv gps file to redo the GPS on radar data.
 
@@ -507,7 +527,8 @@ def kinematic_gps_csv(dats, csv_fn, offset=0, names='decday,long,lat,elev',
                           data['decday'].flatten(),
                           offset=offset,
                           extrapolate=extrapolate,
-                          guess_offset=guess_offset)
+                          guess_offset=guess_offset,
+                          old_gps_gaps=old_gps_gaps)
 
 
 def interp(dats, spacing=None, fn=None, fn_type=None, offset=0.0,
