@@ -22,9 +22,9 @@ def load_osu(fns_osu,*args,**kwargs):
     # We want to be able to use this step concatenate a series of files numbered by the controller
     if isinstance(fns_osu, str):
         fns_osu = [fns_osu]
-    osu_data = fns_osu[0]
 
     dt_s = []
+    osu_data.fn = fns_osu[0]
     osu_data.trace_num = []
     osu_data.lat = []
     osu_data.long = []
