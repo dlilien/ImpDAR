@@ -36,7 +36,8 @@ jobs:
         python -m pip install .
     - name: Install optional dep qt5
       if: ${{ matrix.qt5 }}
-      run: bash install_qt.sh
+      # run: bash install_qt.sh
+      run: python -m pip install pyqt5
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
