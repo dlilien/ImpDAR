@@ -22,8 +22,6 @@ jobs:
         # gdal: [true, false]
         seisunix: [true, false]
         exclude:
-          - seisunix: true
-            python-version: '3.7'
           - os: macos-latest
             qt5: true
           - os: macos-latest
@@ -47,7 +45,7 @@ jobs:
         python -m pip install coverage
         python -m pip install mock
         # production
-        then pip install -r requirements.txt
+        pip install -r requirements.txt
     - name: Install optional dependency qt5
       if: ${{ matrix.qt5 }}
       run: |
@@ -56,18 +54,7 @@ jobs:
         python -c 'import PyQt5'
     - name: Install optional dependency SeisUnix
       if: ${{ matrix.seisunix }}
-      run: |
-        sudo apt-get install gfortran
-        export thisdir=$PWD
-        cd ..
-        export CWPROOT=$PWD/SeisUnix
-        git clone https://github.com/JohnWStockwellJr/SeisUnix.git
-        cd $CWPROOT/src 
-        mv configs/Makefile.config_Linux_x86_64 Makefile.config
-        touch LICENSE_44R14_ACCEPTED
-        touch MAILHOME_44R14
-        make install <<< y
-        cd $thisdir
+      run: bash install_su.sh
     - name: Install optional dependency GDAL
       if: ${{ matrix.gdal }}
       run: |
