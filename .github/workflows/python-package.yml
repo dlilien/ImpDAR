@@ -50,7 +50,7 @@ jobs:
         parallel: true
 
   finish:
-    needs: run
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
