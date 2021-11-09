@@ -41,12 +41,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # testing
         python -m pip install flake8 pytest
         python -m pip install pytest-cov
         python -m pip install coverage
         python -m pip install mock
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python -m pip install .
+        # production
+        then pip install -r requirements.txt
     - name: Install optional dependency qt5
       if: ${{ matrix.qt5 }}
       run: |
@@ -74,6 +75,8 @@ jobs:
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
         python -m pip install gdal==1.10.0
+    - name: Install ImpDAR
+      run: python -m pip install .
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
