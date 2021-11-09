@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]  #, macos-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         qt5: [true, false]
     steps:
@@ -35,7 +35,6 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install .
     - name: Install optional dep qt5
-      runs-on: ubuntu-latest
       if: ${{ matrix.qt5 }}
       run: bash install_qt.sh
     - name: Lint with flake8
