@@ -35,11 +35,6 @@ jobs:
         python -m pip install mock
         python -m pip install tox tox-gh-actions
         python -m pip install .
-  - name: "Upload coverage to Codecov"
-    uses: codecov/codecov-action@v2
-    with:
-      fail_ci_if_error: true
-      token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
