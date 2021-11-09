@@ -61,7 +61,8 @@ def _get_args():
                              help='Remove the average trace \
                                  (average between hfilt0 and hfilt1)')
     parser_proc.add_argument('-ahfilt',
-                             action='store_true',
+                             nargs=1,
+                             type=int,
                              help='Adaptive horizontal filtering')
     parser_proc.add_argument('-rev',
                              action='store_true',

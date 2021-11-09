@@ -14,12 +14,17 @@ from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
 
-def adaptivehfilt(self, window_size=1000, *args, **kwargs):
+def adaptivehfilt(self, window_size, *args, **kwargs):
     """Adaptively filter to reduce noise in upper layers
 
     This subtracts the average of traces around an individual trace in order to filter it.
     You can call this method directly, or it can be called by sending the
     'adaptive' option to :func:`RadarData.hfilt() <impdar.lib.RadarData.RadarData.hfilt>`
+
+    Parameters
+    ----------
+    window_size: int
+        number of traces to include in the moving average to be removed
 
     Original StoDeep Documentation:
        HFILTDEEP-This StoDeep subroutine processes bandpass filtered
@@ -47,42 +52,22 @@ def adaptivehfilt(self, window_size=1000, *args, **kwargs):
     """
 
     print('Adaptive filtering')
-    # Create average trace for first (rough) scan of data
-    # avg_trace = np.mean(self.data, axis=1)
-    # hfiltdata_mass = self.data - np.atleast_2d(avg_trace).transpose()
-    hfiltdata_mass = self.data.copy()
 
-    # Preallocate array
-    avg_trace_scale = np.ones_like(self.travel_time)
+    # taper average trace so it mostly affects only the upper layers in the data
+    avg_trace_scale = (np.exp(-self.travel_time.flatten() * 0.05) / np.exp(-self.travel_time[0] * 0.05))
 
-    # create a piecewise scaling function (insures that the filter only affects
-    # the top layers of data)
-    mask = self.travel_time <= 0.3 * np.max(self.travel_time)
-    mtt = np.max(self.travel_time)
-    transition = 0.1 * mtt
-    # avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
-    #   self.travel_time[mask] - transition) / mtt ** 2. + 1
-    # avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
-    #   ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
-    #   (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
-    avg_trace_scale[mask] = -1.0 * (self.travel_time[mask] - transition) * (
-        self.travel_time[mask] - transition) / mtt ** 2. + 1
-    avg_trace_scale[~mask] = 0.96 * np.exp(-30. * (
-        ((self.travel_time[~mask] - transition) - 0.2 * mtt) * (
-            (self.travel_time[~mask] - transition) - 0.2 * mtt)) / mtt ** 2.)
+    # preallocate array to fill with processed data
+    ahfilt_data = np.zeros_like(self.data, dtype=self.data.dtype)
 
-    # preallocate array
-    hfiltdata_scan_low = np.zeros_like(hfiltdata_mass, dtype=self.data.dtype)
-
-    # begin looping through data
+    # begin looping through data trace-by-trace
     for i in range(int(self.tnum)):
-        # build a packet of 100 traces around the trace in question
+        # build a packet of window_size # of traces around the trace in question
         if i <= window_size // 2:
-            scpacket = hfiltdata_mass[:, 0:window_size // 2 + i]
+            scpacket = self.data[:, 0:window_size // 2 + i].copy()
         elif i >= self.tnum - window_size // 2:
-            scpacket = hfiltdata_mass[:, int(self.tnum) - window_size:int(self.tnum)]
+            scpacket = self.data[:, int(self.tnum) - window_size:int(self.tnum)].copy()
         else:
-            scpacket = hfiltdata_mass[:, i - window_size // 2 + 1:i + window_size // 2]
+            scpacket = self.data[:, i - window_size // 2 + 1:i + window_size // 2].copy()
 
         # average the packet horizontally and double filter it (allows the
         # program to maintain small horizontal artifacts that are likely real)
@@ -93,9 +78,9 @@ def adaptivehfilt(self, window_size=1000, *args, **kwargs):
 
         # subtract the average trace off the data trace
         # hfiltdata_scan_low[:, i] = hfiltdata_mass[:, i] - avg_trace_scan_low
-        hfiltdata_scan_low[:, i] = self.data[:, i] - avg_trace_scan_low
+        ahfilt_data[:, i] = self.data[:, i].copy() - avg_trace_scan_low
 
-    self.data = hfiltdata_scan_low.astype(self.data.dtype)
+    self.data = ahfilt_data.astype(self.data.dtype)
     print('Adaptive filtering complete')
 
     # set flags structure components
@@ -451,7 +436,7 @@ def winavg_hfilt(self, avg_win, taper='full', filtdepth=100):
     print('Horizontal filter complete.')
 
 
-def hfilt(self, ftype='hfilt', bounds=None):
+def hfilt(self, ftype='hfilt', bounds=None, window_size=None):
     """Horizontally filter the data.
 
     This is a wrapper around other filter types.
@@ -465,12 +450,14 @@ def hfilt(self, ftype='hfilt', bounds=None):
         and :func:`adaptive <impdar.lib.horizontal_filters.adaptivehfilt>`. Default hfilt
     bounds: tuple, optional
         Bounds for the hfilt. Default is None, but required if ftype is hfilt.
+    window_size: int, optional
+        number of traces in the moving average. Default is None, but required if ftype is adaptive.
 
     """
     if ftype == 'hfilt':
         self.horizontalfilt(bounds[0], bounds[1])
     elif ftype == 'adaptive':
-        self.adaptivehfilt()
+        self.adaptivehfilt(window_size=window_size)
     else:
         raise ValueError('Unrecognized filter type')
 

@@ -12,6 +12,7 @@ import numpy as np
 from scipy.spatial import cKDTree as KDTree
 
 
+
 def pick(traces, snum_start, snum_end, pickparams):
     """Pick a reflector in some traces.
 
@@ -44,6 +45,46 @@ def pick(traces, snum_start, snum_end, pickparams):
     for i in range(traces.shape[1]):
         pickpacket = packet_pick(traces[:, i], pickparams, dmid[i])
         picks_out[:, i] = pickpacket
+    return picks_out
+
+
+def auto_pick(dat,snums,tnums):
+    """Automatically pick any number of reflectors.
+
+    Parameters
+    ----------
+    dat: object class
+        data object
+    indices: numpy.ndarray
+        indices on the left side of the image where the picks will start from
+        These are the centerpoint of the wavelet
+
+    Returns
+    -------
+    numpy.ndarray
+        The picks selected. Rows are: top of packet, center pick, bottom of
+        packet, time (deprecated, all nans), and power. Size 5xtnum
+    """
+
+    picks_out = np.empty((len(snums),5,dat.tnum))
+
+    for i in range(len(snums)):
+        j = int(tnums[i])
+        t_start = int(tnums[i])
+        dmid = snums[i]
+        for n in range(dat.tnum):
+            pp = packet_pick(dat.data[:,j],dat.picks.pickparams,dmid)
+            picks_out[i,:,j] = pp
+            if j <= t_start and j > 0:
+                dmid = (pp[0]+pp[2])//2
+                j -= 1
+            elif j == 0:
+                dmid = (picks_out[i,0,t_start]+picks_out[i,2,t_start])//2
+                j = t_start + 1
+            elif j > t_start:
+                dmid = (pp[0]+pp[2])//2
+                j += 1
+
     return picks_out
 
 
