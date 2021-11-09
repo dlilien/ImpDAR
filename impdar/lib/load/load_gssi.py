@@ -183,7 +183,10 @@ def load_gssi(fn_dzt, *args, **kwargs):
         data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
     except:
         header_len = 512*n_bytes
-        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
+        try:
+            data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
+        except OverflowError:  # This will happen on 32 bit windows
+            data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np.int64).reshape((dzt_data.snum, -1), order='F')
     data[0, :] = data[2, :]
     data[1, :] = data[2, :]
     # data = data + dzt_data.trig
