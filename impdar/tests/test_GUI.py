@@ -181,7 +181,9 @@ class TestInteractivePicker(unittest.TestCase):
         self.ip._n_pressed = True
         self.ip._add_nanpick = MagicMock()
         self.ip.update_lines = MagicMock()
-        self.ip._edit_lines_click(event)
+        # prevent a dialog box
+        with patch('impdar.gui.pickgui.warn'):
+            self.ip._edit_lines_click(event)
         self.assertTrue(self.ip._add_nanpick.called)
         self.assertTrue(self.ip.update_lines.called)
         self.ip._n_pressed = False
