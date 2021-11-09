@@ -251,9 +251,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bpid = self.fig.canvas.mpl_connect('button_press_event', self._click)
             for center, bottom, top in zip(self.cline, self.bline, self.tline):
                 if center is not None:
-                    center.set_picker(0)
-                    bottom.set_picker(0)
-                    top.set_picker(0)
+                    center.set_pickradius(0)
+                    bottom.set_pickradius(0)
+                    top.set_pickradius(0)
         else:
             self.modeButton.setText(_translate('MainWindow', 'Select Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
@@ -262,9 +262,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
             for center, bottom, top in zip(self.cline, self.bline, self.tline):
                 if center is not None:
-                    center.set_picker(5)
-                    bottom.set_picker(5)
-                    top.set_picker(5)
+                    center.set_pickradius(5)
+                    bottom.set_pickradius(5)
+                    top.set_pickradius(5)
 
     def _update_color_reversal(self, state):
         if state == QtCore.Qt.Checked:
@@ -373,7 +373,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         comb_mask = np.logical_and(~self.offset_mask, ~np.isnan(self.current_pick[2, :]))
         b[comb_mask] = self.yd[(self.current_pick[2, :] + self.offset)[comb_mask].astype(int)]
         if self.cline[self._pick_ind] is None:
-            self.cline[self._pick_ind], = self.ax.plot(self.xd, c, color=colors[0], picker=picker)
+            self.cline[self._pick_ind], = self.ax.plot(self.xd, c, color=colors[0], pickradius=picker)
             self.tline[self._pick_ind], = self.ax.plot(self.xd, t, color=colors[1])
             self.bline[self._pick_ind], = self.ax.plot(self.xd, b, color=colors[2])
         else:
