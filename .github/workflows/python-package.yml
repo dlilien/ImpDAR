@@ -45,13 +45,10 @@ jobs:
     - name: Install optional dependency SeisUnix
       if: ${{ matrix.seisunix }}
       run: |
-        export thisdir=$PWD
-        export CWPROOT='SeisUnix'
-        mkdir $CWPROOT
-        cd $CWPROOT
         sudo apt-get install gfortran
-        wget 'https://nextcloud.seismic-unix.org/index.php/s/LZpzc8jMzbWG9BZ/download?path=%2F&files=cwp_su_all_44R16.tgz'
-        tar -xvf 'download?path=%2F&files=cwp_su_all_44R16.tgz'
+        export thisdir=$PWD
+        export CWPROOT=$PWD/SeisUnix
+        git checkout https://github.com/JohnWStockwellJr/SeisUnix.git
         cd $CWPROOT/src 
         mv configs/Makefile.config_Linux_x86_64 Makefile.config
         touch LICENSE_44R14_ACCEPTED
