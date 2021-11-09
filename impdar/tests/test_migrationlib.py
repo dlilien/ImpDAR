@@ -146,6 +146,7 @@ class TestMigration(unittest.TestCase):
 
     @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() != 0 or load_segy.SEGY, 'Test of edge case')
     def test_sustolt_nosegy(self):
+        pytest.importorskip('segyio', 'No SEGY on this version')
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
@@ -155,6 +156,7 @@ class TestMigration(unittest.TestCase):
 
     @unittest.skipIf(sp.Popen(['which', 'sustolt']).wait() == 0, 'Test for no SeisUnix')
     def test_sustolt_seisunix(self):
+        pytest.importorskip('segyio', 'No SEGY on this version')
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9

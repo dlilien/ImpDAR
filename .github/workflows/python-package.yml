@@ -29,9 +29,17 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python -m pip install coveralls
+        python -m pip install coverage
+        python -m pip install pytest
+        python -m pip install pytest-cov
         python -m pip install mock
+        python -m pip install tox tox-gh-actions
         python -m pip install .
+  - name: "Upload coverage to Codecov"
+    uses: codecov/codecov-action@v2
+    with:
+      fail_ci_if_error: true
+      token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -40,11 +48,4 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run test
       run: |
-        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* setup.py test
-        coverage xml
-
-  - name: "Upload coverage to Codecov"
-    uses: codecov/codecov-action@v2
-    with:
-      fail_ci_if_error: true
-      token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          tox
