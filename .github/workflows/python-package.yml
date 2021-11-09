@@ -42,9 +42,8 @@ jobs:
       run: |
         coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* setup.py test
         coverage xml
-
-  - name: "Upload coverage to Codecov"
-    uses: codecov/codecov-action@v2
-    with:
-      fail_ci_if_error: true
-      token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+    - name: "Upload coverage to Codecov"
+      uses: codecov/codecov-action@v2
+      with:
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
