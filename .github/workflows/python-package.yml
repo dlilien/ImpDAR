@@ -26,10 +26,14 @@ jobs:
             qt5: true
           - os: macos-latest
             seisunix: true
+          - os: macos-latest
+            gdal: true
           - os: windows-latest
             qt5: true
           - os: windows-latest
             seisunix: true
+          - os: windows-latest
+            gdal: true
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
