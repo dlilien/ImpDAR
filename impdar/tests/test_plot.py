@@ -349,12 +349,14 @@ class TestPlotPicks(unittest.TestCase):
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='gmm', fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'g'], fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cmy', 'brb'], fig=fig, ax=ax)
-        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'], fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=True, fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=False, fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=False, fig=fig, ax=ax)
         with self.assertRaises(ValueError):
             plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=True, fig=fig, ax=ax)
+
+        with self.assertRaises(ValueError):
+            plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'], fig=fig, ax=ax)
 
     def tearDown(self):
         plt.close('all')

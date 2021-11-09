@@ -31,6 +31,8 @@ before_install:
  - export PATH=$PATH:$CWPROOT/bin
 
 install:
+- pip install --upgrade pip
+- pip install scikit-build
 - if [ "$segyio_inc" = true ] ; then pip install segyio; fi
 - if [ "$h5py_inc" = true ] ; then pip install h5py; fi
 - if [ "$qt5_inc" = true ] ; then bash install_qt.sh; fi
@@ -47,7 +49,6 @@ install:
 matrix:
   allow_failures:
       - python: 2.7
-        env: seisunix_inc=true
 
 cache:
     directories:

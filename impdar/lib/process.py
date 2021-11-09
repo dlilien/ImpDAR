@@ -27,7 +27,7 @@ from .Picks import Picks
 from copy import deepcopy
 
 
-def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
+def process_and_exit(fn, cat=False, filetype='mat', o=None, **kwargs):
     """Perform one or more processing steps, save, and exit.
 
     Parameters
@@ -39,45 +39,34 @@ def process_and_exit(fn, cat=False, filetype='mat', **kwargs):
         through each individually.
     filetype: str, optional
         The type of input file. Default is .mat.
+    o: str, optional
+        An output path
     kwargs:
         These are the processing arguments for `process`
     """
-    radar_data = load(filetype, fn)
 
-    # first we do the quirky one
+    def _p_and_e(radar_data):
+        processed = process(radar_data, **kwargs)
+        if not processed and not cat:
+            print('No processing steps performed. Not saving!')
+        else:
+            _save(radar_data, outpath=o, cat=cat)
+
     if cat:
+        # first we do the quirky one
+        # We need to load it all if catting
+        radar_data = load(filetype, fn)
         radar_data = concat(radar_data)
         bn = os.path.splitext(fn[0])[0]
         if bn[-4:] == '_raw':
             bn = bn[:-4]
-        fn = [bn + '_cat.mat']
-
-    processed = process(radar_data, **kwargs)
-    if not processed and not cat:
-        print('No processing steps performed. Not saving!')
-        return
-
-    if 'o' in kwargs and kwargs['o'] is not None:
-        if len(radar_data) > 1:
-            for d, f in zip(radar_data, fn):
-                bn = os.path.split(os.path.splitext(f)[0])[1]
-                if bn[-4:] == '_raw':
-                    bn = bn[:-4]
-                out_fn = os.path.join(kwargs['o'], bn + '_proc.mat')
-                d.save(out_fn)
-        else:
-            out_fn = kwargs['o']
-            radar_data[0].save(out_fn)
+        radar_data[0].fn = bn + '_cat.mat'
+        return _p_and_e(radar_data)
     else:
-        for d, f in zip(radar_data, fn):
-            bn = os.path.splitext(f)[0]
-            if bn[-4:] == '_raw':
-                bn = bn[:-4]
-            if cat:
-                out_fn = bn + '.mat'
-            else:
-                out_fn = bn + '_proc.mat'
-            d.save(out_fn)
+        # Otherwise, we can do things sequentially
+        for fn_i in fn:
+            radar_data = load(filetype, fn)
+            return _p_and_e(radar_data)
 
 
 def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
@@ -119,7 +108,6 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
             raise ValueError('First element of crop must be a float')
         except TypeError:
             raise TypeError('Crop must be subscriptible')
-
     if hcrop is not None:
         try:
             hcrop = (float(hcrop[0]), hcrop[1], hcrop[2])
@@ -130,6 +118,23 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
         for dat in RadarDataList:
             dat.hcrop(*hcrop)
         done_stuff = True
+    if denoise is not None:
+        try:
+            assert (type(denoise[0]) is int)
+            assert (type(denoise[1]) is int)
+        except (ValueError, TypeError, AssertionError, IndexError):
+            raise ValueError('Denoise must be two integers giving vertical and horizontal window sizes')
+    if vbp is not None:
+        if not hasattr(vbp, '__iter__'):
+            raise TypeError('vbp must be a tuple with first two elements \
+                            [low] [high] MHz')
+    if interp is not None:
+        try:
+            float(interp[0])
+            interp[1]
+        except (ValueError, TypeError, IndexError):
+            raise ValueError('interp must be a target spacing (float) then a gps filename')
+
 
     if restack is not None:
         for dat in RadarDataList:
@@ -144,9 +149,6 @@ def process(RadarDataList, interp=None, rev=False, vbp=None, hfilt=None,
         done_stuff = True
 
     if vbp is not None:
-        if not hasattr(vbp, '__iter__'):
-            raise TypeError('vbp must be a tuple with first two elements \
-                            [low] [high] MHz')
         for dat in RadarDataList:
             dat.vertical_band_pass(*vbp)
         done_stuff = True
@@ -214,7 +216,7 @@ def concat(radar_data):
     for dat in radar_data[1:]:
         if out.snum != dat.snum:
             raise ValueError('Need the same number of samples in each file')
-        if not np.all(out.travel_time == dat.travel_time):
+        if not np.allclose(out.travel_time, dat.travel_time):
             raise ValueError('Need matching travel time vectors')
 
     out.data = np.hstack([dat.data for dat in radar_data])
@@ -236,10 +238,10 @@ def concat(radar_data):
 
     # Picks are the most challenging part
     all_picks = []
-    all_picks = np.unique(all_picks).tolist()
     for dat in radar_data:
         if dat.picks is not None and dat.picks.picknums is not None and dat.picks.picknums != 0:
             all_picks.extend(dat.picks.picknums)
+    all_picks = np.unique(all_picks).tolist()
     out.picks = Picks(out)
     if len(all_picks) > 0:
         out.picks.picknums = all_picks
@@ -251,7 +253,7 @@ def concat(radar_data):
         start_ind = 0
         for dat in radar_data:
             if ((not hasattr(dat, 'picks')) or (not hasattr(dat.picks, 'picknums')) or (
-                    len(dat.picks.picknums) == 0)):
+                    not hasattr(dat.picks.picknums, '__len__')) or (len(dat.picks.picknums) == 0)):
                 start_ind += dat.tnum
                 continue
             for attr in pick_attrs:
@@ -267,3 +269,27 @@ def concat(radar_data):
 
     print('Objects concatenated')
     return [out]
+
+
+def _save(rd_list, outpath=True, cat=False):
+    if outpath is not None:
+        if len(rd_list) > 1:
+            for rd in rd_list:
+                bn = os.path.split(os.path.splitext(rd.fn)[0])[1]
+                if bn[-4:] == '_raw':
+                    bn = bn[:-4]
+                out_fn = os.path.join(outpath, bn + '_proc.mat')
+                rd.save(out_fn)
+        else:
+            out_fn = outpath
+            rd_list[0].save(out_fn)
+    else:
+        for rd in rd_list:
+            bn = os.path.splitext(rd.fn)[0]
+            if bn[-4:] == '_raw':
+                bn = bn[:-4]
+            if cat:
+                out_fn = bn + '.mat'
+            else:
+                out_fn = bn + '_proc.mat'
+            rd.save(out_fn)

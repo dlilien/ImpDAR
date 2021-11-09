@@ -17,16 +17,16 @@ from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.RadarData import RadarData
 from impdar.lib import process
 if sys.version_info[0] >= 3:
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
 else:
-    from mock import MagicMock
+    from mock import MagicMock, patch
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestConcat(unittest.TestCase):
 
-    def test_concat(self):
+    def test_concat_nopicks(self):
         dats = process.concat([NoInitRadarData(), NoInitRadarData()])
         self.assertTrue(dats[0].data.shape == (2, 4))
 
@@ -39,6 +39,68 @@ class TestConcat(unittest.TestCase):
             d2 = NoInitRadarData()
             d2.travel_time = np.array((2, 3))
             dats = process.concat([NoInitRadarData(), d2])
+
+    def test_concat_picks(self):
+        data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+
+        # no overlapping picks
+        data_otherp = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        data_otherp.picks.picknums = [pn * 10 - 1 for pn in data_otherp.picks.picknums]
+
+        # one overlapping pick
+        data_somepsame = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        data_somepsame.picks.picknums = [1, 19]
+
+
+        dats = process.concat([data, data])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertEqual(getattr(dats[0].picks, attr).shape[1], 2 * getattr(data.picks, attr).shape[1])
+            self.assertEqual(getattr(dats[0].picks, attr).shape[0], getattr(data.picks, attr).shape[0])
+
+        dats = process.concat([data, data_otherp])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertTrue(getattr(dats[0].picks, attr).shape[1] == 2 * data.picks.samp1.shape[1])
+            self.assertTrue(getattr(dats[0].picks, attr).shape[0] == 2 * data.picks.samp1.shape[0])
+            for pn in data.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+            for pn in data_otherp.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+
+        dats = process.concat([data, data_somepsame])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertTrue(getattr(dats[0].picks, attr).shape[1] == 2 * data.picks.samp1.shape[1])
+            self.assertTrue(getattr(dats[0].picks, attr).shape[0] == 2 * data.picks.samp1.shape[0] - 1)
+            for pn in data.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+            for pn in data_somepsame.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+
+        # no picks
+        data_np = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
+        data_np.picks.picknums = 0
+
+        dats = process.concat([data, data_np])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertTrue(getattr(dats[0].picks, attr).shape[1] == 2 * data.picks.samp1.shape[1])
+            self.assertTrue(np.all(np.isnan(getattr(dats[0].picks, attr)[0, data.picks.samp1.shape[1]:])))
+            for pn in data.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+
+        data_np.picks.picknums = None
+        dats = process.concat([data, data_np])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertTrue(getattr(dats[0].picks, attr).shape[1] == 2 * data.picks.samp1.shape[1])
+            self.assertTrue(np.all(np.isnan(getattr(dats[0].picks, attr)[0, data.picks.samp1.shape[1]:])))
+            for pn in data.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
+
+        data_np.picks = None
+        dats = process.concat([data, data_np])
+        for attr in ['samp1', 'samp2', 'samp3', 'power']:
+            self.assertTrue(getattr(dats[0].picks, attr).shape[1] == 2 * data.picks.samp1.shape[1])
+            self.assertTrue(np.all(np.isnan(getattr(dats[0].picks, attr)[0, data.picks.samp1.shape[1]:])))
+            for pn in data.picks.picknums:
+                self.assertTrue(pn in dats[0].picks.picknums)
 
 
 class TestProcess_and_exit(unittest.TestCase):
@@ -89,6 +151,7 @@ class TestProcess_and_exit(unittest.TestCase):
         if os.path.exists(os.path.join(THIS_DIR, 'input_data', 'test_gssi_proc.mat')):
             os.remove(os.path.join(THIS_DIR, 'input_data', 'test_gssi_proc.mat'))
 
+
 class TestProcess(unittest.TestCase):
 
     def setUp(self):
@@ -112,6 +175,31 @@ class TestProcess(unittest.TestCase):
         self.data.crop = MagicMock()
         self.assertTrue(process.process([self.data], crop=(17, 'bottom', 'snum')))
         self.data.crop.assert_called_with(17, 'bottom', 'snum')
+
+    def test_process_Denoise(self):
+        self.data.denoise = MagicMock()
+        with self.assertRaises(ValueError):
+            process.process([self.data], denoise=1)
+        with self.assertRaises(ValueError):
+            process.process([self.data], denoise='12')
+        with self.assertRaises(ValueError):
+            process.process([self.data], denoise=(1, ))
+        process.process([self.data], denoise=(1, 2))
+        self.data.denoise.assert_called_with(1, 2)
+
+    @patch('impdar.lib.process.interpdeep')
+    def test_process_Interp(self, mock_interp):
+        dl = [self.data]
+        with self.assertRaises(ValueError):
+            process.process([self.data], interp=('ba', 2))
+        with self.assertRaises(ValueError):
+            process.process([self.data], interp='ba')
+        with self.assertRaises(ValueError):
+            process.process([self.data], interp=1)
+        with self.assertRaises(ValueError):
+            process.process([self.data], interp=(1, ))
+        process.process(dl, interp=(1, 2))
+        mock_interp.assert_called_with(dl, 1.0, 2)
 
     def test_process_hcrop(self):
         with self.assertRaises(TypeError):

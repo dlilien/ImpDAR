@@ -282,7 +282,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if hasattr(self.FigCanvasWidget.mpl_toolbar, '_active') and (self.FigCanvasWidget.mpl_toolbar._active is not None):
             return
         # mpl >= 3.3.2
-        if hasattr(self.FigCanvasWidget.mpl_toolbar, 'Mode') and (self.FigCanvasWidget.mpl_toolbar.Mode is not None) and (self.FigCanvasWidget.mpl_toolbar.Mode != ''):
+        if hasattr(self.FigCanvasWidget.mpl_toolbar, 'mode') and (self.FigCanvasWidget.mpl_toolbar.mode is not None) and  hasattr(self.FigCanvasWidget.mpl_toolbar.mode, 'name') and (self.FigCanvasWidget.mpl_toolbar.mode.name != '') and (self.FigCanvasWidget.mpl_toolbar.mode.name != 'NONE'):
             return
         if self.auto_picker:
             self._auto_click(event)
@@ -305,7 +305,11 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self._add_pick(snum=snum, tnum=tnum)
         else:
             if event.button == 1:
+                modifiers = QtWidgets.QApplication.keyboardModifiers()
                 if self._n_pressed:
+                    warn('Deprecated', 'n for NaN is deprecated, will be removed in version 1.1, use shift')
+                    self._add_nanpick(snum, tnum)
+                elif (QtCore.Qt.ShiftModifier == modifiers):
                     self._add_nanpick(snum, tnum)
                 else:
                     self._add_point_pick(snum, tnum)
@@ -546,9 +550,13 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                             self.dat.fn,
                                             "All Files (*);;mat Files (*.mat)")
         if fn:
-            dat_cross = RadarData.RadarData(fn)
             try:
-                out_tnums, out_snums = picklib.get_intersection(self.dat, dat_cross)
+                dat_cross = RadarData.RadarData(fn)
+            except ValueError:
+                warn('Cannot load', 'Cannot load this crossprofile file')
+                return
+            try:
+                out_tnums, out_snums = picklib.get_intersection(self.dat, dat_cross, cutoff=np.mean(np.diff(self.dat.dist)) * 1500)
             except AttributeError:
                 warn('No picks', 'There are no picks in the crossprofile for us to load')
                 return
@@ -569,20 +577,43 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 x_coords_plot = self.dat.dist
 
             for tnum, snum, pnum in zip(out_tnums, out_snums, dat_cross.picks.picknums):
-                if ~np.isnan(tnum):
-                    self.ax.plot([x_coords_plot[int(tnum)]],
-                                 [y_coords_plot[int(snum)]],
+                if out_tnums.ndim == 1:
+                    if ~np.isnan(tnum):
+                        self.ax.plot([x_coords_plot[int(tnum)]],
+                                     [y_coords_plot[int(snum)]],
+                                     linestyle='none',
+                                     marker=SYMBOLS_FOR_CPS[self.cross_profile],
+                                     color='k',
+                                     markersize=10)
+                        self.ax.text(x_coords_plot[int(tnum)],
+                                     y_coords_plot[int(snum)],
+                                     str(pnum),
+                                     color='w',
+                                     ha='center',
+                                     va='center',
+                                     fontsize=8)
+                else:
+                    self.ax.plot(x_coords_plot[tnum[~np.isnan(tnum)].astype(int)],
+                                 y_coords_plot[snum[~np.isnan(tnum)].astype(int)],
                                  linestyle='none',
                                  marker=SYMBOLS_FOR_CPS[self.cross_profile],
-                                 color='k',
-                                 markersize=10)
-                    self.ax.text(x_coords_plot[int(tnum)],
-                                 y_coords_plot[int(snum)],
-                                 str(pnum),
-                                 color='w',
-                                 ha='center',
-                                 va='center',
-                                 fontsize=8)
+                                 color='orange',
+                                 markersize=2)
+                    if np.any(~np.isnan(tnum)):
+                        j = np.argmin(tnum[~np.isnan(tnum)].astype(int))
+                        self.ax.plot([x_coords_plot[tnum[~np.isnan(tnum)].astype(int)[j]]],
+                                     [y_coords_plot[snum[~np.isnan(tnum)].astype(int)[j]]],
+                                     linestyle='none',
+                                     marker=SYMBOLS_FOR_CPS[self.cross_profile],
+                                     color='k',
+                                     markersize=10)
+                        self.ax.text(x_coords_plot[tnum[~np.isnan(tnum)].astype(int)[j]],
+                                     y_coords_plot[snum[~np.isnan(tnum)].astype(int)[j]],
+                                     str(pnum),
+                                     color='w',
+                                     ha='center',
+                                     va='center',
+                                     fontsize=8)
 
             self.cross_profile += 1
             self.fig.canvas.draw()
