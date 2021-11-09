@@ -46,7 +46,9 @@ jobs:
       if: ${{ matrix.seisunix }}
       run: |
         export thisdir=$PWD
-        mkdir $CWPROOT; cd $CWPROOT
+        export CWPROOT='SeisUnix'
+        mkdir $CWPROOT
+        cd $CWPROOT
         sudo apt-get install gfortran
         wget 'https://nextcloud.seismic-unix.org/index.php/s/LZpzc8jMzbWG9BZ/download?path=%2F&files=cwp_su_all_44R16.tgz'
         tar -xvf 'download?path=%2F&files=cwp_su_all_44R16.tgz'
