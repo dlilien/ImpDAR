@@ -51,7 +51,9 @@ if __name__ == '__main__':
 
     requires = ['numpy>1.12.0',
                 'scipy>0.19.0',
-                'matplotlib>2.0.0']
+                'matplotlib>2.0.0',
+                'h5py',
+                'segyio']
 
     try:
         setuptools.setup(name='impdar',

@@ -19,6 +19,8 @@ jobs:
         os: [ubuntu-latest]  #, macos-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         qt5: [true, false]
+        # gdal: [true, false]
+        seisunix: [true, false]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -34,12 +36,33 @@ jobs:
         python -m pip install mock
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install .
-    - name: Install optional dep qt5
+    - name: Install optional dependency qt5
       if: ${{ matrix.qt5 }}
       run: |
         sudo apt install -y xvfb x11-utils libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 pyqt5-dev-tools
         python -m pip install pyqt5
         python -c 'import PyQt5'
+    - name: Install optional dependency SeisUnix
+      if: ${{ matrix.seisunix }}
+      run: |
+        export thisdir=$PWD
+        mkdir $CWPROOT; cd $CWPROOT
+        sudo apt-get install gfortran
+        wget 'https://nextcloud.seismic-unix.org/index.php/s/LZpzc8jMzbWG9BZ/download?path=%2F&files=cwp_su_all_44R16.tgz'
+        tar -xvf 'download?path=%2F&files=cwp_su_all_44R16.tgz'
+        cd $CWPROOT/src 
+        mv configs/Makefile.config_Linux_x86_64 Makefile.config
+        touch LICENSE_44R14_ACCEPTED
+        touch MAILHOME_44R14
+        make install <<< y
+        cd $thisdir
+    - name: Install optional dependency GDAL
+      if: ${{ matrix.gdal }}
+      run: |
+        sudo apt-get install libgdal-dev
+        export CPLUS_INCLUDE_PATH=/usr/include/gdal
+        export C_INCLUDE_PATH=/usr/include/gdal
+        python -m pip install gdal==1.10.0
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -48,7 +71,8 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run test
       run: |
-        xvfb-run `which pytest` --cov-config=.coveragerc --cov=impdar --cov-report=xml
+        xvfb-run `which pytest` --cov-config=.coveragerc --cov=./ --cov-report=xml
+
     - name: "Upload coverage to Codecov"
       uses: codecov/codecov-action@v2
       with:
