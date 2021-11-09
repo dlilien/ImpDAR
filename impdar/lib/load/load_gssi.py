@@ -180,7 +180,11 @@ def load_gssi(fn_dzt, *args, **kwargs):
     #     processing = ''
     try:
         header_len = 32768*n_bytes # TODO: David originally had this as 36*4096, we still need to figure out when it changes
-        data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
+        try:
+            data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
+        except OverflowError:
+            # This is needed on Windows for some reason--I think if OS is 32 bit?
+            data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np.int64).reshape((dzt_data.snum, -1), order='F')
     except IndexError:
         header_len = 512*n_bytes
         data = np.array(struct.unpack('<{:d}'.format((len(lines) - header_len) // n_bytes) + us_dattype, lines[header_len:]), dtype=np_dtype).reshape((dzt_data.snum, -1), order='F')
