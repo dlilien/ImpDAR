@@ -251,9 +251,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.bpid = self.fig.canvas.mpl_connect('button_press_event', self._click)
             for center, bottom, top in zip(self.cline, self.bline, self.tline):
                 if center is not None:
-                    center.set_picker(None)
-                    bottom.set_picker(None)
-                    top.set_picker(None)
+                    center.set_picker(0)
+                    bottom.set_picker(0)
+                    top.set_picker(0)
         else:
             self.modeButton.setText(_translate('MainWindow', 'Select Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
