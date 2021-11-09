@@ -3,3 +3,9 @@ omit =
     impdar/tests/*
     impdar/lib/ApresData/*
     impdar/lib/analysis/*
+
+[report]
+omit =
+    impdar/tests/*
+    impdar/lib/ApresData/*
+    impdar/lib/analysis/*

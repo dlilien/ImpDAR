@@ -19,7 +19,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         qt5: [true, false]
-        # gdal: [true, false]
+        gdal: [true, false]
         seisunix: [true, false]
         exclude:
           - os: macos-latest
@@ -73,11 +73,11 @@ jobs:
     - name: Run tests GUI
       if: ${{ matrix.qt5 }}
       run: |
-        xvfb-run `which pytest` --cov-config=.coveragerc --cov=./ --cov-report=xml
+        xvfb-run `which pytest` --cov-config=.coveragerc --cov=impdar --cov-report=xml
     - name: Run tests no GUI
       if: ${{ !matrix.qt5 }}
       run: |
-        pytest --cov-config=.coveragerc --cov=./ --cov-report=xml
+        pytest --cov-config=.coveragerc --cov=impdar --cov-report=xml
 
     - name: "Upload coverage to Codecov"
       uses: codecov/codecov-action@v2
