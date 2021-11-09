@@ -48,7 +48,7 @@ jobs:
         sudo apt-get install gfortran
         export thisdir=$PWD
         export CWPROOT=$PWD/SeisUnix
-        git checkout https://github.com/JohnWStockwellJr/SeisUnix.git
+        git clone https://github.com/JohnWStockwellJr/SeisUnix.git
         cd $CWPROOT/src 
         mv configs/Makefile.config_Linux_x86_64 Makefile.config
         touch LICENSE_44R14_ACCEPTED
