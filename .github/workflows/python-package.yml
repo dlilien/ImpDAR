@@ -37,7 +37,7 @@ jobs:
     - name: Install optional dep qt5
       if: ${{ matrix.qt5 }}
       run: |
-        sudo apt install sudo apt install -y xvfb x11-utils libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 pyqt5-dev-tools
+        sudo apt install -y xvfb x11-utils libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 pyqt5-dev-tools
         python -m pip install pyqt5
         python -c 'import PyQt5'
     - name: Lint with flake8
