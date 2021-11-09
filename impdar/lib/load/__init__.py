@@ -84,6 +84,10 @@ def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
     elif filetype == 'bsi':
         # BSI data are slightly different since we may have multiple profiles per file
         if load_bsi.H5:
+            if 'nans' in kwargs:
+                nans = kwargs['nans']
+            else:
+                nans = 'interp'
             data_nestedlist = [load_bsi.load_bsi(fn, nans=nans) for fn in fns_in]
             dat = []
             for data in data_nestedlist:
