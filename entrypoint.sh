@@ -12,7 +12,7 @@ export PLAT=manylinux2014_x86_64
 # Do a normal build
 for PYBIN in /opt/python/cp3[7-9]-cp*/bin; do
     "${PYBIN}/pip" install numpy==1.19.0 cython;
-    "${PYBIN}/pip" wheel --no-deps -w /github/workspace/dist/ .;
+    "${PYBIN}/pip" wheel --no-deps -w /github/workspace/wheelhouse/ .;
 done
 
 # Make the wheels into manylinux
