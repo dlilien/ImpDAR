@@ -90,6 +90,7 @@ jobs:
       if: ${{ !matrix.qt5 }}
       run: |
         pytest --cov=impdar --cov-report=xml
+        coverage report -m
 
     - name: Build a source tarball
       run: >-
