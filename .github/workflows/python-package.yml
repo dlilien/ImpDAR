@@ -84,12 +84,12 @@ jobs:
     - name: Run tests GUI
       if: ${{ matrix.qt5 }}
       run: |
-        xvfb-run `which coverage` run -m pytest --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/*
+        xvfb-run `which coverage` run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
 
     - name: Run tests no GUI
       if: ${{ !matrix.qt5 }}
       run: |
-        coverage run -m pytest --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/*
+        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
 
     - name: Build a source tarball
       run: >-
