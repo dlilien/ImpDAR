@@ -23,7 +23,7 @@ class TestSEGY(unittest.TestCase):
 
     @unittest.skipIf(not SEGY, 'No SEGY on this version')
     def test_ReadSucceeds(self):
-        pytest.importorskip('segyio', 'No SEGY on this version')
+        pytest.importorskip('segyio')
         load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'))
 
     @unittest.skipIf(not SEGY, 'No SEGY on this version')
