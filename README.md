@@ -1,6 +1,6 @@
 # ImpDAR: an impulse radar processor
 
-[![DOI](https://zenodo.org/badge/134008583.svg)](https://zenodo.org/badge/latestdoi/134008583) [![Tests](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml/badge.svg)](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml)
+[![DOI](https://zenodo.org/badge/134008583.svg)](https://zenodo.org/badge/latestdoi/134008583) [![Tests](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml/badge.svg)](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml) [![codecov](https://codecov.io/gh/dlilien/ImpDAR/branch/master/graph/badge.svg?token=R51QB61XNP)](https://codecov.io/gh/dlilien/ImpDAR)
 
 ImpDAR is a suite of processing and interpretation tools for impulse radar (targeted for ice-penetrating radar applications but usable for ground-penetrating radar as well). The core processing steps and general terminology come from of the St. Olaf Deep Radar processor, but everything is re-written in python and significant improvements to speed, readability, documentation, and interface have been made across the board. However, this code has a lot of history of contributors--acknowledgment of many of them are preserved in the file headers. ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, [GSSI](http://www.geophysical.com), [PulseEKKO](http://www.sensoft.ca), [Ramac](http://www.malagpr.com), [Blue Systems](http://www.bluesystem.ca/ice-penetrating-radar.html), DELORES, SEGY, [gprMAX](http://www.gprmax.com), Gecko, and legacy StoDeep files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The integrated migration routines are in development but Stolt is working.
 
@@ -21,14 +21,11 @@ Easiest is `pip install impdar`. Some explanation of other options is available 
 #### Required
 *Python 3* The package is tested on Python 3.5+. Older versions may work, but we have stopped testing on 2.7 since it has reached end of life. You can probably get 2.7 to work still, but no guarantees.
 
-[numpy](http://www.scipy.org)
-
-[scipy](http://numpy.org)
-
-[matplotlib](http://matplotlib.org).
-
-[SegYIO](https://github.com/equinor/segyio/) is needed for SEGY support and for SeisUnix migration.
-
+You also need:
+[numpy](http://www.scipy.org),
+[scipy](http://numpy.org),
+[matplotlib](http://matplotlib.org),
+[SegYIO](https://github.com/equinor/segyio/) for SEGY support and for SeisUnix migration, and
 [h5py](https://h5py.org) is needed for some data formats.
 
 I recommend just using Anaconda for your install, since it will also get you PyQt and therefore enable the GUI.
