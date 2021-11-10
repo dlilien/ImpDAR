@@ -105,8 +105,9 @@ jobs:
         .
 
   upload:
-	needs: build
-	steps:
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
     - name: "Upload coverage to Codecov"
       uses: codecov/codecov-action@v2
       with:
