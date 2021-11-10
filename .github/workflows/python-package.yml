@@ -117,17 +117,19 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Symlink fortran
+      - name: Symlink gcc
         run: |
             ln -s /usr/local/bin/gfortran-9 /usr/local/bin/gfortran
+            ln -s /usr/local/bin/gcc-9 /usr/local/bin/gcc
+        continue-on-error: true
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip wheel cython
           python -m pip install -r requirements.txt
       - name: create wheel distribution
-        run: python -m pip wheel --no-deps -w dist/ .;
+        run: python -m pip wheel -w dist/ .;
       - name: upload source distribution
         env:
           TWINE_USERNAME: __token__
