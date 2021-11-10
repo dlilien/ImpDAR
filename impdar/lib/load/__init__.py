@@ -75,7 +75,7 @@ def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
     elif filetype == 'mat':
         dat = [RadarData(fn) for fn in fns_in]
     elif filetype == 'stomat':
-        dat = [load_stomat.load_stomat(fn) for fn in fns_in]
+        dat = [load_stomat.load_stomat(fn, **kwargs) for fn in fns_in]
     elif filetype == 'gprMax':
         if load_gprMax.H5:
             dat = [load_gprMax.load_gprMax(fn) for fn in fns_in]

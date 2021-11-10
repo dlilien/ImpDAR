@@ -18,8 +18,10 @@ def _get_args():
 
     parser_load = subparsers.add_parser('load', help='Load data')
     parser_load.set_defaults(func=load.load_and_exit)
-    parser_load.add_argument('filetype', type=str,
+    parser_load.add_argument('--filetype',
+                             type=str,
                              help='Type of file',
+                             default='mat',
                              choices=load.FILETYPE_OPTIONS)
     parser_load.add_argument('fns_in',
                              type=str,
@@ -38,15 +40,14 @@ def _get_args():
     parser_load.add_argument('-o', type=str, help='Write to this filename')
     parser_load.add_argument('--nans', type=str, choices=['interp', 'delete'], default=None,
                              help='Interpolate or delete bad GPS. Only used by BSI.')
+    parser_load.add_argument('-dname',
+                             type=str,
+                             help='Name of data field',
+                             default='data')
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')
     parser_proc.set_defaults(func=process.process_and_exit)
-    parser_load.add_argument('--filetype',
-                             type=str,
-                             help='Type of file',
-                             default='mat',
-                             choices=load.FILETYPE_OPTIONS)
     parser_proc.add_argument('-cat',
                              action='store_true',
                              help='Concatenate the files')
