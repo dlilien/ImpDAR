@@ -103,7 +103,7 @@ jobs:
 
   Mac-Build:
     runs-on: macos-latest
-    if: always() && (needs.Test.result == 'success')
+    needs: Test
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +132,7 @@ jobs:
 
   Linux-build:
     runs-on: ubuntu-latest
-    if: always() && (needs.Test.result == 'success')
+    needs: Test
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
@@ -145,7 +145,7 @@ jobs:
   # deploy source distribution
   Source-dist:
     runs-on: ubuntu-latest
-    if: always() && (needs.Test.result == 'success')
+    needs: Test
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
