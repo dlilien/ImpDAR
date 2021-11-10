@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 """Load BSI IceRadar h5 files and convert to the .mat ImpDAR file."""
+
 import os
 import numpy as np
+from scipy.interpolate import interp1d
+
 from ..RadarData import RadarData
 import re
 from .. import gpslib
@@ -46,7 +49,7 @@ def _dt_from_comment(dset):
     return datetime.datetime(dmy[2], dmy[0], dmy[1], 0, 0, 0)
 
 
-def load_bsi(fn_h5, *args, **kwargs):
+def load_bsi(fn_h5, nans=None, *args, **kwargs):
     """Load a BSI IceRadar file, which is just an h5 file, into ImpDAR."""
     if not H5:
         raise ImportError('You need H5 to load bsi')
@@ -69,14 +72,15 @@ def load_bsi(fn_h5, *args, **kwargs):
             # We need this for logical file naming later on
             h5_data.fn = os.path.splitext(fn_h5)[0] + dset_name + '.h5'
             h5_data.tnum = len(list(dset.keys()))
-            if h5_data.tnum == 0:
-                print('{:s} is empty. Not storing'.format(dset_name))
-            h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
             h5_data.snum = len(
                 dset['location_0']['datacapture_0']['echogram_0'])
             h5_data.data = np.zeros((h5_data.snum, h5_data.tnum))
-            digitizer_data = dset['location_0']['datacapture_0'][
-                'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
+            if type(dset['location_0']['datacapture_0']['echogram_0'].attrs['Digitizer-MetaData_xml']) == str:
+                digitizer_data = dset['location_0']['datacapture_0'][
+                    'echogram_0'].attrs['Digitizer-MetaData_xml']
+            else:
+                digitizer_data = dset['location_0']['datacapture_0'][
+                    'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
             h5_data.dt = 1.0 / float(
                 _xmlGetVal(digitizer_data, ' Sample Rate'))
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
@@ -92,26 +96,80 @@ def load_bsi(fn_h5, *args, **kwargs):
                 _xmlGetVal(digitizer_data, 'trigger level'))
             time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
             h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
-            h5_data.trig = np.floor(np.ones((h5_data.tnum, )) * np.abs(
-                time_offset) / h5_data.dt)
 
             for location_num in range(h5_data.tnum):
                 h5_data.data[:, location_num] = dset[
                     'location_{:d}'.format(location_num)][
                         'datacapture_0']['echogram_0']
-                gps_data = dset['location_{:d}'.format(location_num)][
+                if type(dset['location_{:d}'.format(location_num)][
                     'datacapture_0']['echogram_0'].attrs[
-                        'GPS Cluster- MetaData_xml'].decode('utf-8')
-                lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
-                lon[location_num] = -1. * float(
-                    _xmlGetVal(gps_data, 'Long_ W'))
-                time[location_num] = float(
-                    _xmlGetVal(gps_data, 'GPS_timestamp_UTC'))
-                h5_data.elev[location_num] = float(
-                    _xmlGetVal(gps_data, 'Alt_asl_m'))
+                        'GPS Cluster- MetaData_xml']) == str:
+                    gps_data = dset['location_{:d}'.format(location_num)][
+                        'datacapture_0']['echogram_0'].attrs[
+                            'GPS Cluster- MetaData_xml']
+                else:
+                    gps_data = dset['location_{:d}'.format(location_num)][
+                        'datacapture_0']['echogram_0'].attrs[
+                            'GPS Cluster- MetaData_xml'].decode('utf-8')
+                if (float(_xmlGetVal(gps_data, 'GPS Fix valid')) > 0) and (
+                        float(_xmlGetVal(gps_data, 'GPS Message ok')) > 0):
+                    # sometimes, there are bad entries that are unmarked
+                    try:
+                        lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
+                        lon[location_num] = float(
+                            _xmlGetVal(gps_data, 'Long_ W'))
+                        time[location_num] = float(
+                            _xmlGetVal(gps_data, 'GPS_timestamp_UTC'))
+                        h5_data.elev[location_num] = float(
+                            _xmlGetVal(gps_data, 'Alt_asl_m'))
+                    except:
+                        lat[location_num] = np.nan
+                        lon[location_num] = np.nan
+                        time[location_num] = np.nan
+                        h5_data.elev[location_num] = np.nan
+                else:
+                    lat[location_num] = np.nan
+                    lon[location_num] = np.nan
+                    time[location_num] = np.nan
+                    h5_data.elev[location_num] = np.nan
 
-            h5_data.lat = _dm2dec(lat)
-            h5_data.long = _dm2dec(lon)
+            mask = ~np.isnan(time)
+            if nans == 'interp':
+                if np.any(~mask):
+                    print('Interpolating traces with bad GPS in {:s}'.format(dset_name))
+                # get rid of bad GPS locations
+                h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
+                time = interp1d(h5_data.trace_num[mask],
+                                time[mask],
+                                fill_value='extrapolate')(h5_data.trace_num)
+                h5_data.lat = interp1d(h5_data.trace_num[mask],
+                                       _dm2dec(lat[mask]),
+                                       fill_value='extrapolate')(h5_data.trace_num)
+                h5_data.long = interp1d(h5_data.trace_num[mask],
+                                        -_dm2dec(lon[mask]),
+                                        fill_value='extrapolate')(h5_data.trace_num)
+                h5_data.elev = interp1d(h5_data.trace_num[mask],
+                                        h5_data.elev[mask],
+                                        fill_value='extrapolate')(h5_data.trace_num)
+            elif nans == 'delete':
+                if np.any(~mask):
+                    print('Deleting traces with bad GPS in {:s}'.format(dset_name))
+                h5_data.lat = _dm2dec(lat[mask])
+                h5_data.long = -_dm2dec(lon[mask])
+                h5_data.elev = h5_data.elev[mask]
+                h5_data.data = h5_data.data[:, mask]
+                time = time[mask]
+
+                # Deal with this here in case tnum changed due to bad traces
+                h5_data.tnum = h5_data.data.shape[1]
+                h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
+            else:
+                h5_data.lat = _dm2dec(lat)
+                h5_data.long = -_dm2dec(lon)
+                h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
+
+            h5_data.trig = np.floor(np.ones((h5_data.tnum, )) * np.abs(
+                time_offset) / h5_data.dt)
 
             # need to access a comment to get the day
             day_collection = _dt_from_comment(dset)

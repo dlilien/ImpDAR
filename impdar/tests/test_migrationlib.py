@@ -17,6 +17,7 @@ Mar 12 2019
 import sys
 import os
 import unittest
+import pytest
 import subprocess as sp
 import numpy as np
 from impdar.lib import migrationlib
@@ -130,6 +131,7 @@ class TestMigration(unittest.TestCase):
 
     @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY) or (sys.version_info[0] < 3), 'SeisUnix not found')
     def test_sumigtk(self):
+        pytest.importorskip('segyio', 'No SEGY on this version')
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9
@@ -138,6 +140,7 @@ class TestMigration(unittest.TestCase):
 
     @unittest.skipIf(sp.Popen(['which', 'sumigtk']).wait() != 0 or (not load_segy.SEGY) or (sys.version_info[0] < 3), 'SeisUnix not found')
     def test_sustolt(self):
+        pytest.importorskip('segyio', 'No SEGY on this version')
         data = NoInitRadarData(big=True)
         data.dt = 1.0e-9
         data.travel_time = data.travel_time * 1.0e-9

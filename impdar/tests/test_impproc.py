@@ -179,7 +179,7 @@ class TestInputs(unittest.TestCase):
     @patch('impdar.bin.impproc.load')
     def test_ahfilt(self, load_patch, ahfilt_patch):
         load_patch.return_value = [MagicMock()]
-        impproc.sys.argv = ['dummy', 'ahfilt', 'dummy.mat']
+        impproc.sys.argv = ['dummy', 'ahfilt', '1000', 'dummy.mat']
         impproc.main()
         self.assertTrue(ahfilt_patch.called)
 

@@ -138,10 +138,12 @@ class TestPlotTraces(unittest.TestCase):
 
         # no nmo
         plot.plot_traces(dat, 0, ydat='depth', fig=fig, ax=ax)
+        plot.plot_traces(dat, 0, ydat='dual', fig=fig, ax=ax)
 
         # with nmo
-        dat.nmo_depth = np.arange(10)
+        dat.nmo_depth = np.linspace(0, 10, dat.travel_time.shape[0])
         plot.plot_traces(dat, 0, ydat='depth', fig=fig, ax=ax)
+        plot.plot_traces(dat, 0, ydat='dual', fig=fig, ax=ax)
         with self.assertRaises(ValueError):
             plot.plot_traces(dat, 0, ydat='dum', fig=fig, ax=ax)
 
@@ -219,8 +221,18 @@ class TestPlotRadargram(unittest.TestCase):
         with self.assertRaises(ValueError):
             plot.plot_radargram(dat, xdat='dummy', fig=fig, ax=ax)
 
+        # Varying ydata
+        dat.nmo_depth = None
         plot.plot_radargram(dat, y_range=None, fig=fig, ax=ax)
         plot.plot_radargram(dat, ydat='depth', fig=fig, ax=ax)
+        plot.plot_radargram(dat, ydat='dual', fig=fig, ax=ax)
+
+        # with nmo defined, these two are different
+        dat.nmo_depth = np.linspace(0, 100, dat.travel_time.shape[0])
+        plot.plot_radargram(dat, ydat='depth', fig=fig, ax=ax)
+        plot.plot_radargram(dat, ydat='dual', fig=fig, ax=ax)
+
+        dat = NoInitRadarData(big=True)
         with self.assertRaises(ValueError):
             plot.plot_radargram(dat, ydat='dummy', fig=fig, ax=ax)
 
@@ -337,12 +349,14 @@ class TestPlotPicks(unittest.TestCase):
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors='gmm', fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'g'], fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cmy', 'brb'], fig=fig, ax=ax)
-        plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'], fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=True, fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=False, fig=fig, ax=ax)
         plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=False, fig=fig, ax=ax)
         with self.assertRaises(ValueError):
             plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['c', 'm', 'b'], just_middle=True, fig=fig, ax=ax)
+
+        with self.assertRaises(ValueError):
+            plot.plot_picks(dat, np.arange(int(dat.tnum)), dat.travel_time, colors=['cm', 'br'], fig=fig, ax=ax)
 
     def tearDown(self):
         plt.close('all')
