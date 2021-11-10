@@ -10,7 +10,7 @@ on:
     branches: [ master, devel ]
 
 jobs:
-  build:
+  Test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -107,6 +107,7 @@ jobs:
 
   Mac-Build:
     runs-on: macos-latest
+    if: always() && (needs.Test.result == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -118,6 +119,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
+      - name: Symlink fortran
+        run: |
+            ln -s /usr/local/bin/gfortran-9 /usr/local/bin/gfortran
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -132,6 +136,7 @@ jobs:
 
   Linux-build:
     runs-on: ubuntu-latest
+    if: always() && (needs.Test.result == 'success')
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
@@ -144,6 +149,7 @@ jobs:
   # deploy source distribution
   Source-dist:
     runs-on: ubuntu-latest
+    if: always() && (needs.Test.result == 'success')
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
