@@ -21,4 +21,4 @@ for whl in wheelhouse/*.whl; do
     auditwheel repair "$whl" --plat $PLAT -w /github/workspace/wheelhouse/;
 done
 
-twine --repository testpypi upload /github/workspace/wheelhouse/*manylinux*.whl
+/opt/python/cp37-cp37m/bin/python3 -m twine upload --repository testpypi /github/workspace/wheelhouse/*manylinux*.whl
