@@ -4,10 +4,23 @@ imppick
 
 Command-line call
 =================
-.. argparse::
-    :module: impdar.bin.imppick
-    :func: _get_args
-    :prog: imppick
+.. code-block:: bash
+
+    imppick [-h] [-xd] [-yd] fn
+
+Positional Arguments
+--------------------
++----+---------------------+
+| fn | The file to process |
++----+---------------------+
+
+Named Arguments
+---------------
++-----+--------------------------------------------------------------------------+
+| -xd | Use kilometers for the x-axis                                            |
++-----+--------------------------------------------------------------------------+
+| -yd | Use depth in meters (or elevation if elevation-corrected) for the y-axis |
++-----+--------------------------------------------------------------------------+
 
 After calling imppick to bring up the GUI, things should be pretty intuitive, but navigation may seem a bit odd at first. Here is the basic view of the picker on a Mac:
 

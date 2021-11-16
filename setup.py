@@ -39,7 +39,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.2'
+    version = '1.1.3'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',

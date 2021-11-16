@@ -63,6 +63,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
     with h5py.File(fn_h5, 'r') as f_in:
         dset_names = [key for key in f_in.keys()]
         for dset_name in dset_names:
+            print('Loading {:s} from {:s}'.format(dset_name, fn_h5))
             # Just in case there is something else that can be here
             if 'line_' not in dset_name:
                 continue
@@ -98,6 +99,11 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
             h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
 
             for location_num in range(h5_data.tnum):
+                # apparently settings can change mid-line
+                nsamps = dset['location_{:d}'.format(location_num)]['datacapture_0']['echogram_0'].shape[0]
+                if nsamps > h5_data.snum:
+                    h5_data.data = np.vstack((h5_data.data, np.zeros((nsamps - h5_data.snum, h5_data.tnum))))
+                    h5_data.snum = nsamps
                 h5_data.data[:, location_num] = dset[
                     'location_{:d}'.format(location_num)][
                         'datacapture_0']['echogram_0']
