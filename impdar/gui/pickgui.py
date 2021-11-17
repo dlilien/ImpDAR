@@ -349,7 +349,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if not np.isnan(self.current_pick[1, tnum - 1]):
             self.dat.picks.lasttrace.snum[self._pick_ind] = self.current_pick[1, tnum - 1]
 
-    def update_lines(self, colors='gmm', picker=None):
+    def update_lines(self, colors='gmm', picker=0):
         """Update the plotting of the current pick.
 
         Parameters

@@ -75,29 +75,18 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
             h5_data.tnum = len(list(dset.keys()))
             h5_data.snum = len(
                 dset['location_0']['datacapture_0']['echogram_0'])
+            lat = np.zeros((h5_data.tnum,))
+            lon = np.zeros((h5_data.tnum,))
+            h5_data.elev = np.zeros((h5_data.tnum,))
+            time = np.zeros((h5_data.tnum,))
             h5_data.data = np.zeros((h5_data.snum, h5_data.tnum))
+
             if type(dset['location_0']['datacapture_0']['echogram_0'].attrs['Digitizer-MetaData_xml']) == str:
                 digitizer_data = dset['location_0']['datacapture_0'][
                     'echogram_0'].attrs['Digitizer-MetaData_xml']
             else:
                 digitizer_data = dset['location_0']['datacapture_0'][
                     'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
-            h5_data.dt = 1.0 / float(
-                _xmlGetVal(digitizer_data, ' Sample Rate'))
-            h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
-
-            lat = np.zeros((h5_data.tnum,))
-            lon = np.zeros((h5_data.tnum,))
-            h5_data.elev = np.zeros((h5_data.tnum,))
-            time = np.zeros((h5_data.tnum,))
-
-            # Other information that ImpDAR currently cannot use
-            # _xmlGetVal(digitizer_data, 'vertical range')
-            h5_data.trig_level = float(
-                _xmlGetVal(digitizer_data, 'trigger level'))
-            time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
-            h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
-
             for location_num in range(h5_data.tnum):
                 # apparently settings can change mid-line
                 nsamps = dset['location_{:d}'.format(location_num)]['datacapture_0']['echogram_0'].shape[0]
@@ -138,6 +127,18 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                     lon[location_num] = np.nan
                     time[location_num] = np.nan
                     h5_data.elev[location_num] = np.nan
+
+            h5_data.dt = 1.0 / float(
+                _xmlGetVal(digitizer_data, ' Sample Rate'))
+            h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
+
+            # Other information that ImpDAR currently cannot use
+            # _xmlGetVal(digitizer_data, 'vertical range')
+            h5_data.trig_level = float(
+                _xmlGetVal(digitizer_data, 'trigger level'))
+            time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
+            h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
+
 
             mask = ~np.isnan(time)
             if nans == 'interp':
