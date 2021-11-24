@@ -87,7 +87,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
 
     """
 
-    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.tnum, dat.snum))
+    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.snum, dat.tnum))
     # check that the arrays are compatible
     _check_data_shape(dat)
     # start the timer
@@ -110,7 +110,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     # print the total time
     print('')
     print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          % (dat.tnum, dat.snum, time.time() - start))
+          % (dat.snum, dat.tnum, time.time() - start))
     return dat
 
 
@@ -133,7 +133,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
 
     """
 
-    print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    print('Stolt Migration (f-k migration) of %.0fx%.0f matrix'%(dat.snum, dat.tnum))
     # check that the arrays are compatible
     _check_data_shape(dat)
 
@@ -201,7 +201,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     # print the total time
     print('')
     print('Stolt Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(dat.tnum,dat.snum,time.time()-start))
+          % (dat.snum, dat.tnum, time.time() - start))
     return dat
 
 
@@ -240,7 +240,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **gen
 
     """
 
-    print('Phase-Shift Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    print('Phase-Shift Migration of %.0fx%.0f matrix'%(dat.snum,dat.tnum))
     # check that the arrays are compatible
     _check_data_shape(dat)
 
@@ -280,7 +280,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **gen
     # print the total time
     print('')
     print('Phase-Shift Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(dat.tnum,dat.snum,time.time()-start))
+          % (dat.snum, dat.tnum, time.time() - start))
     return dat
 
 
@@ -317,7 +317,7 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     dat: data as a class in the ImpDAR format (with dat.data now being migrated data)
 
     """
-    print('Time-Wavenumber Migration of %.0fx%.0f matrix'%(dat.tnum,dat.snum))
+    print('Time-Wavenumber Migration of %.0fx%.0f matrix'%(dat.snum, dat.tnum))
     # check that the arrays are compatible
     _check_data_shape(dat)
 
@@ -348,7 +348,7 @@ def migrationTimeWavenumber(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000):
     # print the total time
     print('')
     print('Time-Wavenumber Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          %(dat.tnum,dat.snum,time.time()-start))
+          % (dat.snum, dat.tnum, time.time() - start))
     return dat
 
 # -----------------------------------------------------------------------------
@@ -642,4 +642,4 @@ def getVelocityProfile(dat,vels_in):
 
 def _check_data_shape(dat):
     if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
-        raise ValueError('The input array must be of size (tnum,snum)')
+        raise ValueError('The input array must be of size (snum, tnum)')

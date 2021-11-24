@@ -27,7 +27,8 @@ if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main',
                        'impproc=impdar.bin.impproc:main',
                        'imppick=impdar.bin.imppick:main',
-                       'impplot=impdar.bin.impplot:main']
+                       'impplot=impdar.bin.impplot:main',
+                       'apdar=impdar.bin.apdar:main']
 
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
@@ -39,7 +40,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.0.3'
+    version = '1.1.4'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
@@ -51,7 +52,9 @@ if __name__ == '__main__':
 
     requires = ['numpy>1.12.0',
                 'scipy>0.19.0',
-                'matplotlib>2.0.0']
+                'matplotlib>2.0.0',
+                'h5py',
+                'segyio']
 
     try:
         setuptools.setup(name='impdar',

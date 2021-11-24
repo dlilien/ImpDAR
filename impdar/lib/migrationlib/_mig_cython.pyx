@@ -71,7 +71,8 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
 
     """
 
-    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.tnum, dat.snum))
+    print('Kirchhoff Migration (diffraction summation) of %.0fx%.0f matrix' % (dat.snum, dat.tnum))
+    print('Using compiled cython/c version')
     # check that the arrays are compatible
     _check_data_shape(dat)
     # start the timer
@@ -102,8 +103,8 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
                           )
     dat.data = migdata.copy()
     # print the total time
-    print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds'
-          % (dat.tnum, dat.snum, time.time() - start))
+    print('Kirchhoff Migration of %.0fx%.0f matrix complete in %.2f seconds\n'
+          % (dat.snum, dat.tnum, time.time() - start))
     return dat
 
 

@@ -24,10 +24,19 @@ def _get_args():
                                        plot_radargram,
                                        defname='radargram',
                                        xd=True,
-                                       yd=True)
-    rg_parser.add_argument('-picks', action='store_true', help='Plot picks')
-    rg_parser.add_argument('-clims', nargs=2, type=float, help='Color limits')
-    rg_parser.add_argument('-flatten_layer', type=int, default=None, help='Distort plot so this layer is flat')
+                                       yd=True,
+                                       dualy=True)
+    rg_parser.add_argument('-picks',
+                           action='store_true',
+                           help='Plot picks')
+    rg_parser.add_argument('-clims',
+                           nargs=2,
+                           type=float,
+                           help='Color limits')
+    rg_parser.add_argument('-flatten_layer',
+                           type=int,
+                           default=None,
+                           help='Distort plot so this layer is flat')
     rg_parser.add_argument('-cmap',
                            type=str,
                            default='gray',
@@ -37,17 +46,13 @@ def _get_args():
                            'ft',
                            'Plot ft',
                            plot_ft,
-                           defname='spec',
-                           xd=True,
-                           yd=True)
+                           defname='spec')
 
     _add_simple_procparser(subparsers,
                            'hft',
                            'Plot ft',
                            plot_hft,
-                           defname='spec',
-                           xd=True,
-                           yd=True)
+                           defname='spec')
 
     trace_parser = _add_simple_procparser(subparsers,
                                           'traces',
@@ -55,19 +60,20 @@ def _get_args():
                                           plot_traces,
                                           defname='traces',
                                           xd=False,
-                                          yd=True)
+                                          yd=True,
+                                          dualy=True)
     trace_parser.add_argument('t_start',
                               type=int,
                               help='Starting trace number')
-    trace_parser.add_argument('t_end', type=int, help='Ending trace number')
+    trace_parser.add_argument('t_end',
+                              type=int,
+                              help='Ending trace number')
 
     power_parser = _add_simple_procparser(subparsers,
                                           'power',
                                           'Plot power on a layer',
                                           plot_power,
                                           defname='power',
-                                          xd=False,
-                                          yd=False,
                                           other_ftypes=False)
     power_parser.add_argument('layer',
                               type=int,
@@ -78,8 +84,6 @@ def _get_args():
                                          'Plot spectrogram for all traces',
                                          plot_spectrogram,
                                          defname='spectrogram',
-                                         xd=False,
-                                         yd=False,
                                          other_ftypes=False)
     spec_parser.add_argument('freq_lower',
                              type=float,
@@ -91,10 +95,10 @@ def _get_args():
 
 
 def _add_simple_procparser(subparsers, name, helpstr, func, defname='proc',
-                           xd=False, yd=False, other_ftypes=True):
+                           xd=False, yd=False, dualy=False, other_ftypes=True):
     """Add a simple subparser."""
     parser = _add_procparser(subparsers, name, helpstr, func, defname=defname)
-    _add_def_args(parser, xd=xd, yd=yd)
+    _add_def_args(parser, xd=xd, yd=yd, dualy=dualy)
     return parser
 
 
@@ -105,7 +109,7 @@ def _add_procparser(subparsers, name, helpstr, func, defname='proc'):
     return parser
 
 
-def _add_def_args(parser, xd=False, yd=False, other_ftypes=True):
+def _add_def_args(parser, xd=False, yd=False, dualy=False, other_ftypes=True):
     """Set up common arguments for different types of commands."""
     parser.add_argument('fns',
                         type=str,
@@ -136,6 +140,11 @@ def _add_def_args(parser, xd=False, yd=False, other_ftypes=True):
                             action='store_true',
                             help='Plot the depth rather than travel time')
 
+    if dualy:
+        parser.add_argument('-dualy',
+                            action='store_true',
+                            help='Primary y axis is TWTT, secondary is depth')
+
     if other_ftypes:
         parser.add_argument('--in_fmt', type=str,
                             help='Type of file',
@@ -145,11 +154,11 @@ def _add_def_args(parser, xd=False, yd=False, other_ftypes=True):
 
 def plot_radargram(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
                    dpi=300, in_fmt='mat', picks=False, clims=None, cmap='gray',
-                   flatten_layer=None, **kwargs):
+                   flatten_layer=None, dualy=False, **kwargs):
     """Plot data as a radio echogram."""
     plot.plot(fns, xd=xd, yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
               filetype=in_fmt, pick_colors=picks, cmap=cmap, clims=clims,
-              flatten_layer=flatten_layer)
+              flatten_layer=flatten_layer, dualy=dualy)
 
 
 def plot_ft(fns=None, s=False, o=None, xd=False, yd=False, o_fmt='png',
@@ -181,11 +190,11 @@ def plot_power(fns=None, layer=None, s=False, o=None, o_fmt='png',
               filetype=in_fmt)
 
 
-def plot_traces(fns=None, t_start=None, t_end=None, yd=False, s=False, o=None,
-                o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
+def plot_traces(fns=None, t_start=None, t_end=None, yd=False, dualy=False,
+                s=False, o=None, o_fmt='png', dpi=300, in_fmt='mat', **kwargs):
     """Plot traces in terms of amplitude vs some vertical variable."""
     plot.plot(fns, tr=(t_start, t_end), yd=yd, s=s, o=o, ftype=o_fmt, dpi=dpi,
-              filetype=in_fmt)
+              dualy=dualy, filetype=in_fmt)
 
 
 def plot_spectrogram(fns=None, freq_lower=None, freq_upper=None, window=None,

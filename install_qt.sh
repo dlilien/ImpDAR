@@ -11,7 +11,7 @@ sudo apt-get install -qq qtdeclarative5-dev libqt5svg5-dev qtmultimedia5-dev
 export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
 
 # Library versions
-PYQT_VERSION=5.7.1
+PYQT_VERSION=5.12.8
 SIP_VERSION=4.19
 
 # Install sip
@@ -24,7 +24,7 @@ sudo make install
 cd ..
 
 # Install PyQt5
-export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-5.7.1
+export PYTHONPATH=$PYTHONPATH:$HOME/PyQt5_install-$PYQT_VERSION
 
 python -c 'import PyQt5' 
 if [ "$?" -eq "0" ]; then

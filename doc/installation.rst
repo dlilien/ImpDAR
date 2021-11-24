@@ -4,7 +4,7 @@ Installation
 Beginner
 ________
 
-If you do not have a current (2.7 or 3+) python installation, you will need one to begin.
+If you do not have a current (3.6+) python installation, you will need one to begin.
 I recommend getting python 3 from `anaconda <https://anaconda.org/>`_.
 The Anaconda installer is straightforward to use, and you can let it set up your path, which makes the subsequent commands "just work."
 However, Anaconda on Windows suggests not putting it on your path and instead using the Anaconda prompt.
@@ -19,7 +19,7 @@ I recommend getting it and segyio, used for interacting with the SEGY data forma
     conda install -c conda-forge gdal segyio
 
 This step can be really slow, so don not worry if it is a bit painful.
-At this point, I also recommend installing h5py, just so that you are ready for all presently supported formats. This can be done with
+At this point, I also recommend installing h5py--if you do not, it pip will do it on the next step. This can be done with
 
 .. code-block:: bash
 
@@ -57,5 +57,3 @@ This requires `git <https://git-scm.com/downloads>`_.
 If you want to have the full suite of migration options, you will need to install `seisunix <https://github.com/JohnWStockwellJr/SeisUnix/wiki>`_.
 The SeisUnix install is bit complicated, but there are instructions with it.
 It should be possible to use SeisUnix on Windows with CygWin then interface with ImpDAR, but this is untested.
-
-

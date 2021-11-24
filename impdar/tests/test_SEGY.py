@@ -11,6 +11,7 @@ Test the basics of RadarData
 """
 import os
 import unittest
+import pytest
 import numpy as np
 from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.load.load_segy import load_segy, SEGY
@@ -22,24 +23,26 @@ class TestSEGY(unittest.TestCase):
 
     @unittest.skipIf(not SEGY, 'No SEGY on this version')
     def test_ReadSucceeds(self):
+        pytest.importorskip('segyio')
         load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'))
 
     @unittest.skipIf(not SEGY, 'No SEGY on this version')
     def test_WriteSucceeds(self):
+        pytest.importorskip('segyio')
         data = load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'))
         data.save_as_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))
 
     @unittest.skipIf(not SEGY, 'No SEGY on this version')
     def test_ReadWriteRead(self):
+        pytest.importorskip('segyio')
         data = load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200.segy'))
         data.save_as_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))
         data2 = load_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))
         self.assertEqual(data.data.shape, data2.data.shape)
-        self.assertTrue(np.all(data.data == data2.data))
+        self.assertTrue(np.allclose(data.data, data2.data))
 
     @unittest.skipIf(SEGY, 'SEGY on this version, only a graceful failure test')
     def test_SaveFails(self):
-        print(SEGY)
         data = NoInitRadarData()
         with self.assertRaises(ImportError):
             data.save_as_segy(os.path.join(THIS_DIR, 'input_data', 'shots0001_0200_resave.segy'))

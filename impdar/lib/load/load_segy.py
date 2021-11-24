@@ -36,7 +36,7 @@ def load_segy(fn_sgy, *args, **kwargs):
     segy_data.data = segyio.tools.collect(f.trace).transpose()
     segy_data.snum = f.bin[segyio.BinField.Samples]
     segy_data.tnum = segy_data.data.shape[1]
-    segy_data.dt = f.bin[segyio.BinField.Interval] * 1.0e-12
+    segy_data.dt = f.bin[segyio.BinField.Interval] * 1.0e-9
     segy_data.travel_time = np.arange(segy_data.snum) * segy_data.dt * 1.0e6
     segy_data.trace_num = np.arange(segy_data.data.shape[1]) + 1
     segy_data.flags = RadarFlags()
@@ -61,6 +61,17 @@ def load_segy(fn_sgy, *args, **kwargs):
     segy_data.elev = np.zeros((segy_data.tnum, ))
     segy_data.trig_level = np.zeros((segy_data.tnum, ))
     segy_data.pressure = np.zeros((segy_data.tnum, ))
+
+    l_dm = f.attributes(segyio.TraceField.CDP_X)[:]
+    segy_data.long = np.trunc(l_dm / 100.0) + (l_dm - 100.0 * np.trunc(l_dm / 100.0)) / 60.0
+    l_dm = f.attributes(segyio.TraceField.CDP_Y)[:]
+    segy_data.lat = np.trunc(l_dm / 100.0) + (l_dm - 100.0 * np.trunc(l_dm / 100.0)) / 60.0
+    segy_data.x_coord = f.attributes(segyio.TraceField.GroupX)[:] / 100.0
+    segy_data.y_coord = f.attributes(segyio.TraceField.GroupY)[:] / 100.0
+    segy_data.dist = np.hstack(([0],
+                                np.cumsum(np.sqrt(
+                                    np.diff(segy_data.x_coord)**2.0 + np.diff(
+                                        segy_data.y_coord)**2.0)))) / 1000.
 
     segy_data.check_attrs()
     return segy_data

@@ -1,0 +1,6 @@
+# action.yml
+name: 'Build Manylinux'
+description: 'Build many python'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

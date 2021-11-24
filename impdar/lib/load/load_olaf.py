@@ -15,21 +15,7 @@ import datetime
 import numpy as np
 
 from ..RadarData import RadarData
-
-
-def _common_start(string_a, string_b):
-    """ returns the longest common substring from the beginning of sa and sb.
-
-    from https://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
-    """
-    def _iter():
-        for char_a, char_b in zip(string_a, string_b):
-            if char_a == char_b:
-                yield char_a
-            else:
-                return
-
-    return ''.join(_iter())
+from .loading_utils import common_start
 
 
 class SInfo:
@@ -350,10 +336,7 @@ def load_olaf(fns_olaf, channel=1):
         fns_olaf = [fns_olaf]
         olaf_data.fn = fns_olaf[0]
     else:
-        f_common = fns_olaf[0]
-        for i in range(1, len(fns_olaf)):
-            f_common = _common_start(f_common, fns_olaf[i]).rstrip('[')
-        olaf_data.fn = f_common
+        olaf_data.fn = common_start(fns_olaf).rstrip('[')
 
     sinfo = []
     stacks = []

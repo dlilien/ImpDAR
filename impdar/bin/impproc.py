@@ -43,11 +43,15 @@ def _get_args():
     _add_def_args(parser_hfilt)
 
     # Adaptive horizontal filter
-    _add_simple_procparser(subparsers,
+    parser_ahfilt = _add_procparser(subparsers,
                            'ahfilt',
                            'Horizontally filter the data adaptively',
                            ahfilt,
                            defname='ahfilt')
+    parser_ahfilt.add_argument('win',
+                                type=int,
+                                help='Number of traces to include in the moving average')
+    _add_def_args(parser_ahfilt)
 
     # Simply reverse the files
     _add_simple_procparser(subparsers,
@@ -386,7 +390,7 @@ def main():
             args.func(dat, **vars(args))
 
     if args.o is not None:
-        if len(radar_data) > 1:
+        if ((len(radar_data) > 1) or (args.o[-1] == '/')):
             for d, f in zip(radar_data, args.fns):
                 bn = os.path.split(os.path.splitext(f)[0])[1]
                 if bn[-4:] == '_raw':
@@ -411,9 +415,9 @@ def hfilt(dat, start_trace=0, end_trace=-1, **kwargs):
     dat.hfilt(ftype='hfilt', bounds=(start_trace, end_trace))
 
 
-def ahfilt(dat, **kwargs):
+def ahfilt(dat, window_size=1000, **kwargs):
     """Adaptive horizontal filter."""
-    dat.hfilt(ftype='adaptive')
+    dat.hfilt(ftype='adaptive', window_size=window_size)
 
 
 def rev(dat, **kwargs):
@@ -491,9 +495,9 @@ def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
                guess_offset=guess)
 
 
-def denoise(dat, vert_win=1, hor_dim=10, noise=None, ftype='wiener', **kwargs):
+def denoise(dat, vert_win=1, hor_win=10, noise=None, filter_type='wiener', **kwargs):
     """Despeckle."""
-    dat.denoise(vert_win=vert_win, hor_dim=hor_dim, noise=noise, ftype=ftype)
+    dat.denoise(vert_win=vert_win, hor_win=hor_win, noise=noise, ftype=filter_type)
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0,

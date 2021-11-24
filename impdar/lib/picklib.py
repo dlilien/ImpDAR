@@ -12,6 +12,7 @@ import numpy as np
 from scipy.spatial import cKDTree as KDTree
 
 
+
 def pick(traces, snum_start, snum_end, pickparams):
     """Pick a reflector in some traces.
 
@@ -44,6 +45,46 @@ def pick(traces, snum_start, snum_end, pickparams):
     for i in range(traces.shape[1]):
         pickpacket = packet_pick(traces[:, i], pickparams, dmid[i])
         picks_out[:, i] = pickpacket
+    return picks_out
+
+
+def auto_pick(dat,snums,tnums):
+    """Automatically pick any number of reflectors.
+
+    Parameters
+    ----------
+    dat: object class
+        data object
+    indices: numpy.ndarray
+        indices on the left side of the image where the picks will start from
+        These are the centerpoint of the wavelet
+
+    Returns
+    -------
+    numpy.ndarray
+        The picks selected. Rows are: top of packet, center pick, bottom of
+        packet, time (deprecated, all nans), and power. Size 5xtnum
+    """
+
+    picks_out = np.empty((len(snums),5,dat.tnum))
+
+    for i in range(len(snums)):
+        j = int(tnums[i])
+        t_start = int(tnums[i])
+        dmid = snums[i]
+        for n in range(dat.tnum):
+            pp = packet_pick(dat.data[:,j],dat.picks.pickparams,dmid)
+            picks_out[i,:,j] = pp
+            if j <= t_start and j > 0:
+                dmid = (pp[0]+pp[2])//2
+                j -= 1
+            elif j == 0:
+                dmid = (picks_out[i,0,t_start]+picks_out[i,2,t_start])//2
+                j = t_start + 1
+            elif j > t_start:
+                dmid = (pp[0]+pp[2])//2
+                j += 1
+
     return picks_out
 
 
@@ -153,7 +194,8 @@ def packet_pick(trace, pickparams, midpoint):
     return [tpeak + topsnum, cpeak + topsnum, bpeak + topsnum, np.nan, power]
 
 
-def get_intersection(data_main, data_cross, return_nans=False):
+def get_intersection(data_main, data_cross, multiple_int=True, return_nans=False,
+                     cutoff=10.0):
     """Find the intersection of two radar datasets.
 
     Used for plotting up where pick depths at places where two profiles cross.
@@ -174,13 +216,15 @@ def get_intersection(data_main, data_cross, return_nans=False):
     return_nans: bool, optional
         Return the closest sample, even if it was nanpicked.
         Default is false (find closest non-nan value)
+    cutoff: float, optional
+        The maximum distance for multiple intersections.
 
     Returns
     -------
-    np.ndarray (npicks,)
+    np.ndarray (npicks,) or (npicks, m)
         The tracenumber in the main profile at which we are getting the sample
         from the crossprofile
-    np.ndarray (npicks,)
+    np.ndarray (npicks,) or (npicks, m)
         The depths (in sample number) of the layers in the cross profile.
         Note that this essentially assume you are using the same snum/depth
         conversion between the two profiles.
@@ -194,33 +238,53 @@ def get_intersection(data_main, data_cross, return_nans=False):
             data_cross.picks.picknums) == 0 or data_cross.picks.samp1 is None:
         raise AttributeError('We do not have viable cross picks')
 
-    out_tnums = np.zeros_like(data_cross.picks.picknums, dtype=float)
-    out_sns = np.zeros_like(data_cross.picks.picknums, dtype=float)
-
     tree = KDTree(np.vstack((
         data_main.x_coord.flatten(), data_main.y_coord.flatten())).transpose())
-    for i in range(len(out_tnums)):
-        if return_nans:
-            mask_pick_not_nan = np.ones_like(
-                data_cross.picks.samp1[i], dtype=bool)
-        else:
+
+    if multiple_int:
+        # Get the maximum possible size of output
+        dist, _ = tree.query(np.vstack(
+            (data_cross.x_coord.flatten(),
+             data_cross.y_coord.flatten())).transpose())
+        maxn = np.sum(dist < cutoff)
+        out_tnums = np.zeros((len(data_cross.picks.picknums), maxn), dtype=float)
+        out_sns = np.zeros((len(data_cross.picks.picknums), maxn), dtype=float)
+        out_tnums[:, :] = np.nan
+        out_sns[:, :] = np.nan
+        for i, _ in enumerate(out_tnums):
             mask_pick_not_nan = ~np.isnan(data_cross.picks.samp1[i])
-        closest_dist, closest_inds = tree.query(np.vstack(
-            (data_cross.x_coord[mask_pick_not_nan].flatten(),
-             data_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
+            dist, inds = tree.query(np.vstack(
+                (data_cross.x_coord[mask_pick_not_nan].flatten(),
+                 data_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
+            maxn = np.sum(dist < cutoff)
+            out_tnums[i, :maxn] = inds[dist < cutoff]
+            out_sns[i, :maxn] = data_cross.picks.samp1[i, :][mask_pick_not_nan][dist < cutoff]
+    else:
+        out_tnums = np.zeros_like(data_cross.picks.picknums, dtype=float)
+        out_sns = np.zeros_like(data_cross.picks.picknums, dtype=float)
 
-        # need the spot in the cross profile that is closest
-        # sequence will be empty if we have a pick that is purely nans
-        if len(closest_dist) > 0:
-            ind_dat_cross = np.argmin(closest_dist)
+        for i, _ in enumerate(out_tnums):
+            if return_nans:
+                mask_pick_not_nan = np.ones_like(
+                    data_cross.picks.samp1[i], dtype=bool)
+            else:
+                mask_pick_not_nan = ~np.isnan(data_cross.picks.samp1[i])
+            dist, inds = tree.query(np.vstack(
+                (data_cross.x_coord[mask_pick_not_nan].flatten(),
+                 data_cross.y_coord[mask_pick_not_nan].flatten())).transpose())
 
-            # Where to plot this on the main profile
-            out_tnums[i] = closest_inds[ind_dat_cross]
+            # need the spot in the cross profile that is closest
+            # sequence will be empty if we have a pick that is purely nans
+            if len(dist) > 0:
+                ind_dat_cross = np.argmin(dist)
 
-            out_sns[i] = data_cross.picks.samp1[i, :][
-                mask_pick_not_nan][ind_dat_cross].astype(int)
-        else:
-            out_tnums[i] = np.nan
-            out_sns[i] = np.nan
+                # Where to plot this on the main profile
+                out_tnums[i] = inds[ind_dat_cross]
+
+                out_sns[i] = data_cross.picks.samp1[i, :][
+                    mask_pick_not_nan][ind_dat_cross].astype(int)
+            else:
+                out_tnums[i] = np.nan
+                out_sns[i] = np.nan
 
     return out_tnums, out_sns

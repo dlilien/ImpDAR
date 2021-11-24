@@ -43,7 +43,7 @@ def save(self, fn):
         else:
             # this guards against error in matlab format
             mat[attr] = 0
-    for attr in self.attrs_optional:
+    for attr in self.attrs_optional + self.stodeep_attrs:
         if hasattr(self, attr) and getattr(self, attr) is not None:
             mat[attr] = getattr(self, attr)
     if hasattr(self, 'picks') and self.picks is not None:
@@ -57,7 +57,7 @@ def save(self, fn):
     # Make sure not to expand the size of the data due to type conversion
     if hasattr(self, 'data_dtype') and (
             self.data_dtype is not None) and (self.data_dtype != mat['data'].dtype):
-        # Be carefuly of obliterating NaNs
+        # Be careful of obliterating NaNs
         # We will use singles instead of ints for this guess
         if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
             print('Warning: new file is float16 rather than ',
@@ -130,15 +130,8 @@ def output_shp(self, fn, t_srs=None, target_out=None):
         cT, t_srs = get_conversion(t_srs=t_srs)
         pts = np.array(cT(np.vstack((self.long, self.lat)).transpose()))
     else:
-        if self.x_coord is not None and hasattr(self, 't_srs'):
-            pts = np.vstack((self.x_coord, self.y_coord)).transpose()
-            t_srs = self.t_srs
-        else:
-            if self.x_coord is not None:
-                print('RadarData has projected coordinates but projection information is unknown.')
-                print('Writing wgs84; specify t_srs for projected output.')
-            pts = np.vstack((self.long, self.lat)).transpose()
-            t_srs = 'EPSG:3426'
+        pts = np.vstack((self.long, self.lat)).transpose()
+        t_srs = 'EPSG:3426'
 
     driver = ogr.GetDriverByName('ESRI Shapefile')
     data_source = driver.CreateDataSource(fn)
