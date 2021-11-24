@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.edu>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -23,11 +23,10 @@ Earth and Space Sciences
 Sept 23 2019
 
 """
-
 import numpy as np
+import h5py
 import re
 
-# --------------------------------------------------------------------------------------------
 
 class ApresHeader():
     """
@@ -55,8 +54,6 @@ class ApresHeader():
         self.nchirp_samples = None
         self.ramp_dir = None
 
-    # --------------------------------------------------------------------------------------------
-
     def read_header(self,fn_apres,max_header_len=2000):
         """
         Read the header string, to be partitioned later
@@ -75,8 +72,6 @@ class ApresHeader():
         fid = open(fn_apres,'rb')
         self.header_string = str(fid.read(max_header_len))
         fid.close()
-
-    # --------------------------------------------------------------------------------------------
 
     def get_file_format(self):
         """
@@ -217,12 +212,36 @@ class ApresHeader():
             self.ramp_dir = 'upDown'
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
-# --------------------------------------------------------------------------------------------
+    def write_h5(self, grp):
+        """Write to a subgroup in hdf5 file
+
+        Parameters
+        ----------
+        grp: h5py.Group
+            The group to which the ApresHeader subgroup is written
+        """
+        subgrp = grp.create_group('ApresHeader')
+        for attr in vars(self):
+            val = getattr(self, attr)
+            if val is None:
+                subgrp.attrs[attr] = h5py.Empty("f")
+            else:
+                if hasattr(val, 'dtype'):
+                    val = val.astype('f')
+                subgrp.attrs[attr] = val
+
+    def read_h5(self, grp):
+        subgrp = grp['ApresHeader']
+        for attr in subgrp.attrs.keys():
+            val = subgrp.attrs[attr]
+            if isinstance(val, h5py.Empty):
+                val = None
+            setattr(self, attr, val)
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
-        outmat = {att: getattr(self, att) for att in vars(self)}
+        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.NaN) for att in vars(self)}
         return outmat
 
     def from_matlab(self, matlab_struct):

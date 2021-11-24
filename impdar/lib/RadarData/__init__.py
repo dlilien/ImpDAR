@@ -368,6 +368,6 @@ class RadarData(object):
     def datetime(self):
         """Get pythonic version of the acquisition time of each trace."""
         return np.array([datetime.datetime(1970, 1, 1) +
-                         datetime.timedelta(days=int(dd)) + 
+                         datetime.timedelta(days=int(dd)) +
                          datetime.timedelta(days=dd % 1)
                          for dd in self.decday], dtype=np.datetime64)

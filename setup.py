@@ -27,7 +27,8 @@ if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main',
                        'impproc=impdar.bin.impproc:main',
                        'imppick=impdar.bin.imppick:main',
-                       'impplot=impdar.bin.impplot:main']
+                       'impplot=impdar.bin.impplot:main',
+                       'apdar=impdar.bin.apdar:main']
 
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",

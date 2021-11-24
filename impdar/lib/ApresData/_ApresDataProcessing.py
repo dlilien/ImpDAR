@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright Â© 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.edu>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -18,8 +18,8 @@ Earth and Space Sciences
 Sept 23 2019
 
 """
-
 import numpy as np
+
 
 def apres_range(self,p,max_range=4000,winfun='blackman'):
     """
@@ -129,7 +129,6 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     self.flags.range = max_range
 
-# --------------------------------------------------------------------------------------------
 
 def phase_uncertainty(self):
     """
@@ -172,8 +171,6 @@ def phase_uncertainty(self):
     return phase_uncertainty, r_uncertainty
 
 
-# --------------------------------------------------------------------------------------------
-
 def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     """
     Convert phase difference to range for FMCW radar
@@ -210,7 +207,6 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
         r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2.))
     return r
 
-# --------------------------------------------------------------------------------------------
 
 def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertainty='CR'):
     """
@@ -290,7 +286,6 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
 
     return ds, co, r_diff, r_diff_unc
 
-# --------------------------------------------------------------------------------------------
 
 def stacking(self,num_chirps=None):
     """
