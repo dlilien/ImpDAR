@@ -7,13 +7,15 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-Make an executable for single actions of ApRES handling.
+Make an executable for single actions of QuadPole pRES handling.
 """
 import sys
 import os.path
 import argparse
 
-from impdar.lib.ApresData import load_apres
+import numpy as np
+
+from impdar.lib.ApresData import load_quadpol
 
 
 def _get_args():
@@ -28,25 +30,41 @@ def _get_args():
                                   defname='load')
     _add_def_args(parser_load)
 
-    # Convert range
-    parser_range = _add_procparser(subparsers,
-                                   'range',
-                                   'Range-convert apres data',
-                                   apres_range,
-                                   defname='ranged')
-    parser_range.add_argument('pad',
-                              help='Padding for fft',
-                              type=int)
-    parser_range.add_argument('--max_range',
-                              default=4000.0,
-                              help='Maximum range to process',
+    # Rotational Transform
+    parser_rotate = _add_procparser(subparsers,
+                                   'rotate',
+                                   'Rotate to full azimuthal dependency',
+                                   rotate,
+                                   defname='rotated')
+    parser_rotate.add_argument('--theta0',
+                              default=0.0,
+                              help='Minimum azimuth (in radians)',
                               type=float)
-    parser_range.add_argument('--winfun',
-                              default='blackman',
-                              help='Window type',
-                              type=str,
-                              choices=['blackman', 'bartlett', 'hamming', 'hanning', 'kaiser'])
-    _add_def_args(parser_range)
+    parser_rotate.add_argument('--theta1',
+                              default=np.pi,
+                              help='Maximum azimuth (in radians)',
+                              type=float)
+    parser_rotate.add_argument('--n',
+                              help='Number of columns (azimuths) in matrix',
+                              default=100,
+                              type=int)
+    _add_def_args(parser_rotate)
+
+    # Calculation of the HHVV coherence
+    parser_coherence = _add_procparser(subparsers,
+                                       'coherence',
+                                       'Calculate HHVV coherence',
+                                       coherence,
+                                       defname='coherence')
+    parser_coherence.add_argument('--dtheta',
+                              default=20.0 * np.pi / 180.0,
+                              help='Window size in azimuth, in radians. Default equivalent to 20 degrees.',
+                              type=float)
+    parser_coherence.add_argument('--drange',
+                              default=100.,
+                              help='Window in the vertical, in meters. Default 100.',
+                              type=float)
+    _add_def_args(parser_coherence)
     return parser
 
 
@@ -75,8 +93,12 @@ def _add_def_args(parser):
                         help='Output to this file (folder if multiple inputs)')
 
 
-def apres_range(dat, pad, max_range=4000, winfun='blackman', **kwargs):
-    return dat.apres_range(pad, max_range=max_range, winfun=winfun)
+def rotate(dat, theta0=0, theta1=np.pi, n=100, **kwargs):
+    return dat.rotational_transform(theta_start=theta0, theta_end=theta1, n_thetas=n)
+
+
+def coherence(dat, dtheta=0.1, drange=100.0, **kwargs):
+    return dat.coherence2d(delta_theta=dtheta, delta_range=drange)
 
 
 def main():
@@ -86,16 +108,16 @@ def main():
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
 
-    apres_data = [load_apres.load_apres_single_file(fn) for fn in args.fns]
-
     if args.name == 'load':
+        apres_data = [load_quadpol.load_quadpol(fn) for fn in args.fns]
         pass
     else:
+        apres_data = [load_quadpol.load_quadpol(fn, load_single_pol=False) for fn in args.fns]
         for dat in apres_data:
             args.func(dat, **vars(args))
 
     if args.name == 'load':
-        name = 'raw'
+        name = 'qp'
     else:
         name = args.name
 
@@ -103,8 +125,8 @@ def main():
         if ((len(apres_data) > 1) or (args.o[-1] == '/')):
             for d, f in zip(apres_data, args.fns):
                 bn = os.path.split(os.path.splitext(f)[0])[1]
-                if bn[-4:] == '_raw':
-                    bn = bn[:-4]
+                if bn[-3:] == '_qp':
+                    bn = bn[:-3]
                 out_fn = os.path.join(args.o, bn + '_{:s}.h5'.format(name))
                 d.save(out_fn)
         else:
@@ -113,15 +135,11 @@ def main():
     else:
         for d, f in zip(apres_data, args.fns):
             bn = os.path.splitext(f)[0]
-            if bn[-4:] == '_raw':
+            if bn[-4:] == '_qp':
                 bn = bn[:-4]
             out_fn = bn + '_{:s}.h5'.format(name)
             d.save(out_fn)
 
-
-def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
-    """Crop in the vertical."""
-    dat.crop(lim, top_or_bottom=top_or_bottom, dimension=dimension)
 
 
 if __name__ == '__main__':

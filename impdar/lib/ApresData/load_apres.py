@@ -377,9 +377,20 @@ def load_BAS_mat(fn):
     mat = loadmat(fn)
 
     apres_data = ApresData(None)
+
+    # Load the header first. Some of these are pre-set, some really loaded
+    apres_data.header.f0 = mat['vdat'][0]['f0'][0][0][0]
     apres_data.header.fs = mat['vdat'][0]['fs'][0][0][0]
+    apres_data.header.f1 = mat['vdat'][0]['f1'][0][0][0]
+    apres_data.header.fc = mat['vdat'][0]['fc'][0][0][0]
     apres_data.header.attenuator1 = mat['vdat'][0]['Attenuator_1'][0][0][0]
     apres_data.header.attenuator2 = mat['vdat'][0]['Attenuator_2'][0][0][0]
+    apres_data.header.chirp_length = mat['vdat'][0]['T'][0][0][0]
+    apres_data.header.chirp_grad = mat['vdat'][0]['K'][0][0][0]
+    apres_data.header.bandwidth = mat['vdat'][0]['B'][0][0][0]
+    apres_data.header.lambdac = mat['vdat'][0]['lambdac'][0][0][0]
+    apres_data.header.er = mat['vdat'][0]['er'][0][0][0]
+    apres_data.header.ci = mat['vdat'][0]['ci'][0][0][0]
 
     apres_data.snum = mat['vdat'][0]['Nsamples'][0][0][0]
     apres_data.cnum = mat['vdat'][0]['chirpNum'][0][0][0]
@@ -387,7 +398,6 @@ def load_BAS_mat(fn):
     apres_data.n_subbursts = mat['vdat'][0]['SubBurstsInBurst'][0][0][0]
     apres_data.average = mat['vdat'][0]['Average'][0][0][0]
 
-    apres_data.data = mat['vdat'][0]['v'][0].T
     apres_data.travel_time = mat['vdat'][0]['t'][0].T
     apres_data.frequencies = mat['vdat'][0]['f'][0].T
     apres_data.dt = 1.0 / apres_data.header.fs
@@ -395,7 +405,12 @@ def load_BAS_mat(fn):
     apres_data.chirp_num = np.arange(apres_data.cnum) + 1
     apres_data.chirp_att = mat['vdat'][0]['chirpAtt'][0]
     apres_data.decday = mat['vdat'][0]['TimeStamp'][0][0][0]
-
     apres_data.chirp_time = apres_data.decday + CHIRP_INTERVAL * np.arange(0.0, apres_data.cnum, 1.0)
+
+    apres_data.data = mat['vdat'][0]['vif'][0]
+    if len(apres_data.data.shape) == 2:
+        apres_data.data = np.reshape(apres_data.data, (1, apres_data.data.shape[0], apres_data.data.shape[1]))
+
     apres_data.check_attrs()
+
     return apres_data

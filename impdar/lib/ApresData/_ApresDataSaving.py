@@ -88,7 +88,7 @@ def save_mat(self, fn):
     savemat(fn, mat)
 
 
-def save_h5(self, fn):
+def save_h5(self, fn, groupname='dat'):
     """Save the radar data
 
     Parameters
@@ -97,7 +97,7 @@ def save_h5(self, fn):
         Filename. Should have a .h5 extension
     """
     with h5py.File(fn, 'w') as f:
-        save_as_h5_group(self, f, 'dat')
+        save_as_h5_group(self, f, groupname=groupname)
 
 
 def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
@@ -152,7 +152,9 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
     else:
         ApresFlags().write_h5(grp)
 
-    if self.header is not None:
-        self.header.write_h5(grp)
-    else:
-        ApresHeader().write_h5(grp)
+    # No header for quadpol
+    if hasattr(self, 'header'):
+        if self.header is not None:
+            self.header.write_h5(grp)
+        else:
+            ApresHeader().write_h5(grp)

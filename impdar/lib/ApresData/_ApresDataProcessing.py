@@ -21,7 +21,7 @@ Sept 23 2019
 import numpy as np
 
 
-def apres_range(self,p,max_range=4000,winfun='blackman'):
+def apres_range(self, p, max_range=4000, winfun='blackman'):
     """
 
     Parameters
@@ -36,13 +36,13 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     Output
     --------
     Rcoarse: array
-        range to bin centres (m)
+        range to bin centers (m)
     Rfine: array
-        range to reflector from bin centre (m)
+        range to reflector from bin center (m)
     spec_cor: array
-        spectrum corrected. positive frequency half of spectrum with
+        spectrum corrected. Positive frequency half of spectrum with
         ref phase subtracted. This is the complex signal which can be used for
-        cross-correlating two shot segements.
+        cross-correlating two shot segments.
 
 
     ### Original Matlab File Notes ###
@@ -66,7 +66,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     # Processing settings
     nf = int(np.floor(p*self.snum/2))    # number of frequencies to recover
     # window for fft
-    if winfun not in ['blackman','bartlett','hamming','hanning','kaiser']:
+    if winfun not in ['blackman', 'bartlett', 'hamming', 'hanning', 'kaiser']:
         raise TypeError('Window must be in: blackman, bartlett, hamming, hanning, kaiser')
     elif winfun == 'blackman':
         win = np.blackman(self.snum)
@@ -87,7 +87,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     # Calculate phase of each range bin center for correction
     # Brennan et al. (2014) eq. 17 measured at t=T/2
-    self.phiref = 2.*np.pi*self.header.fc*tau -(self.header.chirp_grad*tau**2.)/2
+    self.phiref = 2.*np.pi*self.header.fc*tau - (self.header.chirp_grad*tau**2.)/2
 
     # --- Loop through for each chirp in burst --- #
 
@@ -223,11 +223,11 @@ def coherence(s1,s2):
     """
     if hasattr(s1,'__len__') and hasattr(s2,'__len__'):
         top = np.sum(np.dot(s1,np.conj(s2)))
-        bottom = np.sqrt(np.sum(np.abs(s1)**2.))*np.sqrt(np.sum(np.abs(s2)**2.))
+        bottom = np.sqrt(np.sum(np.abs(s1)**2.)*np.sum(np.abs(s2)**2.))
         c = top/bottom
     else:
         top = np.dot(s1,np.conj(s2))
-        bottom = np.sqrt(np.abs(s1)**2.)*np.sqrt(np.abs(s2)**2.)
+        bottom = np.sqrt(np.abs(s1)**2.*np.abs(s2)**2.)
         c = top/bottom
     return c
 

@@ -18,10 +18,19 @@ Earth and Space Sciences
 Oct 13 2020
 
 """
+import sys
+import time
 
 import numpy as np
 from ._ApresDataProcessing import coherence
 from scipy.signal import butter, filtfilt
+
+from .coherence import coherence2d_loop
+try:
+    USE_C = True
+except ImportError:
+    USE_C = False
+
 
 def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
     """
@@ -52,9 +61,8 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
 
     self.flags.rotation = np.array([1,n_thetas])
 
-# --------------------------------------------------------------------------------------------
 
-def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
+def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     """
     Coherence between two 2-d images (e.g. c_hhvv).
     Jordan et al. (2019) eq. 19
@@ -66,44 +74,58 @@ def coherence2d(self,delta_theta=20*np.pi/180.,delta_range=100.):
     delta_range: float
             window size in the vertical; default: 100.
     """
-
-    THs,Rs = np.meshgrid(self.thetas,self.range)
-
     nrange = int(delta_range//abs(self.range[0]-self.range[1]))
     ntheta = int(delta_theta//abs(self.thetas[0]-self.thetas[1]))
 
-    theta_start = THs[:,1:ntheta+1]
-    theta_end = THs[:,-ntheta-1:-1]
-    THs = np.append(THs,theta_start+np.pi,axis=1)
-    THs = np.append(theta_end-np.pi,THs,axis=1)
+    # THs, Rs = self.thetas, self.range
+    # theta_start = THs[:ntheta]
+    # theta_end = THs[-ntheta:]
+    # THs = np.hstack((theta_end - np.pi, THs, theta_start + np.pi))
 
-    R_start = Rs[:,1:ntheta+1]
-    R_end = Rs[:,-ntheta-1:-1]
-    Rs = np.append(Rs,R_start,axis=1)
-    Rs = np.append(R_end,Rs,axis=1)
+    HH_start = self.HH[:, :ntheta]
+    HH_end = self.HH[:, -ntheta:]
+    HH_ = np.hstack((HH_end, self.HH, HH_start))
 
-    HH_start = self.HH[:,1:ntheta+1]
-    HH_end = self.HH[:,-ntheta-1:-1]
-    HH_ = np.append(self.HH,HH_start,axis=1)
-    HH_ = np.append(HH_end,HH_,axis=1)
-
-    VV_start = self.VV[:,1:ntheta+1]
-    VV_end = self.VV[:,-ntheta-1:-1]
-    VV_ = np.append(self.VV,VV_start,axis=1)
-    VV_ = np.append(VV_end,VV_,axis=1)
+    VV_start = self.VV[:, :ntheta]
+    VV_end = self.VV[:, -ntheta:]
+    VV_ = np.hstack((VV_end, self.VV, VV_start))
 
     chhvv = np.nan*np.ones_like(HH_).astype(np.complex)
-    for i,θ in enumerate(THs[0]):
-        for j in range(len(Rs[:,0])):
-            if j < nrange or j > len(Rs[:,0])-nrange or i < ntheta or i > len(THs[0])-ntheta-1:
+    range_bins, azimuth_bins = HH_.shape[0], HH_.shape[1]
+
+    t0 = time.time()
+    if USE_C:
+        chhvv = coherence2d_loop(np.ascontiguousarray(chhvv, dtype=np.cdouble),
+                                 np.ascontiguousarray(HH_, dtype=np.cdouble),
+                                 np.ascontiguousarray(VV_, dtype=np.cdouble),
+                                 nrange,
+                                 ntheta,
+                                 range_bins,
+                                 azimuth_bins)
+    else:
+        print('Beginning iteration through {:d} azimuths'.format(azimuth_bins - 2 * ntheta))
+        print('Azimuth bin: ', end='')
+        sys.stdout.flush()
+        for i in range(HH_.shape[1]):
+            if (i < ntheta) or (i > HH_.shape[1] - ntheta - 1):
                 continue
+            if (i - ntheta) % 10 == 0:
+                print('{:d}'.format(i - ntheta), end='')
             else:
-                chhvv[j,i] = coherence(HH_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten(),
-                                         VV_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten())
+                print('.', end='')
+            sys.stdout.flush()
+            for j in range(HH_.shape[0]):
+                imin, imax = i - ntheta, i + ntheta
+                jmin, jmax = max(0, j - nrange), min(HH_.shape[0], j + nrange)
+                chhvv[j, i] = coherence(HH_[jmin:jmax, imin:imax].flatten(),
+                                        VV_[jmin:jmax, imin:imax].flatten())
+        print('coherence calculation done')
+    t1 = time.time()
+    print('Execution with c code={:s} took {:6.2f}'.format(str(USE_C), t1 - t0))
 
-    self.chhvv = chhvv[:,ntheta:-ntheta]
+    self.chhvv = chhvv[:, ntheta:-ntheta]
 
-    self.flags.coherence = np.array([1,delta_theta,delta_range])
+    self.flags.coherence = np.array([1, delta_theta, delta_range])
 
 # --------------------------------------------------------------------------------------------
 

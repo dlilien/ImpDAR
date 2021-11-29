@@ -22,8 +22,8 @@ import numpy as np
 import glob
 from . import QuadPolData
 from .load_apres import load_apres
+from ..ImpdarError import ImpdarError
 
-# -----------------------------------------------------------------------------------------------------
 
 def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
     """Load processed apres profiles from all four polarizations: hh, hv, vh, vv
@@ -44,30 +44,29 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         quadpol_data = QuadPolData(fn)
     else:
         # Load each of the individual polarizations as their own ApresData object
-        single_acquisitions = []
-        if type(fn) is str:
-            single_acquisitions.append(load_apres(glob.glob(fn+'_HH*')))
-            single_acquisitions.append(load_apres(glob.glob(fn+'_HV*')))
-            single_acquisitions.append(load_apres(glob.glob(fn+'_VH*')))
-            single_acquisitions.append(load_apres(glob.glob(fn+'_VV*')))
-        elif hasattr(fn,'__len__') and len(fn) == 4:
-            # TODO: Ask the user to check that the files are correct
-            single_acquisitions.append(load_apres(fn[0]))
-            single_acquisitions.append(load_apres(fn[1]))
-            single_acquisitions.append(load_apres(fn[2]))
-            single_acquisitions.append(load_apres(fn[3]))
+        polarizations = ['HH', 'HV', 'VH', 'VV']
+        if isinstance(fn, str):
+            fns = [glob.glob(fn + '_{:s}*'.format(pol)) for pol in polarizations]
+            for pol, f in zip(polarizations, fns):
+                if len(f) != 1:
+                    raise FileNotFoundError('Need exactly one file matching each polarization')
+        elif len(fn) == 4:
+            fns = fn
+        else:
+            raise ValueError('fn must be a glob for files with _HH, HV, etc., or a 4-tuple')
+        single_acquisitions = [load_apres(f) for f in fns]
 
         # Check that the data have gone through the initial processing steps
         # If they haven't do range conversion and stack to one trace
-        for i,xx in enumerate(single_acquisitions):
+        for i, acquisition in enumerate(single_acquisitions):
             try:
-                xx.stacking()
-                print('Restacked acquisition #',i+1,'to a 1-d array.')
-            except:
-                print('Acquisition #',i+1,'is already stacked to shape:',np.shape(xx.data))
-            if xx.flags.range[0] == 0:
+                acquisition.stacking()
+                print('Restacked acquisition #{:d} to a 1-d array.'.format(i + 1))
+            except ImpdarError:
+                print('Acquisition #{:d} is already stacked to shape: {:s}'.format(i + 1, str(np.shape(acquisition.data))))
+            if acquisition.flags.range[0] == 0:
                 print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
-                xx.apres_range(2)
+                acquisition.apres_range(2)
 
         # Check that all four acquisitions have the same attributes
         from copy import deepcopy
