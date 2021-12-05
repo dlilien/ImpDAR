@@ -255,26 +255,32 @@ def nmea_all_info(list_of_sentences):
     def _gga_sentence_split(sentence):
         all = sentence.split(',')
         if len(all) > 5:
-            numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
-            if all[3] == 'S':
-                numbers[2] = -1
-            if all[5] == 'W':
-                numbers[4] = -1
+            # We can have corrupted lines--just ignore these and continue
+            try:
+                numbers = list(map(lambda x: float(x) if x != '' else np.nan, all[1:3] + [1] + [all[4]] + [1] + all[6:10] + [all[11]]))
+                if all[3] == 'S':
+                    numbers[2] = -1
+                if all[5] == 'W':
+                    numbers[4] = -1
+            except (ValueError, IndexError):
+                numbers = [np.nan] * 10
         elif len(all) > 2:
-            numbers = list(map(lambda x: float(x) if x != '' else 0, all[1:3] + [1]))
-            if all[3] == 'S':
-                numbers[2] = -1
+            try:
+                numbers = list(map(lambda x: float(x) if x != '' else np.nan, all[1:3] + [1]))
+                if all[3] == 'S':
+                    numbers[2] = -1
+            except (ValueError, IndexError):
+                numbers = [np.nan] * 10
         else:
-            numbers = np.nan
+            numbers = [np.nan] * 10
         return numbers
 
-    if list_of_sentences[0].split(',')[0] == '$GPGGA':
+    if np.all([sentence.split(',')[0] == '$GPGGA' for sentence in list_of_sentences]):
         data = nmea_info()
         data.all_data = np.array([_gga_sentence_split(sentence)
                                   for sentence in list_of_sentences])
         return data
     else:
-        print(list_of_sentences[0].split(',')[0])
         raise ValueError('I can only do gga sentences right now')
 
 

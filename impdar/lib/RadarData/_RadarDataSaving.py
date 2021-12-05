@@ -131,7 +131,7 @@ def output_shp(self, fn, t_srs=None, target_out=None):
         pts = np.array(cT(np.vstack((self.long, self.lat)).transpose()))
     else:
         pts = np.vstack((self.long, self.lat)).transpose()
-        t_srs = 'EPSG:3426'
+        t_srs = 'EPSG:4326'
 
     driver = ogr.GetDriverByName('ESRI Shapefile')
     data_source = driver.CreateDataSource(fn)
