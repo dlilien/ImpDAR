@@ -304,13 +304,13 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
         # pretrig, vector input
         # Need to figure out if we need to do any shifting
         # The extra shift compared to the smallest
-        mintrig = np.min(ind)
+        mintrig = np.nanmin(ind)
         lims = [mintrig, self.data.shape[0]]
-        self.trig = self.trig-ind
-        trig_ends = self.data.shape[0] - (ind - mintrig) - 1
+        self.trig = self.trig - ind
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
         self.data[:, :] = np.nan
+        trig_ends = self.data.shape[0] - (ind - mintrig)
         for i in range(self.data.shape[1]):
             self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
         self.travel_time = self.travel_time[lims[0]:lims[1]]
@@ -540,10 +540,15 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     else:
         self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
-    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
+    for attr in ['lat', 'long', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
         setattr(self,
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
+    for attr in ['elev']:
+        if getattr(self, attr) is not None:
+            setattr(self,
+                    attr,
+                    interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     if self.picks is not None:
         for attr in ['samp1', 'samp2', 'samp3', 'power', 'time']:

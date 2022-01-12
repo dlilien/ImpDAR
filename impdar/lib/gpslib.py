@@ -20,7 +20,11 @@ try:
     import osr
     conversions_enabled = True
 except ImportError:
-    conversions_enabled = False
+    try:
+        from osgeo import osr
+        conversions_enabled = True
+    except ImportError:
+        conversions_enabled = False
 
 from scipy.interpolate import interp1d
 
