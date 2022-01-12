@@ -40,7 +40,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.4.post1'
+    version = '1.1.4.post3'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
