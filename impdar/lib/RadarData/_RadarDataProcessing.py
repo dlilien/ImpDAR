@@ -551,7 +551,10 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                     interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     if self.picks is not None:
-        for attr in ['samp1', 'samp2', 'samp3', 'power', 'time']:
+        for attr in ['samp1', 'samp2', 'samp3']:
+            if getattr(self.picks, attr) is not None:
+                setattr(self.picks, attr, np.round(interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists)))
+        for attr in ['power', 'time']:
             if getattr(self.picks, attr) is not None:
                 setattr(self.picks, attr, interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists))
 
