@@ -1,6 +1,6 @@
 # ImpDAR: an impulse radar processor
 
-[![DOI](https://zenodo.org/badge/134008583.svg)](https://zenodo.org/badge/latestdoi/134008583) [![Tests](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml/badge.svg)](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml) [![codecov](https://codecov.io/gh/dlilien/ImpDAR/branch/master/graph/badge.svg?token=R51QB61XNP)](https://codecov.io/gh/dlilien/ImpDAR)
+[![DOI](https://zenodo.org/badge/134008583.svg)](https://zenodo.org/badge/latestdoi/134008583) [![Tests](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml/badge.svg)](https://github.com/dlilien/ImpDAR/actions/workflows/python-package.yml) [![codecov](https://codecov.io/gh/dlilien/ImpDAR/branch/main/graph/badge.svg?token=R51QB61XNP)](https://codecov.io/gh/dlilien/ImpDAR)
 
 ImpDAR is a suite of processing and interpretation tools for impulse radar (targeted for ice-penetrating radar applications but usable for ground-penetrating radar as well). The core processing steps and general terminology come from of the St. Olaf Deep Radar processor, but everything is re-written in python and significant improvements to speed, readability, documentation, and interface have been made across the board. However, this code has a lot of history of contributors--acknowledgment of many of them are preserved in the file headers.
 

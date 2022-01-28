@@ -1,4 +1,4 @@
-.. ImpDAR documentation master file, created by
+.. ImpDAR documentation main file, created by
    sphinx-quickstart on Sun Jun  3 13:07:25 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
