@@ -18,6 +18,7 @@ from matplotlib.colors import is_color_like
 COLORS_NONGRAY = ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE',
                   '#882255', '#44AA99', '#999933', '#AA4499']
 
+
 def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
          dualy=False, x_range=(0, -1), power=None, spectra=None,
          freq_limit=None, window=None, scaling='spectrum', filetype='mat',
@@ -193,7 +194,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         fig, ax = plt.subplots(figsize=(12, 8))
     if ydat == 'elev':
         if hasattr(dat.flags, 'elev') and dat.flags.elev:
-            yd = dat.elevation[y_range[0]:y_range[-1]]
+            yd = dat.elevation
             ax.set_ylabel('Elevation (m)')
         else:
             raise ValueError('Elevation plot requested but we have none')
@@ -202,38 +203,38 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
         if ydat == 'twtt':
             # we have a chance that there are NaNs after NMO correction...
             y_range = (max(y_range[0], np.min(np.where(~np.isnan(dat.travel_time))[0])), y_range[1])
-            yd = dat.travel_time[y_range[0]:y_range[-1]]
+            yd = dat.travel_time
             ax.set_ylabel('Two way travel time (usec)')
         elif ydat == 'depth':
             if dat.nmo_depth is not None:
-                yd = dat.nmo_depth[y_range[0]:y_range[-1]]
+                yd = dat.nmo_depth
             else:
-                yd = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * (
+                yd = dat.travel_time / 2.0 * (
                     1.69e8 * 1.0e-6)
             ax.set_ylabel('Depth (m)')
         elif ydat == 'dual':
             # we have a chance that there are NaNs after NMO correction...
             y_range = (max(y_range[0], np.min(np.where(~np.isnan(dat.travel_time))[0])), y_range[1])
 
-            yd = dat.travel_time[y_range[0]:y_range[-1]]
+            yd = dat.travel_time
             ax.set_ylabel('Two way travel time (usec)')
             ax2 = ax.twinx()
             if dat.nmo_depth is not None:
-                yd2 = dat.nmo_depth[y_range[0]:y_range[-1]]
+                yd2 = dat.nmo_depth
             else:
-                yd2 = dat.travel_time[y_range[0]:y_range[-1]] / 2.0 * (
+                yd2 = dat.travel_time / 2.0 * (
                     1.69e8 * 1.0e-6)
             ax2.set_ylabel('Approximate depth (m)')
-            ax2.set_ylim(yd2[-1], yd2[0])
+            ax2.set_ylim(yd2[y_range[-1] - 1], yd2[y_range[0]])
         else:
             raise ValueError('Unrecognized ydat, choices are elev, twtt, \
                              depth, or dual')
 
     if xdat == 'tnum':
-        xd = np.arange(int(dat.tnum))[x_range[0]:x_range[-1]]
+        xd = np.arange(int(dat.tnum))
         ax.set_xlabel('Trace number')
     elif xdat == 'dist':
-        xd = dat.dist[x_range[0]:x_range[-1]]
+        xd = dat.dist
         ax.set_xlabel('Distance (km)')
 
     if flatten_layer is not None:
@@ -255,7 +256,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        cmap=cmap,
                        vmin=clims[0],
                        vmax=clims[1],
-                       extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)],
+                       extent=[np.min(xd[x_range[0]:x_range[-1]]), np.max(xd[x_range[0]:x_range[-1]]), np.max(yd[y_range[0]:y_range[-1]]), np.min(yd[y_range[0]:y_range[-1]])],
                        aspect='auto')
     elif hasattr(dat.flags, 'elev') and dat.flags.elev:
         im = ax.imshow(norm(dat.data[y_range[0]:y_range[-1],
@@ -263,7 +264,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        cmap=cmap,
                        vmin=clims[0],
                        vmax=clims[1],
-                       extent=[np.min(xd), np.max(xd), np.min(yd), np.max(yd)],
+                       extent=[np.min(xd[x_range[0]:x_range[-1]]), np.max(xd[x_range[0]:x_range[-1]]), np.min(yd[y_range[0]:y_range[-1]]), np.max(yd[y_range[0]:y_range[-1]])],
                        aspect='auto')
     else:
         im = ax.imshow(norm(dat.data[y_range[0]:y_range[-1],
@@ -271,11 +272,11 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
                        cmap=cmap,
                        vmin=clims[0],
                        vmax=clims[1],
-                       extent=[np.min(xd), np.max(xd), np.max(yd), np.min(yd)],
+                       extent=[np.min(xd[x_range[0]:x_range[-1]]), np.max(xd[x_range[0]:x_range[-1]]), np.max(yd[y_range[0]:y_range[-1]]), np.min(yd[y_range[0]:y_range[-1]])],
                        aspect='auto')
 
     if (pick_colors is not None) and pick_colors:
-        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer, just_middle=middle_picks_only)
+        plot_picks(dat, xd, yd, fig=fig, ax=ax, colors=pick_colors, flatten_layer=flatten_layer, just_middle=middle_picks_only, x_range=x_range)
     if not return_plotinfo:
         return fig, ax
     else:
@@ -532,7 +533,7 @@ def plot_power(dats, idx, fig=None, ax=None, clims=None):
     return fig, ax
 
 
-def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, just_middle=False, picknums=None, **plotting_kwargs):
+def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, just_middle=False, picknums=None, x_range=None, **plotting_kwargs):
     """Update the plotting of the current pick.
 
     Parameters
@@ -547,6 +548,11 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, j
         Make this layer flat in the plot. Distorts all layers. Default is no
         distortion.
     """
+    if x_range is None:
+        x_range = (0, -1)
+    if x_range[-1] == -1:
+        x_range = (x_range[0], rd.tnum)
+
     if ax is None:
         if fig is not None:
             ax = plt.gca()
@@ -600,13 +606,15 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, j
         c[~comb_mask] = yd[(rd.picks.samp2[i, :] + offset)[~comb_mask].astype(int)]
         t = np.zeros(xd.shape)
         t[:] = np.nan
+        comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp1[i, :]))
         t[~comb_mask] = yd[(rd.picks.samp1[i, :] + offset)[~comb_mask].astype(int)]
         b = np.zeros(xd.shape)
         b[:] = np.nan
+        comb_mask = np.logical_or(mask, np.isnan(rd.picks.samp3[i, :]))
         b[~comb_mask] = yd[(rd.picks.samp3[i, :] + offset)[~comb_mask].astype(int)]
-        ax.plot(xd, c, color=cl[1], **plotting_kwargs)
-        ax.plot(xd, t, color=cl[0], **plotting_kwargs)
-        ax.plot(xd, b, color=cl[2], **plotting_kwargs)
+        ax.plot(xd[x_range[0]:x_range[1]], c[x_range[0]:x_range[1]], color=cl[1], **plotting_kwargs)
+        ax.plot(xd[x_range[0]:x_range[1]], t[x_range[0]:x_range[1]], color=cl[0], **plotting_kwargs)
+        ax.plot(xd[x_range[0]:x_range[1]], b[x_range[0]:x_range[1]], color=cl[2], **plotting_kwargs)
     return fig, ax
 
 

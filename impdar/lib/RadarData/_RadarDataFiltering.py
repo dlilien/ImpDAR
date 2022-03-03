@@ -10,6 +10,7 @@ The class methods for filtering.
 """
 import numpy as np
 from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter, wiener
+from scipy.ndimage import median_filter
 from .. import migrationlib
 from ..ImpdarError import ImpdarError
 
@@ -549,7 +550,7 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
     """
     Denoising filter
 
-    For now this just uses the scipy wiener filter,
+    For now this just uses the scipy wiener or median filter,
     We could experiment with other options though
 
     Parameters
@@ -559,7 +560,7 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
     hor_win: int; optional
         horizontal window size
     noise: float; optional
-        power of noise reduction, default is the average of the local variance of the image
+        power of noise reduction for weiner, default is the average of the local variance
     ftype: string; optional
         filter type
 
@@ -577,6 +578,8 @@ def denoise(self, vert_win=1, hor_win=10, noise=None, ftype='wiener'):
                     raise ValueError('Could not compute variance, specify noise for denoise')
         else:
             self.data = wiener(self.data, mysize=(vert_win, hor_win), noise=noise)
+    elif ftype == 'median':
+        self.data = median_filter(self.data, size=(vert_win, hor_win))
     else:
         raise ValueError('Only the wiener filter has been implemented for denoising.')
 

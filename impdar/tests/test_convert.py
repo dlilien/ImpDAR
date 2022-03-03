@@ -61,7 +61,7 @@ class TestConvert(unittest.TestCase):
 
     @unittest.skipIf(not SEGY, 'SEGY needed for this test')
     def test_segy_save(self):
-        pytest.importorskip('segyio', 'No SEGY on this version')
+        pytest.importorskip('segyio', reason='No SEGY on this version')
         convert.convert(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), 'sgy', in_fmt='mat')
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data.sgy')))
 
