@@ -16,6 +16,7 @@ from scipy.optimize import minimize
 from ..permittivity_models import firn_permittivity
 from ..ImpdarError import ImpdarError
 
+
 def reverse(self):
     """Reverse radar data
 
@@ -300,6 +301,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
         if rezero:
             self.travel_time = self.travel_time - self.travel_time[0]
         self.snum = self.data.shape[0]
+        mintrig = 0
     else:
         # pretrig, vector input
         # Need to figure out if we need to do any shifting
@@ -317,6 +319,10 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
         if rezero:
             self.travel_time = self.travel_time - self.travel_time[0]
         self.snum = self.data.shape[0]
+
+    if top_or_bottom == 'top':
+        if self.picks is not None:
+            self.picks.crop(ind)
 
     try:
         self.flags.crop[0] = 1
@@ -437,6 +443,10 @@ def restack(self, traces):
     self.data = stack
     self.trace_num = np.arange(self.tnum).astype(int) + 1
     self.trace_int = trace_int
+
+    if hasattr(self, 'picks') and self.picks is not None:
+        self.picks.restack(traces)
+
     for var, val in oned_newdata.items():
         setattr(self, var, val)
     self.flags.restack = True
@@ -608,9 +618,13 @@ def elev_correct(self, v_avg=1.69e8):
     self.data = np.zeros((data_old.shape[0] + max_samp, data_old.shape[1]))
     self.data[:, :] = np.nan
 
+    top_inds = (elev_diffs / dz_avg).astype(int)
     for i in range(self.data.shape[1]):
-        left_ind = int(elev_diffs[i] // dz_avg)
-        self.data[left_ind: left_ind + data_old.shape[0], i] = data_old[:, i]
+        top_ind = top_inds[i]
+        self.data[top_ind: top_ind + data_old.shape[0], i] = data_old[:, i]
+
+    if hasattr(self, 'picks') and self.picks is not None:
+        self.picks.crop(-top_inds)
 
     self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz_avg),
                                 np.min(self.elev) - self.nmo_depth))

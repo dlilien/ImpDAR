@@ -39,7 +39,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.4.post3'
+    version = '1.1.4.post4'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
@@ -47,6 +47,7 @@ if __name__ == '__main__':
                 'impdar.gui.ui',
                 'impdar.lib.load',
                 'impdar.lib.RadarData',
+                'impdar.lib.ApresData',
                 'impdar.lib.migrationlib']
 
     requires = ['numpy>1.12.0',
