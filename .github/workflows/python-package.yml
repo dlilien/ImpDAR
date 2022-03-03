@@ -31,6 +31,8 @@ jobs:
             seisunix: true
           - os: windows-latest
             gdal: true
+          - os: windows-latest
+            python-version: "3.6"
     steps:
     - uses: actions/checkout@v2
 
