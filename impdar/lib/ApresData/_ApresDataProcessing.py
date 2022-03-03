@@ -131,7 +131,7 @@ def apres_range(self, p, max_range=4000, winfun='blackman'):
     self.flags.range = np.array([1,max_range])
 
 
-def phase_uncertainty(self):
+def phase_uncertainty(self,bed_range):
     """
     Calculate the phase uncertainty using a noise phasor.
 
@@ -155,7 +155,7 @@ def phase_uncertainty(self):
 
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
     meas_phasor = self.data
-    median_mag = np.nanmedian(abs(meas_phasor))
+    median_mag = np.nanmedian(abs(meas_phasor[:,:,np.argwhere(self.Rcoarse>bed_range)]))
     # Noise phasor with random phase and magnitude equal to median of measured phasor
     noise_phase = np.random.uniform(-np.pi,np.pi,np.shape(meas_phasor))
     noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
