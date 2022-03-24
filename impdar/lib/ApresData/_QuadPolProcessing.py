@@ -25,9 +25,9 @@ import numpy as np
 from ._ApresDataProcessing import coherence
 from scipy.signal import butter, filtfilt
 
-from .coherence import coherence2d_loop
 try:
     USE_C = True
+    from .coherence import coherence2d_loop
 except ImportError:
     USE_C = False
 
