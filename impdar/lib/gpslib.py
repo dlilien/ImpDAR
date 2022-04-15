@@ -423,6 +423,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                 print('Maximum correlation at offset: {:f}'.format(offsets[j]))
 
     for j, dat in enumerate(dats):
+        decday_interp = dat.decday.copy()
         lat_interpolator = interp1d(decday + offsets[j],
                            lat,
                            kind='linear',
