@@ -218,6 +218,40 @@ def lowpass(data, Wn, fs, order=3):
 
 # --------------------------------------------------------------------------------------------
 
+def azimuthal_rotation(data,thetas,azi):
+    """
+    Rotate a quad-pol image based on some known antenna orientation.
+
+    Parameters
+    --------
+    data : array
+            2-d array of azimuth-depth return
+    thetas : array
+            series of azimuths for the image
+    azi : array
+            azimuth of the antenna orientation on measurement
+
+    Output
+    --------
+    data : array
+            rotated image
+    """
+
+    thetas += azi
+    if azi < 0:
+        idx_clip = np.argwhere(thetas > 0)[0][0]
+        hold = data[:,idx_clip:]
+        data = np.append(hold, data[:,:idx_clip],axis=1)
+    elif azi > 0:
+        idx_clip = np.argwhere(thetas > np.pi)[0][0]
+        hold = data[:,idx_clip:]
+        data = np.append(hold, data[:,:idx_clip],axis=1)
+    thetas -= azi
+
+    return data
+
+# --------------------------------------------------------------------------------------------
+
 def birefringent_phase_shift(z,freq=300e6,eps_bi=0.00354,eps=3.15,c=3e8):
     """
     Two-way birefringent phase shift
