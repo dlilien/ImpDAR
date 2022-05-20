@@ -18,8 +18,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 24 2019
-
 """
+
 import os
 import datetime
 
@@ -30,7 +30,6 @@ import h5py
 from .ApresFlags import ApresFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
-
 
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.

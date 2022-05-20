@@ -21,8 +21,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
+
 import os
 
 import numpy as np
@@ -32,9 +32,6 @@ import datetime
 import re
 from . import ApresData
 from ..ImpdarError import ImpdarError
-
-CHIRP_INTERVAL = 1.6384/(24.*3600.)
-
 
 def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     """Load and concatenate all apres data from several files
@@ -46,7 +43,7 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
 
     Returns
     -------
-    RadarData
+    out
         A single, concatenated output.
     """
 
@@ -98,6 +95,12 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
         number of bursts to load
     fs: int
         sampling frequency
+
+    Returns
+    ---------
+    ApresData: class
+        data object
+
 
     ### Original Matlab Notes ###
 
@@ -174,12 +177,12 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
                 (apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
             # days TODO: why is this assigned directly?
-            chirp_interval = 1.6384/(24.*3600.)
+            apres_data.chirp_interval = 1.6384/(24.*3600.)
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]
-                apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)
+                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.chirp_interval*(chirp-1)
             apres_data.data = data_load
 
     # Create time and frequency stamp for samples
@@ -209,8 +212,13 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     burst_pointer: int
         where to start reading the file for bursts
 
-    Output
+    Returns
     ---------
+    start_ind: int
+        data index for given burst
+    end_ind: int
+        data index for given burst
+
 
     ### Original Matlab Script Notes ###
     Read FMCW data file from after Oct 2014 (RMB2b + VAB Iss C, SW Issue >= 101)
@@ -381,7 +389,22 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     return start_ind, end_ind
 
 
-def load_BAS_mat(fn):
+def load_BAS_mat(fn,chirp_interval=1.6384/(24.*3600.)):
+    """Load apres data from a mat file saved by software from the British Antarctic Survey.
+
+    Parameters
+    ----------
+    fn: str
+        Matlab file name for ApresData
+    chirp_interval: float
+        set by default
+
+    Returns
+    -------
+    apres_data: class
+        ImpDAR data object
+    """
+
     mat = loadmat(fn)
 
     apres_data = ApresData(None)
@@ -404,6 +427,7 @@ def load_BAS_mat(fn):
     apres_data.chirp_att = mat['vdat'][0]['chirpAtt'][0]
     apres_data.decday = mat['vdat'][0]['TimeStamp'][0][0][0]
 
-    apres_data.chirp_time = apres_data.decday + CHIRP_INTERVAL * np.arange(0.0, apres_data.cnum, 1.0)
+    apres_data.chirp_interval = chirp_interval
+    apres_data.chirp_time = apres_data.decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
     apres_data.check_attrs()
     return apres_data

@@ -21,8 +21,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
+
 import numpy as np
 import h5py
 import re
@@ -64,9 +64,6 @@ class ApresHeader():
             file name to update with
         max_header_len: int
             maximum length of header to read (can be too long)
-
-        Output
-        ---------
         """
         self.fn = fn_apres
         fid = open(fn_apres,'rb')
@@ -98,7 +95,6 @@ class ApresHeader():
     def update_parameters(self,fn_apres=None):
         """
         Update the parameters with the apres file header
-
 
         ### Original Matlab Notes ###
         Extract from the hex codes the actual paramaters used by RMB2
@@ -145,11 +141,6 @@ class ApresHeader():
                 self.noDwellHigh = int(val[18])
                 self.noDwellLow = int(val[17])
 
-            #elif case == 'Reg08':
-            #    # Phase offset word Register (POW) Address 0x08. 2 Bytes dTheta = 360*POW/2^16.
-            #    val = char(reg{1,2}(k));
-            #    H.phaseOffsetDeg = hex2dec(val(1:4))*360/2^16;
-
             elif case == 'Reg0B':
                 # Digital Ramp Limit Register Address 0x0B
                 # Digital ramp upper limit 32-bit digital ramp upper limit value.
@@ -186,10 +177,10 @@ class ApresHeader():
                 output[i] = self.header_string[search_start+len(string):search_end+search_start]
 
         self.fs = output[0]
-        if self.fs == 1:        # if self.fs > 70e3:
-            self.fs = 8e4       #     self.fs = 80e3
-        else:                   # else
-            self.fs = 4e4       #     self.fs = 40e3
+        if self.fs == 1:
+            self.fs = 8e4
+        else:
+            self.fs = 4e4
 
         self.snum = int(output[1])
 
@@ -213,7 +204,8 @@ class ApresHeader():
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
     def write_h5(self, grp):
-        """Write to a subgroup in hdf5 file
+        """
+        Write to a subgroup in hdf5 file
 
         Parameters
         ----------

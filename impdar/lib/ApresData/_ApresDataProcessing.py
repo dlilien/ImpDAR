@@ -16,18 +16,18 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
-import numpy as np
 
+import numpy as np
 
 def apres_range(self,p,max_range=4000,winfun='blackman'):
     """
+    Range conversion.
 
     Parameters
     ---------
     self: class
-        data object
+        ApresData object
     p: int
         pad factor, level of interpolation for fft
     winfun: str
@@ -91,7 +91,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     # --- Loop through for each chirp in burst --- #
 
-    # preallocate
+    # pre-allocate
     spec = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
     spec_cor = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
 
@@ -138,19 +138,19 @@ def phase_uncertainty(self):
 
     Parameters
     ---------
+    self: class
+        ApresData object
 
-    Output
+    Returns
     --------
     phase_uncertainty: array
         uncertainty in the phase (rad)
     r_uncertainty: array
         uncertainty in the range (m) calculated from phase uncertainty
-
     """
 
     if self.flags.range == 0:
         raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
-
 
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
     meas_phasor = self.data
@@ -188,7 +188,7 @@ def phase2range(phi,lambdac,rc=None,K=None,ci=None):
     ci: float; optional
         propagation velocity (m/s)
 
-    Output
+    Returns
     --------
     r: float or array
         range (m)
@@ -215,7 +215,7 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
     Parameters
     ---------
     self: class
-        data object
+        ApresData object
     acq1: array
         first acquisition for comparison
     acq2: array
@@ -232,16 +232,18 @@ def range_diff(self,acq1,acq2,win,step,Rcoarse=None,r_uncertainty=None,uncertain
     uncertainty: string;
         default 'CR' Cramer-Rao bound as in Jordan et al. (2020)
 
-    Output
+    Returns
     --------
     ds: array
         depths at which the correlation coefficient is calculated
-    phase_diff: array
+    co: array
         correlation coefficient between acquisitions
         amplitude indicates how well reflection packets match between acquisitions
         phase is a measure of the vertical motion
     range_diff: array
         vertical motion in meters
+    range_diff_unc: array
+        uncertainty of vertical motion in meters
     """
 
     if np.shape(acq1) != np.shape(acq2):
@@ -293,6 +295,8 @@ def stacking(self,num_chirps=None):
 
     Parameters
     ---------
+    self: class
+        ApresData object
     num_chirps: int
         number of chirps to average over
     """
