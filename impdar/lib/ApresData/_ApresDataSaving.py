@@ -146,7 +146,7 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                 else:
                     # override the dtype for data
                     if attr == 'data':
-                        dtype = data_dtype
+                        dtype = self.data_dtype
                     dtype = val.dtype
                 grp.create_dataset(attr, data=val, dtype=dtype)
             else:
