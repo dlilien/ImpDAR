@@ -176,13 +176,12 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             apres_data.chirp_att = np.zeros(
                 (apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
-            # days TODO: why is this assigned directly?
-            apres_data.chirp_interval = 1.6384/(24.*3600.)
+            apres_data.chirp_interval = 1.6384/(24.*3600.) # in days; apparently this is always the interval?
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]
-                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.chirp_interval*(chirp-1)
+                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.chirp_interval*chirp
             apres_data.data = data_load
 
     # Create time and frequency stamp for samples
