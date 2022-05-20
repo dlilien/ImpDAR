@@ -30,9 +30,9 @@ class ApresFlags():
 
     def __init__(self):
         self.file_read_code = None
-        self.phase2range = 0
+        self.range = 0
         self.stack = 1
-        self.attrs = ['file_read_code', 'phase2range', 'stack']
+        self.attrs = ['file_read_code', 'range', 'stack']
         self.attr_dims = [None, None, None]
 
     def write_h5(self, grp):
