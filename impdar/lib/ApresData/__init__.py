@@ -63,7 +63,8 @@ class ApresData(object):
                       'temperature1',
                       'temperature2',
                       'battery_voltage',
-                      'Rcoarse']
+                      'Rcoarse',
+                      'uncertainty']
 
     from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, stacking
     from ._ApresDataSaving import save

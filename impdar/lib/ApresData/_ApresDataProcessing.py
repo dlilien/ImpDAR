@@ -139,37 +139,22 @@ def phase_uncertainty(self,bed_range):
 
     Parameters
     ---------
-
-    Output
-    --------
-    phase_uncertainty: array
-        uncertainty in the phase (rad)
-    r_uncertainty: array
-        uncertainty in the range (m) calculated from phase uncertainty
-
+    bed_range: float
+        Distance of the bed, so noise floor can be calculated beneath it
     """
 
     if self.flags.range == 0:
         raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
 
-
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
     meas_phasor = self.data
-    median_mag = np.nanmedian(abs(meas_phasor[:,:,np.argwhere(self.Rcoarse>bed_range)]))
+    median_mag = np.nanmedian(abs(meas_phasor[np.argwhere(self.Rcoarse>bed_range)]))
     # Noise phasor with random phase and magnitude equal to median of measured phasor
     noise_phase = np.random.uniform(-np.pi,np.pi,np.shape(meas_phasor))
     noise_phasor = median_mag*(np.cos(noise_phase)+1j*np.sin(noise_phase))
     noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
     # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
-    phase_uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
-    # Convert phase to range
-    r_uncertainty = phase2range(phase_uncertainty,
-            self.header.lambdac,
-            self.Rcoarse,
-            self.header.chirp_grad,
-            self.header.ci)
-
-    return phase_uncertainty, r_uncertainty
+    self.uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
 
 
 def phase2range(phi,lambdac,rc=None,K=None,ci=None):
