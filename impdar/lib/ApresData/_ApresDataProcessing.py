@@ -147,7 +147,7 @@ def phase_uncertainty(self,bed_range):
         raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
 
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
-    meas_phasor = self.data
+    meas_phasor = np.squeeze(self.data)
     median_mag = np.nanmedian(abs(meas_phasor[np.argwhere(self.Rcoarse>bed_range)]))
     # Noise phasor with random phase and magnitude equal to median of measured phasor
     noise_phase = np.random.uniform(-np.pi,np.pi,np.shape(meas_phasor))
