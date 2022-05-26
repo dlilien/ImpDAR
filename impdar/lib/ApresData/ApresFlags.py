@@ -44,8 +44,15 @@ class ApresFlags():
         self.file_read_code = None
         self.range = 0
         self.stack = 1
-        self.attrs = ['file_read_code', 'range', 'stack']
-        self.attr_dims = [None, None, None]
+        self.uncertainty = 0
+        self.phase_diff = 0
+        self.unwrap = False
+        self.strain = np.array([0,0])
+        self.bed_pick = False
+        self.attrs = ['file_read_code', 'range', 'stack', 'uncertainty',
+                      'phase_diff', 'unwrap', 'strain', 'bed_pick']
+        self.attr_dims = [None, None, None, None,
+                          None, None, None, None]
 
     def write_h5(self, grp):
         """Write to a subgroup in hdf5 file

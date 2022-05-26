@@ -66,7 +66,7 @@ class ApresData(object):
                       'Rcoarse',
                       'uncertainty']
 
-    from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, stacking
+    from ._ApresDataProcessing import apres_range, phase_uncertainty, stacking
     from ._ApresDataSaving import save
 
     # Now make some load/save methods that will work with the matlab format
