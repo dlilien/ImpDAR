@@ -20,13 +20,32 @@ def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='Choose a processing step')
 
-    # Horizontal window filter
+    # Loading functionality
     parser_load = _add_procparser(subparsers,
                                   'load',
                                   'load apres data',
                                   lambda x: x,
                                   defname='load')
     _add_def_args(parser_load)
+
+    # Processing functionality
+    parser_proc = _add_procparser(subparsers,
+                                  'proc',
+                                  'process apres data',
+                                  lambda x: x,
+                                  defname='proc')
+    parser_proc.add_argument('-range',
+                             nargs=1,
+                             type=int,
+                             help='Pulse compression')
+    parser_proc.add_argument('-stack',
+                             nargs=1,
+                             type=int,
+                             help='Stacking')
+    _add_def_args(parser_proc)
+
+    # Plotting
+
     return parser
 
 
