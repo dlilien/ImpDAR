@@ -132,6 +132,46 @@ class ApresDiff():
                 self.phi[idx:] += 2.*np.pi
 
 
+    def phase2range(self,phi=None,lambdac=None,rc=None,K=None,ci=None):
+        """
+        Convert phase difference to range for FMCW radar
+
+        Parameters
+        ---------
+        lambdac: float
+            wavelength (m) at center frequency
+        rc: float; optional
+            coarse range of bin center (m)
+        K:  float; optional
+            chirp gradient (rad/s/s)
+        ci: float; optional
+            propagation velocity (m/s)
+
+        Output
+        --------
+        r: float or array
+            range (m)
+
+        ### Original Matlab File Notes ###
+        Craig Stewart
+        2014/6/10
+        """
+
+        if phi is None:
+            phi = self.phi
+
+        if lambdac is None:
+            lambdac = self.header.lambdac
+
+        if not all([K,ci]) or rc is None:
+            # First order method
+            # Brennan et al. (2014) eq 15
+            self.r = lambdac*phi/(4.*np.pi)
+        else:
+            # Precise
+            self.r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2.))
+
+
     def range_diff(self,uncertainty='CR'):
         """
         Convert the phase profile to range offset (vertical velocity)
@@ -151,7 +191,7 @@ class ApresDiff():
         win, step = self.flags.phase_diff
 
         # convert the phase offset to a distance vector
-        self.w = phase2range(self.phi,
+        self.w = self.phase2range(self.phi,
                 self.header.lambdac,
                 self.ds,
                 self.header.chirp_grad,

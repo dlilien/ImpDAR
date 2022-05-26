@@ -157,41 +157,6 @@ def phase_uncertainty(self,bed_range):
     self.uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
 
 
-def phase2range(phi,lambdac,rc=None,K=None,ci=None):
-    """
-    Convert phase difference to range for FMCW radar
-
-    Parameters
-    ---------
-    phi: float or array
-        phase (radians), must be of spectrum after bin center correction
-    lambdac: float
-        wavelength (m) at center frequency
-    rc: float; optional
-        coarse range of bin center (m)
-    K:  float; optional
-        chirp gradient (rad/s/s)
-    ci: float; optional
-        propagation velocity (m/s)
-
-    Output
-    --------
-    r: float or array
-        range (m)
-
-    ### Original Matlab File Notes ###
-    Craig Stewart
-    2014/6/10
-    """
-
-    if not all([K,ci]) or rc is None:
-        # First order method
-        # Brennan et al. (2014) eq 15
-        r = lambdac*phi/(4.*np.pi)
-    else:
-        # Precise
-        r = phi/((4.*np.pi/lambdac) - (4.*rc*K/ci**2.))
-    return r
 
 
 def stacking(self,num_chirps=None):

@@ -134,6 +134,10 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
 
     elif ext == '.h5':
         return ApresData(fn_apres)
+
+    elif ext not in ['.dat','.DAT']:
+        raise ValueError('Expecting a certain filetype; either .mat, .h5, .dat, .DAT')
+
     else:
         # Load data and reshape array
         apres_data = ApresData(None)
