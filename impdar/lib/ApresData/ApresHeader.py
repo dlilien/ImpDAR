@@ -53,6 +53,30 @@ class ApresHeader():
         self.chirp_grad = None
         self.nchirp_samples = None
         self.ramp_dir = None
+        self.f1 = None
+        self.bandwidth = None
+        self.fc = None
+        self.er = None
+        self.ci = None
+        self.lambdac = None
+        self.n_attenuators = None
+        self.attenuator1 = None
+        self.attenuator2 = None
+        self.tx_ant = None
+        self.rx_ant = None
+
+        self.attrs = ['fsysclk','fs','fn','header_string','file_format','noDwellHigh','noDwellLow',
+                    'f0','f_stop','ramp_up_step','ramp_down_step','tstep_up','tstep_down','snum','nsteps_DDS',
+                    'chirp_length','chirp_grad','nchirp_samples','ramp_dir','f1','bandwidth','fc','er','ci','lambdac',
+                    'n_attenuators','attenuator1','attenuator2','tx_ant','rx_ant']
+        self.attr_dims = ['none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none']
+
+    # --------------------------------------------------------------------------------------------
 
     def read_header(self,fn_apres,max_header_len=2000):
         """
@@ -251,7 +275,7 @@ class ApresHeader():
             setattr(self, attr, matlab_struct[attr][0][0][0])
             # Use this because matlab inputs may have zeros for flags that
             # were lazily appended to be arrays, but we preallocate
-            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+            if attr_dim != 'none' and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
 
         for attr in self.bool_attrs:

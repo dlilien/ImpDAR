@@ -38,6 +38,10 @@ def _get_args():
     parser_load.add_argument('-o', type=str, help='Write to this filename')
     parser_load.add_argument('--nans', type=str, choices=['interp', 'delete'], default=None,
                              help='Interpolate or delete bad GPS. Only used by BSI.')
+    parser_load.add_argument('-dname',
+                             type=str,
+                             help='Name of data field',
+                             default='data')
 
     # Options for processing data
     parser_proc = subparsers.add_parser('proc', help='Process data')

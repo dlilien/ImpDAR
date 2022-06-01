@@ -62,7 +62,8 @@ class ApresData(object):
                       'elev',
                       'temperature1',
                       'temperature2',
-                      'battery_voltage']
+                      'battery_voltage',
+                      'Rcoarse']
 
     from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, range_diff, stacking
     from ._ApresDataSaving import save
@@ -96,6 +97,7 @@ class ApresData(object):
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
+            self.Rcoarse = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
             self.x_coord = None
@@ -158,6 +160,8 @@ class ApresData(object):
 
         self.fn = fn
         self.header = ApresHeader()
+        self.flags.from_matlab(mat['flags'])
+        self.header.from_matlab(mat['header'])
         self.check_attrs()
 
     def check_attrs(self):
@@ -179,7 +183,7 @@ class ApresData(object):
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.data.dtype
+            self.data_dtype = self.shh.dtype
         return
 
     @property

@@ -138,7 +138,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
         else:
             # get RMS velocity used for correction
             d = minimize(optimize_moveout_depth,.5*t*uice,args=(t,ant_sep,d_interp,u_interp),
-                         tol=1e-8,bounds=((0,0.5*t*uair),))['x'][0]
+                         tol=1e-8,bounds=[(0,0.5*t*uair)])['x'][0]
             u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
         # get the upper leg of the trave_path triangle (direct arrival) from the antenna separation and the rms velocity
         tsep_ice = 1e6*(ant_sep / u_rms)
@@ -304,13 +304,13 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
         # pretrig, vector input
         # Need to figure out if we need to do any shifting
         # The extra shift compared to the smallest
-        mintrig = np.min(ind)
+        mintrig = np.nanmin(ind)
         lims = [mintrig, self.data.shape[0]]
-        self.trig = self.trig-ind
-        trig_ends = self.data.shape[0] - (ind - mintrig) - 1
+        self.trig = self.trig - ind
         data_old = self.data.copy()
         self.data = np.zeros((data_old.shape[0] - mintrig, data_old.shape[1]))
         self.data[:, :] = np.nan
+        trig_ends = self.data.shape[0] - (ind - mintrig)
         for i in range(self.data.shape[1]):
             self.data[:trig_ends[i], i] = data_old[ind[i]:, i]
         self.travel_time = self.travel_time[lims[0]:lims[1]]
@@ -540,13 +540,21 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
     else:
         self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)
 
-    for attr in ['lat', 'long', 'elev', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
+    for attr in ['lat', 'long', 'x_coord', 'y_coord', 'decday', 'pressure', 'trig']:
         setattr(self,
                 attr,
                 interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
+    for attr in ['elev']:
+        if getattr(self, attr) is not None:
+            setattr(self,
+                    attr,
+                    interp1d(temp_dist, getattr(self, attr)[good_vals])(new_dists))
 
     if self.picks is not None:
-        for attr in ['samp1', 'samp2', 'samp3', 'power', 'time']:
+        for attr in ['samp1', 'samp2', 'samp3']:
+            if getattr(self.picks, attr) is not None:
+                setattr(self.picks, attr, np.round(interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists)))
+        for attr in ['power', 'time']:
             if getattr(self.picks, attr) is not None:
                 setattr(self.picks, attr, interp1d(temp_dist, getattr(self.picks, attr)[:, good_vals])(new_dists))
 
