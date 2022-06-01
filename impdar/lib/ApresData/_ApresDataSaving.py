@@ -67,27 +67,29 @@ def save_mat(self, fn):
         # We want the structure available to prevent read errors from corrupt files
         mat['flags'] = ApresFlags().to_matlab()
 
-    if self.header is not None:
-        mat['header'] = self.header.to_matlab()
-    else:
-        # We want the structure available to prevent read errors from corrupt files
-        mat['header'] = ApresHeader().to_matlab()
-
-    # Make sure not to expand the size of the data due to type conversion
-    if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
-        # Be carefuly of obliterating NaNs
-        # We will use singles instead of ints for this guess
-        if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float16 rather than ', self.data_dtype, ' since we now have NaNs')
-            mat['data'] = mat['data'].astype(np.float16)
-        elif (self.data_dtype in [np.int32]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float32 rather than ', self.data_dtype, ' since we now have NaNs')
-            mat['data'] = mat['data'].astype(np.float32)
-        elif (self.data_dtype in [np.int64]) and np.any(np.isnan(mat['data'])):
-            print('Warning: new file is float64 rather than ', self.data_dtype, ' since we now have NaNs')
-            mat['data'] = mat['data'].astype(np.float64)
+    if 'header' in vars(self):
+        if self.header is not None:
+            mat['header'] = self.header.to_matlab()
         else:
-            mat['data'] = mat['data'].astype(self.data_dtype)
+            # We want the structure available to prevent read errors from corrupt files
+            mat['header'] = ApresHeader().to_matlab()
+
+        # Make sure not to expand the size of the data due to type conversion
+        if hasattr(self, 'data_dtype') and self.data_dtype is not None and self.data_dtype != mat['data'].dtype:
+            # Be carefuly of obliterating NaNs
+            # We will use singles instead of ints for this guess
+            if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
+                print('Warning: new file is float16 rather than ', self.data_dtype, ' since we now have NaNs')
+                mat['data'] = mat['data'].astype(np.float16)
+            elif (self.data_dtype in [np.int32]) and np.any(np.isnan(mat['data'])):
+                print('Warning: new file is float32 rather than ', self.data_dtype, ' since we now have NaNs')
+                mat['data'] = mat['data'].astype(np.float32)
+            elif (self.data_dtype in [np.int64]) and np.any(np.isnan(mat['data'])):
+                print('Warning: new file is float64 rather than ', self.data_dtype, ' since we now have NaNs')
+                mat['data'] = mat['data'].astype(np.float64)
+            else:
+                mat['data'] = mat['data'].astype(self.data_dtype)
+
     savemat(fn, mat)
 
 

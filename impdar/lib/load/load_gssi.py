@@ -89,8 +89,27 @@ def _get_dzg_data(fn_dzg, trace_nums):
         lines = f_in.readlines()
     # We have to be careful with this to permit other NMEA strings to have been recorded
     # and to be sure that the indices line up
-    gssis_inds = [i for i, line in enumerate(lines) if 'GSSIS' in line]
-    gga_inds = [i for i, line in enumerate(lines) if 'GGA' in line]
+    all_gga_inds = [i for i, line in enumerate(lines) if '$GPGGA' == line.split(',')[0]]
+
+    # Get the corresponding GSSI trace numbers
+    all_gssis_inds = np.array([i for i, line in enumerate(lines) if line.split(',')[0] == '$GSSIS'])
+    gssis_inds = []
+    gga_inds = []
+    for i, lineind in enumerate(all_gga_inds):
+        if i == 0:
+            prevind = 0
+        else:
+            prevind = all_gga_inds[i - 1]
+        rel_inds = all_gssis_inds[np.logical_and(all_gssis_inds < lineind, all_gssis_inds > prevind)]
+        if len(rel_inds) > 0:
+            try:
+                # we can still have bad GSSI strings
+                if float(lines[np.max(rel_inds)].split(',')[1]).is_integer():
+                    gssis_inds.append(np.max(rel_inds))
+                    gga_inds.append(lineind)
+            except ValueError:
+                continue
+
     # we may have some records without GGA, so check if this is the case;
     # we keep track of the offset if so
     gssis_inds_keep = []

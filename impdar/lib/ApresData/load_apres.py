@@ -33,6 +33,7 @@ import re
 from . import ApresData
 from ..ImpdarError import ImpdarError
 
+
 def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     """Load and concatenate all apres data from several files
 
@@ -58,21 +59,22 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     from copy import deepcopy
     out = deepcopy(apres_data[0])
 
-    for dat in apres_data[1:]:
-        if out.snum != dat.snum:
-            raise ValueError('Need the same number of vertical samples in each file')
-        if out.cnum != dat.cnum:
-            raise ValueError('Need the same number of chirps in each file')
-        if not np.all(out.travel_time == dat.travel_time):
-            raise ValueError('Need matching travel time vectors')
-        if not np.all(out.frequencies == dat.frequencies):
-            raise ValueError('Need matching frequency vectors')
+    if len(apres_data)>1:
+
+        for dat in apres_data[1:]:
+            if out.snum != dat.snum:
+                raise ValueError('Need the same number of vertical samples in each file')
+            if out.cnum != dat.cnum:
+                raise ValueError('Need the same number of chirps in each file')
+            if not np.all(out.travel_time == dat.travel_time):
+                raise ValueError('Need matching travel time vectors')
+            if not np.all(out.frequencies == dat.frequencies):
+                raise ValueError('Need matching frequency vectors')
 
     out.data = np.vstack([[dat.data] for dat in apres_data])
     out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
     out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
     out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
-    out.time_stamp = np.hstack([dat.time_stamp for dat in apres_data])
     out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
     out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
     out.battery_voltage = np.hstack(
@@ -176,7 +178,7 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             apres_data.chirp_att = np.zeros(
                 (apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
-            apres_data.chirp_interval = 1.6384/(24.*3600.) # in days; apparently this is always the interval?
+            apres_data.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
@@ -329,8 +331,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
             str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = self.time_stamp - timezero
-        self.decday = np.array(
-            [offset.days for offset in day_offset]) + 377.  # Matlab compatable
+        self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
 
     self.temperature1 = np.array(output[1]).astype(float)
     self.temperature2 = np.array(output[2]).astype(float)
@@ -349,7 +350,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
         self.bnum = burst_count - 1
-        raise TypeError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
+        raise ValueError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
     else:
         if self.average == 2:
             self.data = np.fromfile(
@@ -387,7 +388,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     return start_ind, end_ind
 
 
-def load_BAS_mat(fn,chirp_interval=1.6384/(24.*3600.)):
+def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
     """Load apres data from a mat file saved by software from the British Antarctic Survey.
 
     Parameters
