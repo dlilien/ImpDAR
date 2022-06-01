@@ -18,14 +18,22 @@ jobs:
         seisunix: [true, false]
         exclude:
           - gdal: true
-            python-version: ["3.9", "3.10"]  # This is broken on pip at gdal@3.0.4
+            python-version: "3.9"  # This is broken on pip at gdal@3.0.4
+          - gdal: true
+            python-version: "3.10"  # This is broken on pip at gdal@3.0.4
           - os: windows-latest
             python-version: "3.6"  # No longer supported
-          - os: [macos-latest, windows-latest]
+          - os: macos-latest
             qt5: true
-          - os: [macos-latest, windows-latest]
+          - os: macos-latest
             seisunix: true
-          - os: [macos-latest, windows-latest]
+          - os: macos-latest
+            gdal: true
+          - os: windows-latest
+            qt5: true
+          - os: windows-latest
+            seisunix: true
+          - os: windows-latest
             gdal: true
     steps:
     - uses: actions/checkout@v2
