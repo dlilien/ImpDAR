@@ -68,6 +68,8 @@ if __name__ == '__main__':
                          ext_modules=ext_modules,
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')
     except SystemExit:
         print('Failed to compile c-sources. Using pure python version')
@@ -81,4 +83,6 @@ if __name__ == '__main__':
                          entry_points={'console_scripts': console_scripts},
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')
