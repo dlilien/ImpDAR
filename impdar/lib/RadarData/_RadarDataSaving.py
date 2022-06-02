@@ -57,7 +57,7 @@ def save(self, fn):
     # Make sure not to expand the size of the data due to type conversion
     if hasattr(self, 'data_dtype') and (
             self.data_dtype is not None) and (self.data_dtype != mat['data'].dtype):
-        # Be carefuly of obliterating NaNs
+        # Be careful of obliterating NaNs
         # We will use singles instead of ints for this guess
         if (self.data_dtype in [int, np.int8, np.int16]) and np.any(np.isnan(mat['data'])):
             print('Warning: new file is float16 rather than ',

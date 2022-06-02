@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.edu>
 #
 # Distributed under terms of the GNU GPL-3.0 license.
 
@@ -18,13 +18,15 @@ University of Washington
 Earth and Space Sciences
 
 Sept 24 2019
-
 """
 
-
+import os
 import datetime
+
 import numpy as np
 from scipy.io import loadmat
+import h5py
+
 from .ApresFlags import ApresFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
@@ -59,20 +61,20 @@ class ApresData(object):
                       'elev',
                       'temperature1',
                       'temperature2',
-                      'battery_voltage']
+                      'battery_voltage',
+                      'Rcoarse']
 
-    # TODO: add imports
-    #from ._ApresDataProcessing import
-    #from ._ApresDataSaving import
+    from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, range_diff, stacking
+    from ._ApresDataSaving import save
 
     # Now make some load/save methods that will work with the matlab format
-    def __init__(self, fn_mat):
-        if fn_mat is None:
+    def __init__(self, fn):
+        if fn is None:
             # Write these out so we can document them
             # Very basics
             self.snum = None  #: int number of samples per chirp
             self.cnum = None  #: int, the number of chirps in a burst
-            self.bnum = None #: int, the number of bursts
+            self.bnum = None  #: int, the number of bursts
             self.data = None  #: np.ndarray(snum x tnum) of the actual return power
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
@@ -94,6 +96,7 @@ class ApresData(object):
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
+            self.Rcoarse = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
             self.x_coord = None
@@ -110,33 +113,54 @@ class ApresData(object):
             self.data_dtype = None
             return
 
-        # TODO: add a matlab load
-        mat = loadmat(fn_mat)
-        for attr in self.attrs_guaranteed:
-            if mat[attr].shape == (1, 1):
-                setattr(self, attr, mat[attr][0][0])
-            elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
-                setattr(self, attr, mat[attr].flatten())
-            else:
-                setattr(self, attr, mat[attr])
-        # We may have some additional variables
-        for attr in self.attrs_optional:
-            if attr in mat:
+        if os.path.splitext(fn)[1] == '.h5':
+            with h5py.File(fn, 'r') as fin:
+                grp = fin['dat']
+                for attr in grp.keys():
+                    if attr in ['ApresFlags', 'ApresHeader']:
+                        continue
+                    val = grp[attr][:]
+                    if isinstance(val, h5py.Empty):
+                        val = None
+                    setattr(self, attr, val)
+                for attr in grp.attrs.keys():
+                    val = grp.attrs[attr]
+                    if isinstance(val, h5py.Empty):
+                        val = None
+                    setattr(self, attr, val)
+                self.flags = ApresFlags()
+                self.header = ApresHeader()
+                self.flags.read_h5(grp)
+                self.header.read_h5(grp)
+        else:
+            mat = loadmat(fn)
+            for attr in self.attrs_guaranteed:
                 if mat[attr].shape == (1, 1):
                     setattr(self, attr, mat[attr][0][0])
                 elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
                     setattr(self, attr, mat[attr].flatten())
                 else:
                     setattr(self, attr, mat[attr])
-            else:
-                setattr(self, attr, None)
+            # We may have some additional variables
+            for attr in self.attrs_optional:
+                if attr in mat:
+                    if mat[attr].shape == (1, 1):
+                        setattr(self, attr, mat[attr][0][0])
+                    elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                        setattr(self, attr, mat[attr].flatten())
+                    else:
+                        setattr(self, attr, mat[attr])
+                else:
+                    setattr(self, attr, None)
 
-        self.data_dtype = self.data.dtype
+            self.data_dtype = self.data.dtype
+            self.flags = ApresFlags()
+            self.flags.from_matlab(mat['flags'])
 
-        self.fn = fn_mat
-        self.flags = ApresFlags()
+        self.fn = fn
         self.header = ApresHeader()
         self.flags.from_matlab(mat['flags'])
+        self.header.from_matlab(mat['header'])
         self.check_attrs()
 
     def check_attrs(self):
@@ -157,13 +181,8 @@ class ApresData(object):
                 raise ImpdarError('{:s} is None. \
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
-        for attr in self.attrs_optional:
-            if not hasattr(self, attr):
-                raise ImpdarError('{:s} is missing. \
-                    It appears that this is an ill-defined RadarData object'.format(attr))
-
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.data.dtype
+            self.data_dtype = self.shh.dtype
         return
 
     @property

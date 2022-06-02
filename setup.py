@@ -27,7 +27,8 @@ if __name__ == '__main__':
     console_scripts = ['impdar=impdar.bin.impdarexec:main',
                        'impproc=impdar.bin.impproc:main',
                        'imppick=impdar.bin.imppick:main',
-                       'impplot=impdar.bin.impplot:main']
+                       'impplot=impdar.bin.impplot:main',
+                       'apdar=impdar.bin.apdar:main']
 
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
@@ -39,7 +40,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.4.post5'
+    version = '1.1.5'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
@@ -68,6 +69,8 @@ if __name__ == '__main__':
                          ext_modules=ext_modules,
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')
     except SystemExit:
         print('Failed to compile c-sources. Using pure python version')
@@ -81,4 +84,6 @@ if __name__ == '__main__':
                          entry_points={'console_scripts': console_scripts},
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')

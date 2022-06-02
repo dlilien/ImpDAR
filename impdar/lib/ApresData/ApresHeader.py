@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.edu>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -21,13 +21,12 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
 
 import numpy as np
+import h5py
 import re
 
-# --------------------------------------------------------------------------------------------
 
 class ApresHeader():
     """
@@ -54,6 +53,28 @@ class ApresHeader():
         self.chirp_grad = None
         self.nchirp_samples = None
         self.ramp_dir = None
+        self.f1 = None
+        self.bandwidth = None
+        self.fc = None
+        self.er = None
+        self.ci = None
+        self.lambdac = None
+        self.n_attenuators = None
+        self.attenuator1 = None
+        self.attenuator2 = None
+        self.tx_ant = None
+        self.rx_ant = None
+
+        self.attrs = ['fsysclk','fs','fn','header_string','file_format','noDwellHigh','noDwellLow',
+                    'f0','f_stop','ramp_up_step','ramp_down_step','tstep_up','tstep_down','snum','nsteps_DDS',
+                    'chirp_length','chirp_grad','nchirp_samples','ramp_dir','f1','bandwidth','fc','er','ci','lambdac',
+                    'n_attenuators','attenuator1','attenuator2','tx_ant','rx_ant']
+        self.attr_dims = ['none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none',
+                        'none','none','none','none','none']
 
     # --------------------------------------------------------------------------------------------
 
@@ -67,16 +88,11 @@ class ApresHeader():
             file name to update with
         max_header_len: int
             maximum length of header to read (can be too long)
-
-        Output
-        ---------
         """
         self.fn = fn_apres
         fid = open(fn_apres,'rb')
         self.header_string = str(fid.read(max_header_len))
         fid.close()
-
-    # --------------------------------------------------------------------------------------------
 
     def get_file_format(self):
         """
@@ -103,7 +119,6 @@ class ApresHeader():
     def update_parameters(self,fn_apres=None):
         """
         Update the parameters with the apres file header
-
 
         ### Original Matlab Notes ###
         Extract from the hex codes the actual paramaters used by RMB2
@@ -150,11 +165,6 @@ class ApresHeader():
                 self.noDwellHigh = int(val[18])
                 self.noDwellLow = int(val[17])
 
-            #elif case == 'Reg08':
-            #    # Phase offset word Register (POW) Address 0x08. 2 Bytes dTheta = 360*POW/2^16.
-            #    val = char(reg{1,2}(k));
-            #    H.phaseOffsetDeg = hex2dec(val(1:4))*360/2^16;
-
             elif case == 'Reg0B':
                 # Digital Ramp Limit Register Address 0x0B
                 # Digital ramp upper limit 32-bit digital ramp upper limit value.
@@ -191,10 +201,10 @@ class ApresHeader():
                 output[i] = self.header_string[search_start+len(string):search_end+search_start]
 
         self.fs = output[0]
-        if self.fs == 1:        # if self.fs > 70e3:
-            self.fs = 8e4       #     self.fs = 80e3
-        else:                   # else
-            self.fs = 4e4       #     self.fs = 40e3
+        if self.fs == 1:
+            self.fs = 8e4
+        else:
+            self.fs = 4e4
 
         self.snum = int(output[1])
 
@@ -217,12 +227,37 @@ class ApresHeader():
             self.ramp_dir = 'upDown'
             self.nchirpsPerPeriod = np.nan # self.nchirpSamples/(self.chirpLength)
 
-# --------------------------------------------------------------------------------------------
+    def write_h5(self, grp):
+        """
+        Write to a subgroup in hdf5 file
+
+        Parameters
+        ----------
+        grp: h5py.Group
+            The group to which the ApresHeader subgroup is written
+        """
+        subgrp = grp.create_group('ApresHeader')
+        for attr in vars(self):
+            val = getattr(self, attr)
+            if val is None:
+                subgrp.attrs[attr] = h5py.Empty("f")
+            else:
+                if hasattr(val, 'dtype'):
+                    val = val.astype('f')
+                subgrp.attrs[attr] = val
+
+    def read_h5(self, grp):
+        subgrp = grp['ApresHeader']
+        for attr in subgrp.attrs.keys():
+            val = subgrp.attrs[attr]
+            if isinstance(val, h5py.Empty):
+                val = None
+            setattr(self, attr, val)
 
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
-        outmat = {att: getattr(self, att) for att in vars(self)}
+        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.NaN) for att in vars(self)}
         return outmat
 
     def from_matlab(self, matlab_struct):
@@ -232,7 +267,7 @@ class ApresHeader():
             setattr(self, attr, matlab_struct[attr][0][0][0])
             # Use this because matlab inputs may have zeros for flags that
             # were lazily appended to be arrays, but we preallocate
-            if attr_dim is not None and getattr(self, attr).shape[0] == 1:
+            if attr_dim != 'none' and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
 
         for attr in self.bool_attrs:

@@ -390,7 +390,7 @@ def main():
             args.func(dat, **vars(args))
 
     if args.o is not None:
-        if len(radar_data) > 1:
+        if ((len(radar_data) > 1) or (args.o[-1] == '/')):
             for d, f in zip(radar_data, args.fns):
                 bn = os.path.split(os.path.splitext(f)[0])[1]
                 if bn[-4:] == '_raw':

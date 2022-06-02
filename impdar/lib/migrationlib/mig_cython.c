@@ -11,6 +11,7 @@
 #include <time.h> 
 #include <signal.h>
 #include <stdlib.h>
+#include <Python.h>
 
 /*  Migrate data into migdata */
 void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, int nearfield){
@@ -24,17 +25,18 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
     clock_t iter_start, this_time;
     float time_remaining, el_t;
     setbuf(stdout, NULL);
-    printf("Iter: ");
+    PySys_WriteStdout("Beginning migration");
 
-    
     iter_start = clock();
     /* You can flip the loop order, but I think this is marginally faster
      * based on c row-major ordering. Could be wrong though... */
     for(j=0;j<tnum;j++){
         if (j % 100 == 0){
-            printf("%d", j);
-        }else{
-            printf(".");
+            if (j > 0){
+                PySys_WriteStdout("trace %d", j);
+            }
+        }else if (j % 10 == 0){
+            PySys_WriteStdout(".");
         }
         for(i=0;i<snum;i++){
             integral = 0.0;
@@ -95,9 +97,9 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
                 this_time = clock();
                 el_t = (this_time - iter_start) / CLOCKS_PER_SEC;
                 time_remaining = (tnum - j) * el_t / j;
-                printf("\nEst. time remaining: %f sec", time_remaining);
+                PySys_WriteStdout("\nEst. time remaining: %4.2f sec", time_remaining);
             }
         }
     }
-    printf("\n");
+    PySys_WriteStdout("\n");
 }
