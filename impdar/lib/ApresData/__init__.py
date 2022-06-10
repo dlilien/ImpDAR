@@ -31,6 +31,8 @@ from .ApresFlags import ApresFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
+FILETYPE_OPTIONS = ['DAT', 'dat', 'mat', 'h5']
+
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.
 
@@ -182,7 +184,7 @@ class ApresData(object):
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.shh.dtype
+            self.data_dtype = self.data.dtype
         return
 
     @property

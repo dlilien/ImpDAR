@@ -9,12 +9,13 @@
 """
 Make an executable for single actions of ApRES handling.
 """
+
 import sys
 import os.path
 import argparse
 
+from impdar.lib.ApresData import ApresData, FILETYPE_OPTIONS
 from impdar.lib.ApresData import load_apres
-
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -28,23 +29,101 @@ def _get_args():
                                   defname='load')
     _add_def_args(parser_load)
 
-    # Processing functionality
-    parser_proc = _add_procparser(subparsers,
-                                  'proc',
-                                  'process apres data',
-                                  lambda x: x,
-                                  defname='proc')
-    parser_proc.add_argument('-range',
-                             nargs=1,
+    # Initial range conversion (pulse compression)
+    parser_range = _add_procparser(subparsers,
+                                  'range',
+                                  'convert the recieved waveform to a \
+                                        range-amplitude array',
+                                  pulse_compression)
+    parser_range.add_argument('max_range',
                              type=int,
-                             help='Pulse compression')
-    parser_proc.add_argument('-stack',
-                             nargs=1,
-                             type=int,
-                             help='Stacking')
-    _add_def_args(parser_proc)
+                             help='maximum range for the pulse compression')
+    _add_def_args(parser_range)
 
-    # Plotting
+    # Stacking
+    parser_stack = _add_procparser(subparsers,
+                                  'stack',
+                                  'stack apres chirps into a single array',
+                                  stack)
+    parser_stack.add_argument('num_chirps',
+                             type=int,
+                              help='number of chirps to stack (default: stack all)')
+    _add_def_args(parser_stack)
+
+    # Uncertainty
+    parser_unc = _add_procparser(subparsers,
+                                  'uncertainty',
+                                  'calculate the phase uncertainty for all samples',
+                                  uncertainty)
+    parser_stack.add_argument('noise_floor',
+                             type=int,
+                              help='range of the noise floor under which \
+                                    the noise phasor will be calculated')
+    _add_def_args(parser_unc)
+
+    # Full Differencing
+    parser_diff = _add_procparser(subparsers,
+                                  'diff',
+                                  'create an ApresDiff object and then execuate \
+                                        the full differencing processing flow',
+                                  full_differencing)
+    parser_diff.add_argument('diff_file',
+                             type=str,
+                             help='file name for Apres object which \
+                                    will be differenced against')
+    _add_def_args(parser_diff)
+
+    # Phase Differencing
+    parser_pdiff = _add_procparser(subparsers,
+                                  'pdiff',
+                                  'create an ApresDiff object',
+                                  phase_differencing)
+    parser_pdiff.add_argument('diff_file',
+                             type=str,
+                             help='file name for Apres object which \
+                                    will be differenced against')
+    _add_def_args(parser_pdiff)
+
+    # Phase Unwrap
+    parser_unwrap = _add_procparser(subparsers,
+                                  'unwrap',
+                                  'unwrap the differenced phase profile \
+                                       from top to bottom',
+                                  unwrap)
+    _add_def_args(parser_unwrap)
+
+    # Range Differencing
+    parser_rdiff = _add_procparser(subparsers,
+                                  'rdiff',
+                                  'convert the differenced phase profile to range',
+                                  range_differencing)
+    _add_def_args(parser_rdiff)
+
+    # Plot Single Apres Acquisition
+    parser_plot = _add_procparser(subparsers,
+                                  'plot',
+                                  'plot apres data from a single acquisition',
+                                  plot_single)
+    parser_plot.add_argument('-s',
+                             action='store_true',
+                             help='save file (do not plt.show())')
+    parser_plot.add_argument('-yd', action='store_true',
+                             help='plot the depth rather than travel time')
+    _add_def_args(parser_plot)
+
+    # Plot Differenced Apres Acquisitions
+    parser_plotdiff = _add_procparser(subparsers,
+                                  'plot_diff',
+                                  'plot profiles for differenced apres acquisitions',
+                                  plot_differenced)
+    parser_plotdiff.add_argument('-s',
+                             action='store_true',
+                             help='Save file (do not plt.show())')
+    parser_plotdiff.add_argument('-yd', action='store_true',
+                             help='Plot the depth rather than travel time')
+    _add_def_args(parser_plotdiff)
+
+
 
     return parser
 
@@ -81,13 +160,12 @@ def main():
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
 
-    apres_data = [load_apres.load_apres_single_file(fn) for fn in args.fns]
+    apres_data = ApresData(args.fns)
 
     if args.name == 'load':
         pass
     else:
-        for dat in apres_data:
-            args.func(dat, **vars(args))
+        args.func(dat, **vars(args))
 
     if args.name == 'load':
         name = 'raw'
@@ -95,28 +173,63 @@ def main():
         name = args.name
 
     if args.o is not None:
-        if ((len(apres_data) > 1) or (args.o[-1] == '/')):
-            for d, f in zip(apres_data, args.fns):
-                bn = os.path.split(os.path.splitext(f)[0])[1]
-                if bn[-4:] == '_raw':
-                    bn = bn[:-4]
-                out_fn = os.path.join(args.o, bn + '_{:s}.h5'.format(name))
-                d.save(out_fn)
-        else:
-            out_fn = args.o
-            apres_data[0].save(out_fn)
+        out_fn = args.o
+        dat.save(out_fn)
     else:
-        for d, f in zip(apres_data, args.fns):
-            bn = os.path.splitext(f)[0]
-            if bn[-4:] == '_raw':
-                bn = bn[:-4]
-            out_fn = bn + '_{:s}.h5'.format(name)
-            d.save(out_fn)
+        bn = os.path.splitext(args.fns[0])[0]
+        if bn[-4:] == '_raw':
+            bn = bn[:-4]
+        out_fn = bn + '_{:s}.mat'.format(name)
+        dat.save(out_fn)
 
 
-def crop(dat, lim=0, top_or_bottom='top', dimension='snum', **kwargs):
-    """Crop in the vertical."""
-    dat.crop(lim, top_or_bottom=top_or_bottom, dimension=dimension)
+def pulse_compression(dat, max_range=4000, **kwargs):
+    """Set range gain."""
+    dat.apres_range(max_range)
+
+
+def stack(dat, num_chirps=0, **kwargs):
+    """Set range gain."""
+    if num_chirps == 0:
+        dat.stacking()
+    else:
+        dat.stacking(num_chirps)
+
+
+def uncertainty(dat,noise_floor=3000):
+    """Calculate uncertainty."""
+    dat.phase_uncertainty(noise_floor)
+
+
+def full_differencing(dat, diff_names, win=20, step=20,
+                      strain_window=(200,1000), w_surf=-0.15):
+    diffdat = ApresDiff(diff_names)
+    diffdat.phase_uncertainty(win,step)
+    diffdat.phase_unwrap(win=20,thresh=.95)
+    diffdat.range_diff()
+    dat.strain_rate(strain_window=strain_window,w_surf=w_surf)
+
+
+def phase_differencing(dat, diff_names):
+    diffdat = ApresDiff(diff_names)
+
+
+def unwrap(diffdat,win=20,thresh=.95):
+    diffdat.phase_unwrap(win,thresh)
+
+
+def range_differencing(diffdat):
+    diffdat.range_diff()
+
+
+def plot_single(fns=None, layer=None, s=False, o=None, o_fmt='png',
+               dpi=300, in_fmt='mat', **kwargs):
+    """Plot the return power of a particular layer."""
+    plot.plot(fns, power=layer, s=s, o=o, ftype=o_fmt, dpi=dpi,
+              filetype=in_fmt)
+
+def plot_differenced(fns=None, layer=None, s=False, o=None, o_fmt='png'):
+    dat.phase_uncertainty()
 
 
 if __name__ == '__main__':
