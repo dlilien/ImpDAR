@@ -9,9 +9,9 @@
 """
 Flags to keep track of processing steps
 """
+
 import numpy as np
 import h5py
-
 
 class ApresFlags():
     """Flags that indicate the processing that has been used on the data.
@@ -22,22 +22,10 @@ class ApresFlags():
     ----------
     batch: bool
         Legacy indication of whether we are batch processing. Always False.
-    agc: bool
-        Automatic gain control has been applied.
-    reverse: bool
-        Data have been reversed.
-    restack: bool
-        Data have been restacked.
-    rgain: bool
-        Data have a linear range gain applied.
-    bpass: 3x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if bandpassed; (2) Low; and (3) High (MHz) bounds
-    hfilt: 2x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if horizontally filtered; (2) Filter type
-    interp: 2x1 :class:`numpy.ndarray`
-        Elements: (1) 1 if constant distance spacing applied (2) The constant spacing (m)
-    mig: 2x1 :class: String
-        None if no migration done, mtype if migration done.
+    range: float
+        max range
+    stack: int
+        number of chirps stacked
      """
 
     def __init__(self):

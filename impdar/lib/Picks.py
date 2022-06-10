@@ -361,3 +361,45 @@ class Picks():
             else:
                 mat[attr] = 0
         return mat
+
+    def crop(self, ind):
+        """Crop the picks.
+
+        This is just subtraction with some bounds checks.
+        It is easy since we assume that the work to convert to indices has already been done.
+        Not needed for bottom crops.
+
+        Parameters
+        ----------
+        ind: int or ndarray(tnum, ):
+            How much we need to shift by
+        """
+        for attr in ['samp1', 'samp2', 'samp3']:
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                val = getattr(self, attr)
+
+                # Be sure to preserve nans
+                nanmask = np.isnan(val)
+                val -= ind
+                val[nanmask] = np.nan
+
+                # And allow cropping such that picks are no longer within the window
+                val[val < 0] = np.nan
+                val[val >= self.radardata.snum] = np.nan
+
+                setattr(self, attr, val)
+
+    def restack(self, traces):
+        for attr, nptype in zip(['samp1', 'samp2', 'samp3', 'time', 'power'], [int, int, int, float, float]):
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                val = getattr(self, attr)
+                tnum = int(np.floor(val.shape[1] / traces))
+                new_vals = np.zeros((val.shape[0], tnum))
+                new_vals[:] = np.nan
+
+                for j in range(tnum):
+                    # It is not totally clear if this should be a mean or nanmean
+                    new_vals[:, j] = np.nanmean(val[:, j * traces:min((j + 1) * traces, val.shape[1])], axis=1).astype(nptype)
+                    new_vals[new_vals < 0] = np.nan
+                    new_vals[new_vals >= self.radardata.snum] = np.nan
+                setattr(self, attr, new_vals)

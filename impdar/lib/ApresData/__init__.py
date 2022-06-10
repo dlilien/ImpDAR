@@ -18,8 +18,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 24 2019
-
 """
+
 import os
 import datetime
 
@@ -30,7 +30,6 @@ import h5py
 from .ApresFlags import ApresFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
-
 
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.
@@ -183,7 +182,7 @@ class ApresData(object):
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.data.dtype
+            self.data_dtype = self.shh.dtype
         return
 
     @property

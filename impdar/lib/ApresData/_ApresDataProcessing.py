@@ -20,14 +20,14 @@ Sept 23 2019
 
 import numpy as np
 
-
 def apres_range(self,p,max_range=4000,winfun='blackman'):
     """
+    Range conversion.
 
     Parameters
     ---------
     self: class
-        data object
+        ApresData object
     p: int
         pad factor, level of interpolation for fft
     winfun: str
@@ -91,7 +91,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     # --- Loop through for each chirp in burst --- #
 
-    # preallocate
+    # pre-allocate
     spec = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
     spec_cor = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
 
@@ -115,9 +115,15 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.spec = spec.copy()
     self.data_dtype = self.data.dtype
 
+    # precise range measurement
+    self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
+            np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
+            self.header.chirp_grad,self.header.ci)
+
     # Crop output variables to useful depth range only
     n = np.argmin(self.Rcoarse<=max_range)
     self.Rcoarse = self.Rcoarse[:n]
+    self.Rfine = self.Rfine[:n]
     self.data = self.data[:,:,:n]
     self.spec = self.spec[:,:,:n]
     self.snum = n
@@ -133,6 +139,8 @@ def phase_uncertainty(self,bed_range):
 
     Parameters
     ---------
+    self: class
+        ApresData object
     bed_range: float
         Distance of the bed, so noise floor can be calculated beneath it
     """
@@ -168,7 +176,7 @@ def phase2range(phi,lambdac=None,rc=None,K=None,ci=None):
     ci: float; optional
         propagation velocity (m/s)
 
-    Output
+    Returns
     --------
     r: float or array
         range (m)
