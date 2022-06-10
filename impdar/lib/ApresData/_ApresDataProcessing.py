@@ -16,8 +16,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
+
 import numpy as np
 
 
@@ -115,15 +115,9 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.spec = spec.copy()
     self.data_dtype = self.data.dtype
 
-    # precise range measurement
-    self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
-            np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
-            self.header.chirp_grad,self.header.ci)
-
     # Crop output variables to useful depth range only
     n = np.argmin(self.Rcoarse<=max_range)
     self.Rcoarse = self.Rcoarse[:n]
-    self.Rfine = self.Rfine[:,:,:n]
     self.data = self.data[:,:,:n]
     self.spec = self.spec[:,:,:n]
     self.snum = n
@@ -155,8 +149,6 @@ def phase_uncertainty(self,bed_range):
     noise_orth = median_mag*np.sin(np.angle(meas_phasor)-np.angle(noise_phasor))
     # Phase uncertainty is the deviation in the phase introduced by the noise phasor when it is oriented perpendicular to the reflector phasor
     self.uncertainty = np.abs(np.arcsin(noise_orth/np.abs(meas_phasor)))
-
-
 
 
 def stacking(self,num_chirps=None):

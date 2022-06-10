@@ -158,11 +158,10 @@ class ApresData(object):
             self.data_dtype = self.data.dtype
             self.flags = ApresFlags()
             self.flags.from_matlab(mat['flags'])
+            self.header = ApresHeader()
+            self.header.from_matlab(mat['header'])
 
         self.fn = fn
-        self.header = ApresHeader()
-        self.flags.from_matlab(mat['flags'])
-        self.header.from_matlab(mat['header'])
         self.check_attrs()
 
     def check_attrs(self):
@@ -184,7 +183,7 @@ class ApresData(object):
                     It appears that this is an ill-defined RadarData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.shh.dtype
+            self.data_dtype = self.data.dtype
         return
 
     @property
