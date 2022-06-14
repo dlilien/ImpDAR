@@ -140,7 +140,7 @@ class ApresData(object):
             for attr in self.attrs_guaranteed:
                 if mat[attr].shape == (1, 1):
                     setattr(self, attr, mat[attr][0][0])
-                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                elif (mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1) and attr != 'data':
                     setattr(self, attr, mat[attr].flatten())
                 else:
                     setattr(self, attr, mat[attr])

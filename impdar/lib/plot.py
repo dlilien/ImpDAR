@@ -725,6 +725,57 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     return fig, ax
 
 
+def plot_apres(dat, s=False, facecolor = 'w', linecolor = 'k', linewidth = 1., linestyle = '-',
+               ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot power vs depth or twtt in a trace.
+
+    Parameters
+    ----------
+    dat: impdar.lib.ApresData.ApresData
+        The ApresData object to plot.
+    ydat: str, optional
+        The vertical axis units. Either twtt or or depth. Default twtt.
+    """
+
+    if dat.Rcoarse is None:
+        fig, axs = plt.subplots(1,2, figsize=(6, 6),facecolor=facecolor)
+        for ax in axs:
+            ax.invert_yaxis()
+        axs[0].plot(dat.data[0,0,:], dat.travel_time, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[0].set_ylabel('Two way travel time (usec)')
+        axs[0].set_xlabel('V')
+        axs[0].set_title('Amplitude')
+        nf = int(np.floor(2*dat.snum/2))    # number of frequencies to recover
+        tau = np.arange(nf)/(dat.header.bandwidth*p)
+        ϕ_r = 2.*np.pi*dat.header.fc*tau - (dat.header.chirp_grad*tau**2)/2.
+        axs[1].plot(np.exp(-1j*ϕ_r),dat.travel_time,'.',c=linecolor,ms=linewidth)
+        axs[1].set_title('Reference Phasor')
+    else:
+        fig, axs = plt.subplots(1,3, figsize=(8, 6),facecolor=facecolor)
+        for ax in axs:
+            ax.invert_yaxis()
+        axs[0].plot(dat.data[0,0,:], dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[0].set_ylabel('Range (m)')
+        axs[0].set_xlabel('V')
+        axs[0].set_title('Amplitude')
+        axs[1].plot(10.*np.log10(dat.data[0,0,:]**2.), dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[1].tick_params(labelleft=False)
+        axs[1].set_xlabel('dB')
+        axs[1].set_title('Power')
+        if dat.uncertainty is not None:
+            axs[2].plot(dat.uncertainty,dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[2].tick_params(labelleft=False)
+        axs[2].set_xlabel('rad')
+        axs[2].set_title('Phase Uncertainty')
+
+    fig.canvas.set_window_title(dat.fn)
+    if s:
+        fig.savefig(os.path.splitext(dat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
+
+
 def get_offset(dat, flatten_layer=None):
     if flatten_layer is None:
         offset = np.zeros((dat.data.shape[1]))
