@@ -18,9 +18,11 @@ Earth and Space Sciences
 May 20 2022
 """
 
+import os
 from . import ApresData
 from ._ApresDataProcessing import phase2range
 import numpy as np
+from scipy.io import loadmat
 from scipy.stats import linregress
 from scipy.signal import medfilt, find_peaks
 
@@ -28,42 +30,177 @@ from scipy.signal import medfilt, find_peaks
 class ApresDiff():
     """
     Class for differencing between two Apres acquisitions.
-    """
-    def __init__(self,dat1,dat2):
-        """Initialize differencieng fields
 
-        dat1: class or string
+    We keep track of processing steps with the flags attribute.
+    This base version's __init__ takes two filenames of .mat files in the old StODeep format to load.
+    """
+    #: Attributes that every ApresData object should have and should not be None.
+    attrs_guaranteed = ['data1',
+                        'data2',
+                        'Rcoarse',
+                        'fn1',
+                        'fn2',
+                        'fn']
+
+    #: Optional attributes that may be None without affecting processing.
+    #: These may not have existed in old StoDeep files that we are compatible with,
+    #: and they often cannot be set at the initial data load.
+    #: If they exist, they all have units of meters.
+    attrs_optional = ['unc1',
+                      'unc2',
+                      'ds',
+                      'co',
+                      'phi',
+                      'w',
+                      'w_err',
+                      'w_0',
+                      'eps_zz',
+                      'bed']
+
+    from ._ApresDataSaving import save
+
+    def __init__(self,fn,dat2=None):
+        """Initialize differencing fields
+
+        fn: class or string
             Apres data object to load (if string should be an impdar apres file)
         dat2: class or string
             Apres data object to load (if string should be an impdar apres file)
         """
 
-        if type(dat1) == str and type(dat2) == str:
-            dat1 = ApresData(dat1)
-            dat2 = ApresData(dat2)
-        self.fn1 = dat1.fn
-        self.fn2 = dat2.fn
+        if fn is None:
+            # Write these out so we can document them
+            # Very basics
+            self.snum = None  #: int number of samples per chirp
+            self.cnum = None  #: int, the number of chirps in a burst
+            self.bnum = None  #: int, the number of bursts
+            self.data1 = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.data2 = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
-        if dat1.flags.range ==0 or dat2.flags.range ==0:
-            raise TypeError('The range filter has not been executed on this data class, do that before proceeding.')
+            # Per-trace attributes
+            #: np.ndarray(tnum,) of the acquisition time of each trace
+            #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
+            #: for convenience, use the `datetime` attribute to access a python version of the day
+            self.decday1 = None
+            self.decday2 = None
+            #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
+            self.lat1 = None
+            self.lat2 = None
+            #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
+            self.long1 = None
+            self.long2 = None
 
-        # check that the two data objects are comparable
-        if np.shape(dat1.data) != np.shape(dat2.data):
-            raise TypeError('Acquisition inputs must be of the same shape.')
-        if not np.all(abs(dat1.Rcoarse - dat2.Rcoarse) < 1e04):
-            raise ValueError('Range vector should be the same for both acquisitions')
+            # Sample-wise attributes
+            #: np.ndarray(snum,) The range for each sample, in m
+            self.Rcoarse = None
 
-        # instantiate the differencing class
-        self.data1 = dat1.data
-        self.unc1 = dat1.uncertainty
-        self.data2 = dat2.data
-        self.unc2 = dat2.uncertainty
-        self.Rcoarse = dat1.Rcoarse
+            #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
+            self.x_coord1 = None
+            self.x_coord2 = None
+            #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
+            self.y_coord1 = None
+            self.y_coord2 = None
+            #: np.ndarray(tnum,) Optional. Elevation along the profile.
+            self.elev1 = None
+            self.elev2 = None
 
-        # take the flags and header from the first data object
-        self.flags = dat1.flags
-        self.header = dat1.header
+            # Special attributes
+            #: impdar.lib.RadarFlags object containing information about the processing steps done.
+            self.flags = ApresFlags()
+            self.header = ApresHeader()
 
+            self.data_dtype = None
+            return
+
+        if dat2 is None:
+            if os.path.splitext(fn)[1] == '.h5':
+                with h5py.File(fn, 'r') as fin:
+                    grp = fin['dat']
+                    for attr in grp.keys():
+                        if attr in ['ApresFlags', 'ApresHeader']:
+                            continue
+                        val = grp[attr][:]
+                        if isinstance(val, h5py.Empty):
+                            val = None
+                        setattr(self, attr, val)
+                    for attr in grp.attrs.keys():
+                        val = grp.attrs[attr]
+                        if isinstance(val, h5py.Empty):
+                            val = None
+                        setattr(self, attr, val)
+                    self.flags = ApresFlags()
+                    self.header = ApresHeader()
+                    self.flags.read_h5(grp)
+                    self.header.read_h5(grp)
+                # Set the file name
+                self.fn = fn
+
+            elif os.path.splitext(fn)[1] == '.mat':
+                mat = loadmat(fn)
+                for attr in self.attrs_guaranteed:
+                    if mat[attr].shape == (1, 1):
+                        setattr(self, attr, mat[attr][0][0])
+                    elif (mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1) and attr not in ['dat1','dat2']:
+                        setattr(self, attr, mat[attr].flatten())
+                    else:
+                        setattr(self, attr, mat[attr])
+                # We may have some additional variables
+                for attr in self.attrs_optional:
+                    if attr in mat:
+                        if mat[attr].shape == (1, 1):
+                            setattr(self, attr, mat[attr][0][0])
+                        elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                            setattr(self, attr, mat[attr].flatten())
+                        else:
+                            setattr(self, attr, mat[attr])
+                    else:
+                        setattr(self, attr, None)
+                self.data_dtype = self.dat1.dtype
+                self.flags = ApresFlags()
+                self.flags.from_matlab(mat['flags'])
+                self.header = ApresHeader()
+                self.header.from_matlab(mat['header'])
+                # Set the file name
+                self.fn = fn
+
+            else:
+                raise ImportError('ApresDiff can only load .h5, .mat, or 2 data objects in parallel.')
+
+        else:
+            if type(fn) == str and type(dat2) == str:
+                dat1 = ApresData(fn)
+                dat2 = ApresData(dat2)
+            self.fn1 = dat1.fn
+            self.fn2 = dat2.fn
+            self.fn2 = dat2.fn
+            self.fn = self.fn1+'_diff_'+self.fn2
+
+            if dat1.flags.range == 0 or dat2.flags.range == 0:
+                raise TypeError('The range filter has not been executed on this data class, do that before proceeding.')
+
+            # check that the two data objects are comparable
+            if np.shape(dat1.data) != np.shape(dat2.data):
+                raise TypeError('Acquisition inputs must be of the same shape.')
+            if not np.all(abs(dat1.Rcoarse - dat2.Rcoarse) < 1e04):
+                raise ValueError('Range vector should be the same for both acquisitions')
+
+            # instantiate the differencing class
+            self.data1 = dat1.data
+            self.data2 = dat2.data
+            self.Rcoarse = dat1.Rcoarse
+
+            # if uncertainties were calculated, bring those in too
+            if hasattr(dat1,'uncertainty'):
+                self.unc1 = dat1.uncertainty
+            if hasattr(dat2,'uncertainty'):
+                self.unc2 = dat2.uncertainty
+
+            # take the flags and header from the first data object
+            self.flags = dat1.flags
+            self.header = dat1.header
+
+        self.check_attrs()
 
     def phase_diff(self,win,step,Rcoarse=None):
         """
@@ -249,3 +386,26 @@ class ApresDiff():
             raise ValueError('Bed pick has too low coherence.')
 
         self.bed = np.array([bed_samp,bed_range,bed_coherence,bed_power])
+
+
+    def check_attrs(self):
+        """Check if required attributes exist.
+
+        This is largely for development only; loaders should generally call this method last,
+        so that they can confirm that they have defined the necessary attributes.
+
+        Raises
+        ------
+        ImpdarError
+            If any required attribute is None or any optional attribute is fully absent"""
+        for attr in self.attrs_guaranteed:
+            if not hasattr(self, attr):
+                raise ImpdarError('{:s} is missing. \
+                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+            if getattr(self, attr) is None:
+                raise ImpdarError('{:s} is None. \
+                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+
+        if not hasattr(self, 'data_dtype') or self.data_dtype is None:
+            self.data_dtype = self.data1.dtype
+        return

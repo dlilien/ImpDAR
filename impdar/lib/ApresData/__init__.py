@@ -178,10 +178,10 @@ class ApresData(object):
         for attr in self.attrs_guaranteed:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
-                    It appears that this is an ill-defined RadarData object'.format(attr))
+                    It appears that this is an ill-defined ApresData object'.format(attr))
             if getattr(self, attr) is None:
                 raise ImpdarError('{:s} is None. \
-                    It appears that this is an ill-defined RadarData object'.format(attr))
+                    It appears that this is an ill-defined ApresData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype

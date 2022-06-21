@@ -16,6 +16,7 @@ import argparse
 
 from impdar.lib.ApresData import FILETYPE_OPTIONS
 from impdar.lib.ApresData import load_apres
+from impdar.lib.ApresData._ApresDataDifferencing import ApresDiff
 
 from impdar.lib import plot
 
@@ -66,28 +67,36 @@ def _get_args():
                                     the noise phasor will be calculated')
     _add_def_args(parser_unc)
 
-    # Full Differencing
-    parser_diff = _add_procparser(subparsers,
-                                  'diff',
+    # Phase Differencing
+    parser_diffload = _add_procparser(subparsers,
+                                    'diffload',
+                                    'create an ApresDiff object',
+                                    lambda x: x,
+                                    defname='diffload')
+    _add_def_args(parser_diffload)
+
+    # Full Difference Processing
+    parser_diffproc = _add_procparser(subparsers,
+                                  'diffproc',
                                   'create an ApresDiff object and then execuate \
                                         the full differencing processing flow',
                                   full_differencing)
-    parser_diff.add_argument('diff_file',
-                             type=str,
-                             help='file name for Apres object which \
-                                    will be differenced against')
-    _add_def_args(parser_diff)
+    _add_def_args(parser_diffproc)
 
     # Phase Differencing
     parser_pdiff = _add_procparser(subparsers,
                                   'pdiff',
-                                  'create an ApresDiff object',
+                                  'unwrap the differenced phase profile \
+                                       from top to bottom',
                                   phase_differencing)
-    parser_pdiff.add_argument('diff_file',
-                             type=str,
-                             help='file name for Apres object which \
-                                    will be differenced against')
+    parser_pdiff.add_argument('-window',
+                             type=int,
+                              help='window size over which the cross correlation is done')
+    parser_pdiff.add_argument('-step',
+                             type=int,
+                              help='step size in samples for the moving window')
     _add_def_args(parser_pdiff)
+
 
     # Phase Unwrap
     parser_unwrap = _add_procparser(subparsers,
@@ -171,10 +180,16 @@ def main():
     elif ext in ['DAT','dat']:
         apres_data = load_apres.load_apres(args.fns)
     elif ext in ['mat','h5']:
-        apres_data = load_apres.load_apres_single_file(args.fns[0])
+        try:
+            apres_data = load_apres.load_apres_single_file(args.fns[0])
+        except:
+            apres_data = load_apres.load_apres_single_file(args.fns[0])
+            #apres_data = ApresDiff(args.fns[0])
 
     if args.name == 'load':
         pass
+    elif args.name == 'diffload':
+        apres_data = ApresDiff(args.fns[0],args.fns[1])
     else:
         args.func(apres_data, **vars(args))
 
@@ -212,17 +227,17 @@ def uncertainty(dat,noise_floor=3000, **kwargs):
     dat.phase_uncertainty(noise_floor)
 
 
-def full_differencing(dat, diff_names, win=20, step=20,
+def full_differencing(diffdat, diff_names, win=20, step=20,
                       strain_window=(200,1000), w_surf=-0.15, **kwargs):
-    diffdat = ApresDiff(diff_names)
+    diffdat.phase_diff(win,step)
     diffdat.phase_uncertainty(win,step)
-    diffdat.phase_unwrap(win=20,thresh=.95)
+    diffdat.phase_unwrap(win,thresh)
     diffdat.range_diff()
     dat.strain_rate(strain_window=strain_window,w_surf=w_surf)
 
 
-def phase_differencing(dat, diff_names, **kwargs):
-    diffdat = ApresDiff(diff_names)
+def phase_differencing(diffdat, win=20, step=20, **kwargs):
+    diffdat.phase_diff(win,step)
 
 
 def unwrap(diffdat,win=20,thresh=.95, **kwargs):

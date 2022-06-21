@@ -434,3 +434,4 @@ def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
     apres_data.chirp_time = apres_data.decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
     apres_data.check_attrs()
     return apres_data
+
