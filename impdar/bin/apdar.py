@@ -67,7 +67,7 @@ def _get_args():
                                     the noise phasor will be calculated')
     _add_def_args(parser_unc)
 
-    # Phase Differencing
+    # Load Differencing Object from two impdar acquisitions
     parser_diffload = _add_procparser(subparsers,
                                     'diffload',
                                     'create an ApresDiff object',
@@ -80,7 +80,24 @@ def _get_args():
                                   'diffproc',
                                   'create an ApresDiff object and then execuate \
                                         the full differencing processing flow',
-                                  full_differencing)
+                                  full_differencing,
+                                      'diffproc')
+    parser_diffproc.add_argument('-window',
+                             type=int,
+                              help='window size over which the cross correlation is done')
+    parser_diffproc.add_argument('-step',
+                             type=int,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-thresh',
+                             type=int,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-strain_window',
+                             type=tuple,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-w_surf',
+                             type=float,
+                              help='surface vertical velocity (ice equivalent accumulation rate)')
+    parser_diffproc.set_defaults(window=20, step=20,thresh=0.95,strain_window=(200,1000),w_surf=-0.15)
     _add_def_args(parser_diffproc)
 
     # Phase Differencing
@@ -95,8 +112,8 @@ def _get_args():
     parser_pdiff.add_argument('-step',
                              type=int,
                               help='step size in samples for the moving window')
+    parser_pdiff.set_defaults(window=20, step=20)
     _add_def_args(parser_pdiff)
-
 
     # Phase Unwrap
     parser_unwrap = _add_procparser(subparsers,
@@ -136,8 +153,6 @@ def _get_args():
     parser_plotdiff.add_argument('-yd', action='store_true',
                              help='Plot the depth rather than travel time')
     _add_def_args(parser_plotdiff)
-
-
 
     return parser
 
@@ -183,8 +198,7 @@ def main():
         try:
             apres_data = load_apres.load_apres_single_file(args.fns[0])
         except:
-            apres_data = load_apres.load_apres_single_file(args.fns[0])
-            #apres_data = ApresDiff(args.fns[0])
+            apres_data = ApresDiff(args.fns[0])
 
     if args.name == 'load':
         pass
@@ -227,13 +241,13 @@ def uncertainty(dat,noise_floor=3000, **kwargs):
     dat.phase_uncertainty(noise_floor)
 
 
-def full_differencing(diffdat, diff_names, win=20, step=20,
+def full_differencing(diffdat, win=20, step=20, thresh=0.95,
                       strain_window=(200,1000), w_surf=-0.15, **kwargs):
     diffdat.phase_diff(win,step)
-    diffdat.phase_uncertainty(win,step)
     diffdat.phase_unwrap(win,thresh)
     diffdat.range_diff()
-    dat.strain_rate(strain_window=strain_window,w_surf=w_surf)
+    diffdat.strain_rate(strain_window=strain_window,w_surf=w_surf)
+    diffdat.bed_pick()
 
 
 def phase_differencing(diffdat, win=20, step=20, **kwargs):
@@ -253,8 +267,9 @@ def plot_single(dat, s=False, o=None, o_fmt='png',
     """Plot the return power of a particular layer."""
     plot.plot_apres(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
 
-def plot_differenced(fns=None, layer=None, s=False, o=None, o_fmt='png', **kwargs):
-    dat.phase_uncertainty()
+def plot_differenced(dat, s=False, o=None, o_fmt='png',
+                     dpi=300, **kwargs):
+    plot.plot_apres_diff(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
 
 
 if __name__ == '__main__':

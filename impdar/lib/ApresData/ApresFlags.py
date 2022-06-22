@@ -31,7 +31,7 @@ class ApresFlags():
     def __init__(self):
         self.file_read_code = None
         self.range = 0
-        self.stack = 1
+        self.stack = 0
         self.uncertainty = False
         self.phase_diff = False
         self.unwrap = False

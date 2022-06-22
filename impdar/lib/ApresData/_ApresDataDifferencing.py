@@ -19,7 +19,7 @@ May 20 2022
 """
 
 import os
-from . import ApresData
+from . import ApresData, ApresFlags, ApresHeader
 from ._ApresDataProcessing import phase2range
 import numpy as np
 from scipy.io import loadmat
@@ -35,7 +35,7 @@ class ApresDiff():
     This base version's __init__ takes two filenames of .mat files in the old StODeep format to load.
     """
     #: Attributes that every ApresData object should have and should not be None.
-    attrs_guaranteed = ['data1',
+    attrs_guaranteed = ['data',
                         'data2',
                         'Rcoarse',
                         'fn1',
@@ -72,9 +72,7 @@ class ApresDiff():
             # Write these out so we can document them
             # Very basics
             self.snum = None  #: int number of samples per chirp
-            self.cnum = None  #: int, the number of chirps in a burst
-            self.bnum = None  #: int, the number of bursts
-            self.data1 = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.data = None  #: np.ndarray(snum x tnum) of the actual return power
             self.data2 = None  #: np.ndarray(snum x tnum) of the actual return power
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
@@ -82,13 +80,13 @@ class ApresDiff():
             #: np.ndarray(tnum,) of the acquisition time of each trace
             #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
             #: for convenience, use the `datetime` attribute to access a python version of the day
-            self.decday1 = None
+            self.decday = None
             self.decday2 = None
             #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
-            self.lat1 = None
+            self.lat = None
             self.lat2 = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
-            self.long1 = None
+            self.long = None
             self.long2 = None
 
             # Sample-wise attributes
@@ -96,13 +94,13 @@ class ApresDiff():
             self.Rcoarse = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
-            self.x_coord1 = None
+            self.x_coord = None
             self.x_coord2 = None
             #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
-            self.y_coord1 = None
+            self.y_coord = None
             self.y_coord2 = None
             #: np.ndarray(tnum,) Optional. Elevation along the profile.
-            self.elev1 = None
+            self.elev = None
             self.elev2 = None
 
             # Special attributes
@@ -141,7 +139,7 @@ class ApresDiff():
                 for attr in self.attrs_guaranteed:
                     if mat[attr].shape == (1, 1):
                         setattr(self, attr, mat[attr][0][0])
-                    elif (mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1) and attr not in ['dat1','dat2']:
+                    elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
                         setattr(self, attr, mat[attr].flatten())
                     else:
                         setattr(self, attr, mat[attr])
@@ -156,7 +154,7 @@ class ApresDiff():
                             setattr(self, attr, mat[attr])
                     else:
                         setattr(self, attr, None)
-                self.data_dtype = self.dat1.dtype
+                self.data_dtype = self.data.dtype
                 self.flags = ApresFlags()
                 self.flags.from_matlab(mat['flags'])
                 self.header = ApresHeader()
@@ -173,11 +171,12 @@ class ApresDiff():
                 dat2 = ApresData(dat2)
             self.fn1 = dat1.fn
             self.fn2 = dat2.fn
-            self.fn2 = dat2.fn
             self.fn = self.fn1+'_diff_'+self.fn2
 
             if dat1.flags.range == 0 or dat2.flags.range == 0:
                 raise TypeError('The range filter has not been executed on this data class, do that before proceeding.')
+            if dat1.flags.stack == 0 or dat2.flags.stack == 0:
+                raise TypeError('The stacking filter has not been executed on this data class, do that before proceeding.')
 
             # check that the two data objects are comparable
             if np.shape(dat1.data) != np.shape(dat2.data):
@@ -186,8 +185,8 @@ class ApresDiff():
                 raise ValueError('Range vector should be the same for both acquisitions')
 
             # instantiate the differencing class
-            self.data1 = dat1.data
-            self.data2 = dat2.data
+            self.data = dat1.data[0][0]
+            self.data2 = dat2.data[0][0]
             self.Rcoarse = dat1.Rcoarse
 
             # if uncertainties were calculated, bring those in too
@@ -219,14 +218,14 @@ class ApresDiff():
         """
 
         # Fill a depth array which will be more sparse than the full Rcoarse vector
-        idxs = np.arange(win//2,(len(self.data1)-win//2),step)
+        idxs = np.arange(win//2,(len(self.data)-win//2),step)
         if Rcoarse is not None:
             self.ds = Rcoarse[idxs]
         else:
             self.ds = self.Rcoarse[idxs]
 
         # Create data and coherence vectors
-        acq1 = self.data1
+        acq1 = self.data
         acq2 = self.data2
         self.co = np.empty_like(self.ds).astype(complex)
         for i,idx in enumerate(idxs):
@@ -308,7 +307,7 @@ class ApresDiff():
             # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
             # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
             r_uncertainty = phase2range(self.unc1,self.header.lambdac) + phase2range(self.unc2,self.header.lambdac)
-            idxs = np.arange(win//2,(len(self.data1)-win//2),step)
+            idxs = np.arange(win//2,(len(self.data)-win//2),step)
             self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
 
 
@@ -330,12 +329,12 @@ class ApresDiff():
         if not hasattr(self,'w'):
             raise ValueError("Get the vertical velocity profile first with 'range_diff()'.")
 
-        print('Calculating vertical strain rate over range from %s to %s'%strain_window)
+        print('Calculating vertical strain rate over range from %s to %s meters.'%strain_window)
         idx = np.logical_and(self.ds>strain_window[0],self.ds<strain_window[1])
         slope, intercept, r_value, p_value, std_err = linregress(self.ds[idx],self.w[idx])
         self.eps_zz = slope
         self.w0 = intercept
-        print('Vertical strain rate:',self.eps_zz)
+        print('Vertical strain rate (yr-1):',self.eps_zz)
         print('r_squared:',r_value**2.)
 
         self.w += w_surf - self.w0
@@ -362,7 +361,7 @@ class ApresDiff():
             Width of the power peak
         """
 
-        P1 = 10.*np.log10(self.data1**2.)
+        P1 = 10.*np.log10(self.data**2.)
         mfilt1 = medfilt(P1.astype(float),filt_kernel)
         peaks1 = find_peaks(mfilt1,prominence=prominence,width=peak_width)[0]
         bed_idx1 = max(peaks1)
@@ -407,5 +406,5 @@ class ApresDiff():
                     It appears that this is an ill-defined ApresDiff object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
-            self.data_dtype = self.data1.dtype
+            self.data_dtype = self.data.dtype
         return

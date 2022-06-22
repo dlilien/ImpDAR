@@ -776,6 +776,50 @@ def plot_apres(dat, s=False, facecolor = 'w', linecolor = 'k', linewidth = 1., l
         plt.show()
 
 
+def plot_apres_diff(diffdat, s=False, facecolor = 'w',
+                    markercolor = 'k', markersize = 5., markerstyle = '.', linestyle='',
+                    ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot power vs depth or twtt in a trace.
+
+    Parameters
+    ----------
+    diffdat: impdar.lib._ApresDataDifferencing.ApresDiff
+        The ApresDiff object to plot.
+    """
+
+    if diffdat.ds is None:
+        raise ValueError('Do the phase difference processing before plotting.')
+    else:
+        fig, axs = plt.subplots(1,3, figsize=(8, 6),facecolor=facecolor)
+        for ax in axs:
+            ax.invert_yaxis()
+        axs[0].plot(abs(diffdat.co), diffdat.ds,
+                    marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+        axs[0].set_ylabel('Range (m)')
+        axs[0].set_xlabel('')
+        axs[0].set_title('Coherence')
+        axs[1].plot(np.angle(diffdat.co), diffdat.ds,
+                    marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+        axs[1].tick_params(labelleft=False)
+        axs[1].set_xlabel('rad')
+        axs[1].set_xticks([-np.pi,0,np.pi])
+        axs[1].set_xticklabels(['-π','0','π'])
+        axs[1].set_title('Phase Offset')
+        if diffdat.w is not None:
+            axs[2].plot(diffdat.w,diffdat.ds,
+                        marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+        axs[2].tick_params(labelleft=False)
+        axs[2].set_xlabel('m/yr')
+        axs[2].set_title('Vertical Velocity')
+
+    fig.canvas.set_window_title(diffdat.fn)
+    if s:
+        fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
+
+
 def get_offset(dat, flatten_layer=None):
     if flatten_layer is None:
         offset = np.zeros((dat.data.shape[1]))
