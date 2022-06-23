@@ -168,11 +168,12 @@ class ApresDiff():
                 raise ImportError('ApresDiff can only load .h5, .mat, or 2 data objects in parallel.')
 
         else:
-            if type(fn) == str and type(dat2) == str:
-                dat1 = ApresData(fn)
+            dat1 = fn
+            if type(dat1) == str and type(dat2) == str:
+                dat1 = ApresData(dat1)
                 dat2 = ApresData(dat2)
-            self.fn1 = dat1.fn
-            self.fn2 = dat2.fn
+            self.fn1 = dat1.header.fn
+            self.fn2 = dat2.header.fn
             self.fn = self.fn1+'_diff_'+self.fn2
 
             if dat1.flags.range == 0 or dat2.flags.range == 0:
@@ -220,7 +221,7 @@ class ApresDiff():
         """
 
         # Fill a depth array which will be more sparse than the full Rcoarse vector
-        idxs = np.arange(win//2,(len(self.data)-win//2),step)
+        idxs = np.arange(win//2,(len(self.data)-win//2),step).astype(int)
         if Rcoarse is not None:
             self.ds = Rcoarse[idxs]
         else:
@@ -289,7 +290,7 @@ class ApresDiff():
         win, step = self.flags.phase_diff
 
         # convert the phase offset to a distance vector
-        self.w = phase2range(self.phi,
+        self.w = phase2range(self,self.phi,
                 self.header.lambdac,
                 self.ds,
                 self.header.chirp_grad,
@@ -299,7 +300,7 @@ class ApresDiff():
             # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
             sigma = (1./abs(self.co))*np.sqrt((1.-abs(self.co)**2.)/(2.*win))
             # convert the phase offset to a distance vector
-            self.w_err = phase2range(sigma,
+            self.w_err = phase2range(self,sigma,
                     self.header.lambdac,
                     self.ds,
                     self.header.chirp_grad,
@@ -308,7 +309,7 @@ class ApresDiff():
         elif uncertainty == 'noise_phasor':
             # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
             # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
-            r_uncertainty = phase2range(self.unc1,self.header.lambdac) + phase2range(self.unc2,self.header.lambdac)
+            r_uncertainty = phase2range(self,self.unc1,self.header.lambdac) + phase2range(self,self.unc2,self.header.lambdac)
             idxs = np.arange(win//2,(len(self.data)-win//2),step)
             self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
 

@@ -725,7 +725,7 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     return fig, ax
 
 
-def plot_apres(dat, s=False, facecolor = 'w', linecolor = 'k', linewidth = 1., linestyle = '-',
+def plot_apres(dat, p=2, s=False, facecolor = 'w', linecolor = 'k', linewidth = 1., linestyle = '-',
                ftype = 'png', dpi = 300, *args, **kwargs):
     """Plot power vs depth or twtt in a trace.
 
