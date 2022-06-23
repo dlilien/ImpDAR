@@ -71,7 +71,6 @@ class TestProcessing(unittest.TestCase):
         diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.bed_pick()
-        print(np.shape(diffdat.bed))
         self.assertTrue(np.shape(diffdat.bed)==(4,))
 
 if __name__ == '__main__':

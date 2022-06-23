@@ -189,28 +189,17 @@ def main():
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
 
-    ext = os.path.splitext(args.fns[0])[-1][1:]
-    if ext not in FILETYPE_OPTIONS:
-        raise ValueError('Can only load files of types:',FILETYPE_OPTIONS)
-    elif ext in ['DAT','dat']:
-        apres_data = load_apres.load_apres(args.fns)
-    elif ext in ['mat','h5']:
-        try:
-            apres_data = load_apres.load_apres_single_file(args.fns[0])
-        except:
-            apres_data = ApresDiff(args.fns[0])
-
-    if args.name == 'load':
-        pass
-    elif args.name == 'diffload':
+    if args.name == 'diffload':
         apres_data = ApresDiff(args.fns[0],args.fns[1])
     else:
-        args.func(apres_data, **vars(args))
+        apres_data = load_apres.load_apres(args.fns)
 
     if args.name == 'load':
         name = 'raw'
+        pass
     else:
         name = args.name
+        args.func(apres_data, **vars(args))
 
     if args.o is not None:
         out_fn = args.o

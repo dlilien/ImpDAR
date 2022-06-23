@@ -24,30 +24,13 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class TestMain(unittest.TestCase):
 
-    @patch('impdar.bin.apdar.load')
+    @patch('impdar.bin.apdar.load_apres.load_apres')
     def test_load(self, load_patch):
-        apdar.sys.argv = ['dummy', 'load', 'mat', 'fn.mat']
+        apdar.sys.argv = ['dummy', 'load', './input_data/apres_1.DAT']
         apdar.main()
         self.assertTrue(load_patch.called)
         aca, kwca = load_patch.call_args
-        self.assertEqual(kwca['fns_in'], ['fn.mat'])
-        self.assertEqual(kwca['filetype'], 'mat')
-
-        argparse_mock = MagicMock()
-        with patch('argparse.ArgumentParser._print_message', argparse_mock):
-            with self.assertRaises(SystemExit):
-                apdar.sys.argv = ['dummy', 'load', 'notanintype', 'fn.mat']
-                apdar.main()
-
-    @patch('impdar.bin.apdar.process')
-    def test_process(self, process_patch):
-        apdar.sys.argv = ['dummy', 'proc', '-rev', 'fn.mat']
-        apdar.main()
-        self.assertTrue(process_patch.called)
-        aca, kwca = process_patch.call_args
-        self.assertEqual(kwca['fn'], ['fn.mat'])
-        self.assertEqual(kwca['rev'], True)
-
+        self.assertEqual(aca[0], ['./input_data/apres_1.DAT'])
 
 if __name__ == '__main__':
     unittest.main()
