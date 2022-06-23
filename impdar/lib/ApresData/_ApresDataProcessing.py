@@ -116,7 +116,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     self.data_dtype = self.data.dtype
 
     # precise range measurement
-    self.Rfine = phase2range(np.angle(self.data),self.header.lambdac,
+    self.Rfine = phase2range(self,np.angle(self.data),self.header.lambdac,
             np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
             self.header.chirp_grad,self.header.ci)
 
@@ -161,7 +161,7 @@ def phase_uncertainty(self,bed_range):
     self.flags.uncertainty = True
 
 
-def phase2range(phi,lambdac=None,rc=None,K=None,ci=None):
+def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
     """
     Convert phase difference to range for FMCW radar
 

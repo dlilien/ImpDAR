@@ -19,8 +19,10 @@ May 20 2022
 """
 
 import os
+import h5py
 from . import ApresData, ApresFlags, ApresHeader
 from ._ApresDataProcessing import phase2range
+from ..ImpdarError import ImpdarError
 import numpy as np
 from scipy.io import loadmat
 from scipy.stats import linregress
