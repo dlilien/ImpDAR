@@ -67,7 +67,7 @@ class TestProcessing(unittest.TestCase):
         diffdat.range_diff()
         diffdat.strain_rate((200,1000))
 
-    def test_bed_pick(self):
+    def test_pick_bed(self):
         diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.bed_pick()

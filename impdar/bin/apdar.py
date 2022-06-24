@@ -192,7 +192,11 @@ def main():
     if args.name == 'diffload':
         apres_data = ApresDiff(args.fns[0],args.fns[1])
     else:
-        apres_data = load_apres.load_apres(args.fns)
+        try:
+            apres_data = load_apres.load_apres(args.fns)
+        except:
+            apres_data = ApresDiff(args.fns[0])
+
 
     if args.name == 'load':
         name = 'raw'
