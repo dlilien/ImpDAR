@@ -33,13 +33,31 @@ def _get_args():
     _add_def_args(parser_load)
 
     # Initial range conversion (pulse compression)
+    parser_fullproc = _add_procparser(subparsers,
+                                  'proc',
+                                  'full processing flow on the apres data object',
+                                  full_processing,
+                                  'proc')
+    parser_fullproc.add_argument('-max_range',
+                             type=int,
+                             help='maximum range for the pulse compression')
+    parser_fullproc.add_argument('-num_chirps',
+                             type=int,
+                              help='number of chirps to stack (default: stack all)')
+    parser_fullproc.add_argument('noise_bed_range',
+                             type=int,
+                              help='bed range under which \
+                                    the noise phasor will be calculated')
+    _add_def_args(parser_fullproc)
+
+    # Initial range conversion (pulse compression)
     parser_range = _add_procparser(subparsers,
                                   'range',
                                   'convert the recieved waveform to a \
                                         range-amplitude array',
                                   pulse_compression,
-                                   'range')
-    parser_range.add_argument('max_range',
+                                  'range')
+    parser_range.add_argument('-max_range',
                              type=int,
                              help='maximum range for the pulse compression')
     _add_def_args(parser_range)
@@ -49,8 +67,8 @@ def _get_args():
                                   'stack',
                                   'stack apres chirps into a single array',
                                   stack,
-                                   'stacked')
-    parser_stack.add_argument('num_chirps',
+                                  'stacked')
+    parser_stack.add_argument('-num_chirps',
                              type=int,
                               help='number of chirps to stack (default: stack all)')
     _add_def_args(parser_stack)
@@ -60,10 +78,10 @@ def _get_args():
                                   'uncertainty',
                                   'calculate the phase uncertainty for all samples',
                                   uncertainty,
-                                 'uncertainty')
-    parser_unc.add_argument('noise_floor',
+                                  'uncertainty')
+    parser_unc.add_argument('-noise_bed_range',
                              type=int,
-                              help='range of the noise floor under which \
+                              help='bed range under which \
                                     the noise phasor will be calculated')
     _add_def_args(parser_unc)
 
@@ -77,11 +95,11 @@ def _get_args():
 
     # Full Difference Processing
     parser_diffproc = _add_procparser(subparsers,
-                                  'diffproc',
-                                  'create an ApresDiff object and then execuate \
+                                    'diffproc',
+                                    'create an ApresDiff object and then execuate \
                                         the full differencing processing flow',
-                                  full_differencing,
-                                      'diffproc')
+                                    full_differencing,
+                                    'diffproc')
     parser_diffproc.add_argument('-window',
                              type=int,
                               help='window size over which the cross correlation is done')
@@ -216,22 +234,33 @@ def main():
         apres_data.save(out_fn)
 
 
+def full_processing(dat, p=2, max_range=4000, num_chirps=0, noise_bed_range=3000, **kwargs):
+    """Full processing flow for ApresData object.
+    Range conversion, stacking, uncertainty."""
+    dat.apres_range(p,max_range)
+    if num_chirps == 0:
+        dat.stacking()
+    else:
+        dat.stacking(num_chirps)
+    dat.phase_uncertainty(noise_bed_range)
+
+
 def pulse_compression(dat, p=2, max_range=4000, **kwargs):
-    """Set range gain."""
+    """Range conversion."""
     dat.apres_range(p,max_range)
 
 
 def stack(dat, num_chirps=0, **kwargs):
-    """Set range gain."""
+    """Stack chirps."""
     if num_chirps == 0:
         dat.stacking()
     else:
         dat.stacking(num_chirps)
 
 
-def uncertainty(dat,noise_floor=3000, **kwargs):
+def uncertainty(dat,noise_bed_range=3000, **kwargs):
     """Calculate uncertainty."""
-    dat.phase_uncertainty(noise_floor)
+    dat.phase_uncertainty(noise_bed_range)
 
 
 def full_differencing(diffdat, win=20, step=20, thresh=0.95,
