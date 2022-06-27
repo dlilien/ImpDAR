@@ -24,6 +24,8 @@ def save(self, fn):
 
     Parameters
     ----------
+    self: class
+        ApresData object
     fn: str
         Filename. Extension can be h5 or legacy mat.
     """
@@ -38,10 +40,12 @@ def save(self, fn):
 
 
 def save_mat(self, fn):
-    """Save the radar data
+    """Save the radar data as an ImpDAR .mat file
 
     Parameters
     ----------
+    self: class
+        ApresData object
     fn: str
         Filename. Should have a .mat extension
     """
@@ -85,14 +89,17 @@ def save_mat(self, fn):
                 mat['data'] = mat['data'].astype(np.float64)
             else:
                 mat['data'] = mat['data'].astype(self.data_dtype)
+
     savemat(fn, mat)
 
 
-def save_h5(self, fn, groupname='dat'):
-    """Save the radar data
+def save_h5(self, fn):
+    """Save the radar data as an h5 file
 
     Parameters
     ----------
+    self: class
+        ApresData object
     fn: str
         Filename. Should have a .h5 extension
     """
@@ -105,6 +112,8 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
 
     Parameters
     ----------
+    self: class
+        ApresData object
     h5_file_descriptor: open hdf5 file
         The file object to write to. Can also be a group (if data should be a subgroup).
     groupname: str, optional

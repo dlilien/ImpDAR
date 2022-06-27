@@ -97,7 +97,7 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
                 this_time = clock();
                 el_t = (this_time - iter_start) / CLOCKS_PER_SEC;
                 time_remaining = (tnum - j) * el_t / j;
-                PySys_WriteStdout("Est. time remaining: %4.2f sec", time_remaining);
+                PySys_WriteStdout("\nEst. time remaining: %4.2f sec", time_remaining);
             }
         }
     }

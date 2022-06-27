@@ -9,9 +9,9 @@
 """
 Flags to keep track of processing steps
 """
+
 import numpy as np
 import h5py
-
 
 class ApresFlags():
     """Flags that indicate the processing that has been used on the data.
@@ -21,16 +21,25 @@ class ApresFlags():
     Attributes
     ----------
     file_read_code
-    range
-    stack
-    """
+    range: float
+        max range
+    stack: int
+        number of chirps stacked
+     """
 
     def __init__(self):
-        self.file_read_code = False
-        self.range = np.zeros((2,))
-        self.stack = np.zeros((2,))
-        self.attrs = ['file_read_code', 'range', 'stack']
-        self.attr_dims = [None, 2, 2]
+        self.file_read_code = None
+        self.range = 0
+        self.stack = 0
+        self.uncertainty = False
+        self.phase_diff = False
+        self.unwrap = False
+        self.strain = np.zeros((2,))
+        self.bed_pick = False
+        self.attrs = ['file_read_code', 'range', 'stack', 'uncertainty',
+                      'phase_diff', 'unwrap', 'strain', 'bed_pick']
+        self.attr_dims = [None, None, None, None,
+                          None, None, 2, None]
 
     def write_h5(self, grp):
         """Write to a subgroup in hdf5 file

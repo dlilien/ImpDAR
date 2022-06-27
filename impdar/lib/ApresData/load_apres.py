@@ -21,8 +21,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 23 2019
-
 """
+
 import os
 
 import numpy as np
@@ -32,8 +32,6 @@ import datetime
 import re
 from . import ApresData
 from ..ImpdarError import ImpdarError
-
-CHIRP_INTERVAL = 1.6384/(24.*3600.)
 
 
 def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
@@ -46,7 +44,7 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
 
     Returns
     -------
-    ApresData
+    out
         A single, concatenated output.
     """
 
@@ -60,9 +58,9 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
 
     from copy import deepcopy
     out = deepcopy(apres_data[0])
+    ext = os.path.splitext(fns_apres[0])[1]
 
-    if len(apres_data) > 1:
-
+    if len(apres_data)>1 or ext in ['.DAT','.dat']:
         for dat in apres_data[1:]:
             if out.snum != dat.snum:
                 raise ValueError('Need the same number of vertical samples in each file')
@@ -73,15 +71,18 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
             if not np.all(out.frequencies == dat.frequencies):
                 raise ValueError('Need matching frequency vectors')
 
-    out.data = np.vstack([[dat.data] for dat in apres_data])
-    out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
-    out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
-    out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
-    out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
-    out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
-    out.battery_voltage = np.hstack(
-        [dat.battery_voltage for dat in apres_data])
-    out.bnum = np.shape(out.data)[0]
+        out.data = np.vstack([[dat.data] for dat in apres_data])
+        out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
+        out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
+        out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
+        out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
+        out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
+        out.battery_voltage = np.hstack(
+            [dat.battery_voltage for dat in apres_data])
+        out.bnum = np.shape(out.data)[0]
+
+    else:
+        out = deepcopy(apres_data[0])
 
     return out
 
@@ -99,6 +100,12 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
         number of bursts to load
     fs: int
         sampling frequency
+
+    Returns
+    ---------
+    ApresData: class
+        data object
+
 
     ### Original Matlab Notes ###
 
@@ -134,6 +141,10 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
 
     elif ext == '.h5':
         return ApresData(fn_apres)
+
+    elif ext not in ['.dat','.DAT']:
+        raise ValueError('Expecting a certain filetype; either .mat, .h5, .dat, .DAT')
+
     else:
         # Load data and reshape array
         apres_data = ApresData(None)
@@ -167,13 +178,12 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             apres_data.chirp_att = np.zeros(
                 (apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
-            # days TODO: why is this assigned directly?
-            chirp_interval = 1.6384/(24.*3600.)
+            apres_data.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]
-                apres_data.chirp_time[chirp] = apres_data.decday + chirp_interval*(chirp-1)
+                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.chirp_interval*chirp
             apres_data.data = data_load
 
     # Create time and frequency stamp for samples
@@ -203,8 +213,13 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     burst_pointer: int
         where to start reading the file for bursts
 
-    Output
+    Returns
     ---------
+    start_ind: int
+        data index for given burst
+    end_ind: int
+        data index for given burst
+
 
     ### Original Matlab Script Notes ###
     Read FMCW data file from after Oct 2014 (RMB2b + VAB Iss C, SW Issue >= 101)
@@ -314,8 +329,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     else:
         time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
-        day_offset = time_stamp - timezero
-        self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 377. # Matlab compatable
+        day_offset = self.time_stamp - timezero
+        self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
 
     self.temperature1 = np.array(output[1]).astype(float)
     self.temperature2 = np.array(output[2]).astype(float)
@@ -334,9 +349,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
         self.bnum = burst_count - 1
-        raise TypeError('Burst {:d} not found in file {:s}'.format(str(self.bnum), self.header.fn))
+        raise ValueError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
     else:
-        # TODO: Check the other readers for average == 1 or average == 2
         if self.average == 2:
             self.data = np.fromfile(
                 fid, dtype='uint32', count=self.cnum*self.snum)
@@ -373,7 +387,22 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     return start_ind, end_ind
 
 
-def load_BAS_mat(fn):
+def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
+    """Load apres data from a mat file saved by software from the British Antarctic Survey.
+
+    Parameters
+    ----------
+    fn: str
+        Matlab file name for ApresData
+    chirp_interval: float
+        set by default
+
+    Returns
+    -------
+    apres_data: class
+        ImpDAR data object
+    """
+
     mat = loadmat(fn)
 
     apres_data = ApresData(None)
@@ -405,7 +434,8 @@ def load_BAS_mat(fn):
     apres_data.chirp_num = np.arange(apres_data.cnum) + 1
     apres_data.chirp_att = mat['vdat'][0]['chirpAtt'][0]
     apres_data.decday = mat['vdat'][0]['TimeStamp'][0][0][0]
-    apres_data.chirp_time = apres_data.decday + CHIRP_INTERVAL * np.arange(0.0, apres_data.cnum, 1.0)
+    apres_data.chirp_interval = chirp_interval
+    apres_data.chirp_time = apres_data.decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
 
     apres_data.data = mat['vdat'][0]['vif'][0]
     if len(apres_data.data.shape) == 2:
@@ -414,3 +444,4 @@ def load_BAS_mat(fn):
     apres_data.check_attrs()
 
     return apres_data
+

@@ -18,8 +18,8 @@ University of Washington
 Earth and Space Sciences
 
 Sept 24 2019
-
 """
+
 import os
 import datetime
 
@@ -32,6 +32,7 @@ from .QuadPolFlags import QuadPolFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
+FILETYPE_OPTIONS = ['DAT', 'dat', 'mat', 'h5']
 
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.
@@ -60,9 +61,10 @@ class ApresData(object):
                       'temperature1',
                       'temperature2',
                       'battery_voltage',
-                      'Rcoarse']
+                      'Rcoarse',
+                      'uncertainty']
 
-    from ._ApresDataProcessing import apres_range, phase_uncertainty, phase2range, coherence, range_diff, stacking
+    from ._ApresDataProcessing import apres_range, phase_uncertainty, stacking
     from ._ApresDataSaving import save
 
     # Now make some load/save methods that will work with the matlab format
@@ -138,7 +140,7 @@ class ApresData(object):
             for attr in self.attrs_guaranteed:
                 if mat[attr].shape == (1, 1):
                     setattr(self, attr, mat[attr][0][0])
-                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                elif (mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1) and attr != 'data':
                     setattr(self, attr, mat[attr].flatten())
                 else:
                     setattr(self, attr, mat[attr])
@@ -157,6 +159,7 @@ class ApresData(object):
             self.data_dtype = self.data.dtype
             self.flags = ApresFlags()
             self.flags.from_matlab(mat['flags'])
+            self.header = ApresHeader()
             self.header.from_matlab(mat['header'])
 
         self.fn = fn
@@ -195,6 +198,206 @@ class ApresData(object):
         return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
                          for dd in self.decday], dtype=np.datetime64)
 
+# ------------------------------------------------
+
+class ApresDiff():
+    """
+    Class for differencing between two Apres acquisitions.
+
+    We keep track of processing steps with the flags attribute.
+    This base version's __init__ takes two filenames of .mat files in the old StODeep format to load.
+    """
+    #: Attributes that every ApresData object should have and should not be None.
+    attrs_guaranteed = ['data',
+                        'data2',
+                        'Rcoarse',
+                        'fn1',
+                        'fn2',
+                        'fn']
+
+    #: Optional attributes that may be None without affecting processing.
+    #: These may not have existed in old StoDeep files that we are compatible with,
+    #: and they often cannot be set at the initial data load.
+    #: If they exist, they all have units of meters.
+    attrs_optional = ['unc1',
+                      'unc2',
+                      'ds',
+                      'co',
+                      'phi',
+                      'w',
+                      'w_err',
+                      'w_0',
+                      'eps_zz',
+                      'bed']
+
+    from ._ApresDataSaving import save
+
+    def __init__(self,fn,dat2=None):
+        """Initialize differencing fields
+
+        fn: class or string
+            Apres data object to load (if string should be an impdar apres file)
+        dat2: class or string
+            Apres data object to load (if string should be an impdar apres file)
+        """
+
+        if fn is None:
+            # Write these out so we can document them
+            # Very basics
+            self.snum = None  #: int number of samples per chirp
+            self.data = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.data2 = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.dt = None  #: float, The spacing between samples in travel time, in seconds
+
+            # Per-trace attributes
+            #: np.ndarray(tnum,) of the acquisition time of each trace
+            #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
+            #: for convenience, use the `datetime` attribute to access a python version of the day
+            self.decday = None
+            self.decday2 = None
+            #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
+            self.lat = None
+            self.lat2 = None
+            #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
+            self.long = None
+            self.long2 = None
+
+            # Sample-wise attributes
+            #: np.ndarray(snum,) The range for each sample, in m
+            self.Rcoarse = None
+
+            #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
+            self.x_coord = None
+            self.x_coord2 = None
+            #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
+            self.y_coord = None
+            self.y_coord2 = None
+            #: np.ndarray(tnum,) Optional. Elevation along the profile.
+            self.elev = None
+            self.elev2 = None
+
+            # Special attributes
+            #: impdar.lib.RadarFlags object containing information about the processing steps done.
+            self.flags = ApresFlags()
+            self.header = ApresHeader()
+
+            self.data_dtype = None
+            return
+
+        if dat2 is None:
+            if os.path.splitext(fn)[1] == '.h5':
+                with h5py.File(fn, 'r') as fin:
+                    grp = fin['dat']
+                    for attr in grp.keys():
+                        if attr in ['ApresFlags', 'ApresHeader']:
+                            continue
+                        val = grp[attr][:]
+                        if isinstance(val, h5py.Empty):
+                            val = None
+                        setattr(self, attr, val)
+                    for attr in grp.attrs.keys():
+                        val = grp.attrs[attr]
+                        if isinstance(val, h5py.Empty):
+                            val = None
+                        setattr(self, attr, val)
+                    self.flags = ApresFlags()
+                    self.header = ApresHeader()
+                    self.flags.read_h5(grp)
+                    self.header.read_h5(grp)
+                # Set the file name
+                self.fn = fn
+
+            elif os.path.splitext(fn)[1] == '.mat':
+                mat = loadmat(fn)
+                for attr in self.attrs_guaranteed:
+                    if mat[attr].shape == (1, 1):
+                        setattr(self, attr, mat[attr][0][0])
+                    elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                        setattr(self, attr, mat[attr].flatten())
+                    else:
+                        setattr(self, attr, mat[attr])
+                # We may have some additional variables
+                for attr in self.attrs_optional:
+                    if attr in mat:
+                        if mat[attr].shape == (1, 1):
+                            setattr(self, attr, mat[attr][0][0])
+                        elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                            setattr(self, attr, mat[attr].flatten())
+                        else:
+                            setattr(self, attr, mat[attr])
+                    else:
+                        setattr(self, attr, None)
+                self.data_dtype = self.data.dtype
+                self.flags = ApresFlags()
+                self.flags.from_matlab(mat['flags'])
+                self.header = ApresHeader()
+                self.header.from_matlab(mat['header'])
+                # Set the file name
+                self.fn = fn
+
+            else:
+                raise ImportError('ApresDiff can only load .h5, .mat, or 2 data objects in parallel.')
+
+        else:
+            dat1 = fn
+            if type(dat1) == str and type(dat2) == str:
+                dat1 = ApresData(dat1)
+                dat2 = ApresData(dat2)
+            self.fn1 = dat1.header.fn
+            self.fn2 = dat2.header.fn
+            self.fn = self.fn1+'_diff_'+self.fn2
+
+            if dat1.flags.range == 0 or dat2.flags.range == 0:
+                raise TypeError('The range filter has not been executed on this data class, do that before proceeding.')
+            if dat1.flags.stack == 0 or dat2.flags.stack == 0:
+                raise TypeError('The stacking filter has not been executed on this data class, do that before proceeding.')
+
+            # check that the two data objects are comparable
+            if np.shape(dat1.data) != np.shape(dat2.data):
+                raise TypeError('Acquisition inputs must be of the same shape.')
+            if not np.all(abs(dat1.Rcoarse - dat2.Rcoarse) < 1e04):
+                raise ValueError('Range vector should be the same for both acquisitions')
+
+            # instantiate the differencing class
+            self.data = dat1.data[0][0]
+            self.data2 = dat2.data[0][0]
+            self.Rcoarse = dat1.Rcoarse
+
+            # if uncertainties were calculated, bring those in too
+            if hasattr(dat1,'uncertainty'):
+                self.unc1 = dat1.uncertainty
+            if hasattr(dat2,'uncertainty'):
+                self.unc2 = dat2.uncertainty
+
+            # take the flags and header from the first data object
+            self.flags = dat1.flags
+            self.header = dat1.header
+
+        self.check_attrs()
+
+    def check_attrs(self):
+        """Check if required attributes exist.
+
+        This is largely for development only; loaders should generally call this method last,
+        so that they can confirm that they have defined the necessary attributes.
+
+        Raises
+        ------
+        ImpdarError
+            If any required attribute is None or any optional attribute is fully absent"""
+        for attr in self.attrs_guaranteed:
+            if not hasattr(self, attr):
+                raise ImpdarError('{:s} is missing. \
+                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+            if getattr(self, attr) is None:
+                raise ImpdarError('{:s} is None. \
+                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+
+        if not hasattr(self, 'data_dtype') or self.data_dtype is None:
+            self.data_dtype = self.data.dtype
+        return
+
+# ------------------------------------------------
 
 class QuadPolData(object):
     """A class that holds the relevant information for an quad-polarized ApRES acquisition.
@@ -309,6 +512,9 @@ class QuadPolData(object):
 
             self.flags = QuadPolFlags()
             self.flags.from_matlab(mat['flags'])
+            self.header = ApresHeader()
+            self.header.from_matlab(mat['header'])
+
         self.fn = fn
         self.check_attrs()
 
@@ -325,10 +531,10 @@ class QuadPolData(object):
         for attr in self.attrs_guaranteed:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
-                    It appears that this is an ill-defined RadarData object'.format(attr))
+                    It appears that this is an ill-defined ApresData object'.format(attr))
             if getattr(self, attr) is None:
                 raise ImpdarError('{:s} is None. \
-                    It appears that this is an ill-defined RadarData object'.format(attr))
+                    It appears that this is an ill-defined ApresData object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.shh.dtype

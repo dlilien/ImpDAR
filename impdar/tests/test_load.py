@@ -38,6 +38,9 @@ class TestLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             data = load.load('bad', os.path.join(THIS_DIR, 'input_data', 'small_data.bad'))
 
+    def test_loadtek(self):
+        data = load.load('tek', os.path.join(THIS_DIR, 'input_data', 'test_tek.DAT'))
+
     def test_load_and_exitmat(self):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), o=os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')))

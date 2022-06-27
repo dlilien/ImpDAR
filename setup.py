@@ -46,7 +46,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.4'
+    version = '1.1.5'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
@@ -54,6 +54,7 @@ if __name__ == '__main__':
                 'impdar.gui.ui',
                 'impdar.lib.load',
                 'impdar.lib.RadarData',
+                'impdar.lib.ApresData',
                 'impdar.lib.migrationlib']
 
     requires = ['numpy>1.12.0',
@@ -74,6 +75,8 @@ if __name__ == '__main__':
                          ext_modules=ext_modules,
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')
     except SystemExit:
         print('Failed to compile c-sources. Using pure python version')
@@ -87,4 +90,6 @@ if __name__ == '__main__':
                          entry_points={'console_scripts': console_scripts},
                          install_requires=requires,
                          packages=packages,
+                         long_description=open('README.md', 'r').read(),
+                         long_description_content_type='text/markdown',
                          test_suite='nose.collector')
