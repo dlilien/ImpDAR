@@ -327,7 +327,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
     else:
-        time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
+        self.time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = self.time_stamp - timezero
         self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable

@@ -22,7 +22,7 @@ import sys
 import time
 
 import numpy as np
-from ._ApresDataDifferencing import coherence
+from ._ApresDiffProcessing import coherence
 from scipy.signal import butter, filtfilt
 
 try:

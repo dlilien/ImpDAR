@@ -13,9 +13,9 @@ import os
 import sys
 import unittest
 import numpy as np
-from impdar.lib.ApresData import ApresData
+from impdar.lib.ApresData import ApresData, ApresDiff
 from impdar.lib.ApresData.load_apres import load_apres
-from impdar.lib.ApresData._ApresDataDifferencing import *
+from impdar.lib.ApresData._ApresDiffProcessing import *
 
 data_dummy = np.ones((500, 400))
 

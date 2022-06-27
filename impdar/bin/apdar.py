@@ -15,8 +15,7 @@ import os.path
 import argparse
 
 from impdar.lib.ApresData import FILETYPE_OPTIONS
-from impdar.lib.ApresData import load_apres
-from impdar.lib.ApresData._ApresDataDifferencing import ApresDiff
+from impdar.lib.ApresData import load_apres, ApresDiff
 
 from impdar.lib import plot
 

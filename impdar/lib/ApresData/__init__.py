@@ -230,6 +230,7 @@ class ApresDiff():
                       'eps_zz',
                       'bed']
 
+    from ._ApresDiffProcessing import phase_diff, phase_unwrap, range_diff, strain_rate, bed_pick
     from ._ApresDataSaving import save
 
     def __init__(self,fn,dat2=None):

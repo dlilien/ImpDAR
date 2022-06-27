@@ -61,7 +61,7 @@ def apres_range(self, p, max_range=4000, winfun='blackman'):
     Modified frequencies 10 April 2014
     """
 
-    if self.flags.range[0] != 0:
+    if self.flags.range != 0:
         raise TypeError('The range filter has already been done on these data.')
 
     # Processing settings
@@ -129,7 +129,7 @@ def apres_range(self, p, max_range=4000, winfun='blackman'):
     self.spec = self.spec[:, :, :n]
     self.snum = n
 
-    self.flags.range = np.array([1., max_range])
+    self.flags.range = max_range
 
 
 def phase_uncertainty(self, bed_range):
@@ -146,7 +146,7 @@ def phase_uncertainty(self, bed_range):
         Distance of the bed, so noise floor can be calculated beneath it
     """
 
-    if self.flags.range[0] == 0:
+    if self.flags.range == 0:
         raise TypeError('The range filter has not been executed on this data class, do that before the uncertainty calculation.')
 
     # Get measured phasor from the data class, and use the median magnitude for noise phasor
@@ -231,5 +231,5 @@ def stacking(self, num_chirps=None):
         self.bnum = 1
         self.cnum = 1
 
-    self.flags.stack = np.array([1,num_chirps])
+    self.flags.stack = num_chirps
 
