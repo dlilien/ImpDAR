@@ -31,3 +31,4 @@ Additional examples are provided showing :doc:`plotting <\plotting>` both via th
         migration
         plotting
         picking
+        apres

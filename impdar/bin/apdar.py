@@ -129,7 +129,8 @@ def _get_args():
                                   'pdiff',
                                   'unwrap the differenced phase profile \
                                        from top to bottom',
-                                  phase_differencing)
+                                  phase_differencing,
+                                  'pdiff')
     parser_pdiff.add_argument('-window',
                              type=int,
                               help='window size over which the cross correlation is done')

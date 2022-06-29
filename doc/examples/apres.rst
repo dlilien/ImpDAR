@@ -21,7 +21,7 @@ This does a range conversion (pulse compression) using the known transmit chirp 
 
 This is only plotting the first chirp whereas the file will have many chirps in each burst and typically many bursts as well. To stack the chirps use,
 
-``apdar stack 0 `apres_range.mat`
+``apdar stack 0 apres_range.mat``
 
  Prescribing '0' stacks *all* the chirps into one, including across bursts. You can also give a specific number of chirps to stack.
 
@@ -39,10 +39,21 @@ This looks at samples below a given range (3000 given here) to determine a 'medi
 apdar diffload
 -------
 
-With ``apdar diffload``, you can load two ApRES acquisitions side-by-side in order to difference them for a vertical velocity calculation. This only takes .mat or .hdf5 files as input, and those files should be stacked and range converted beforehand.
+With ``apdar diffload apres_1.mat apres_2.mat``, you can load two ApRES acquisitions side-by-side in order to difference them for a vertical velocity calculation. This only takes .mat or .hdf5 files as input, and those files should be stacked and range converted beforehand.
 
 .. image:: diff_raw.png
 
-
 apdar difference processing
 -------
+
+``apdar pdiff apresdiff_raw.mat``
+
+This command calculates the phase coherence between the two acquisitions.
+
+.. image:: diff_coherence.png
+
+``apdar diffproc apresdiff_raw.mat``
+
+This command walks through the entire processing flow for differencing two ApRES acquisitions.
+
+.. image:: diff_velocity.png

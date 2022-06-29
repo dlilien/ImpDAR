@@ -777,7 +777,7 @@ def plot_apres(dat, p=2, s=False, facecolor = 'w', linecolor = 'k', linewidth = 
 
 
 def plot_apres_diff(diffdat, s=False, facecolor = 'w',
-                    markercolor = 'k', markersize = 5., markerstyle = '.', linestyle='',
+                    markercolor = 'k', markercolor2 = 'grey', markersize = 5., markerstyle = '.', linestyle='',
                     ftype = 'png', dpi = 300, *args, **kwargs):
     """Plot power vs depth or twtt in a trace.
 
@@ -791,9 +791,12 @@ def plot_apres_diff(diffdat, s=False, facecolor = 'w',
     for ax in axs:
         ax.invert_yaxis()
     axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.Rcoarse,
-                marker=markerstyle, ms=markersize, linestyle=linestyle)
+                marker=markerstyle, ms=markersize, linestyle=linestyle, c=markercolor,
+                label='acquisition 1')
     axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.Rcoarse,
-                marker=markerstyle, ms=markersize, linestyle=linestyle)
+                marker=markerstyle, ms=markersize//2, linestyle=linestyle, c=markercolor2,
+                label='acquisition 2')
+    axs[0].legend()
     axs[0].set_ylabel('Range (m)')
     axs[0].set_xlabel('dB')
     axs[0].set_title('Power')
