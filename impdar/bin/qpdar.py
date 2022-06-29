@@ -2,69 +2,104 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2021 David Lilien <david.lilien@umanitoba.ca>
+# Copyright © 2022 Benjamin Hills <bhills@uw.edu>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-Make an executable for single actions of QuadPole pRES handling.
+Make an executable for single actions of QuadPol apres handling.
 """
+
 import sys
 import os.path
 import argparse
-
 import numpy as np
 
-from impdar.lib.ApresData import load_quadpol
+from impdar.lib.ApresData import FILETYPE_OPTIONS
+from impdar.lib.ApresData import load_apres, QuadPol
 
+from impdar.lib import plot
 
 def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='Choose a processing step')
 
-    # Load and exit
+    # Loading functionality
     parser_load = _add_procparser(subparsers,
                                   'load',
-                                  'load apres data',
+                                  'load quadpol data',
                                   lambda x: x,
                                   defname='load')
     _add_def_args(parser_load)
 
-    # Rotational Transform
+    # Initial range conversion (pulse compression)
+    parser_fullproc = _add_procparser(subparsers,
+                                      'proc',
+                                      'full processing flow on the quadpol data object',
+                                      full_processing,
+                                      'proc')
+    parser_fullproc.add_argument('-nthetas',
+                                 type=int,
+                                 help='number of theta values to rotate into')
+    parser_fullproc.add_argument('-dtheta',
+                                 type=int,
+                                 help='size of coherence window in theta direction')
+    parser_fullproc.add_argument('-drange',
+                                 type=int,
+                                 help='size of coherence window in range direction')
+    _add_def_args(parser_fullproc)
+
+    # Initial range conversion (pulse compression)
     parser_rotate = _add_procparser(subparsers,
-                                   'rotate',
-                                   'Rotate to full azimuthal dependency',
-                                   rotate,
-                                   defname='rotated')
-    parser_rotate.add_argument('--theta0',
-                              default=0.0,
-                              help='Minimum azimuth (in radians)',
-                              type=float)
-    parser_rotate.add_argument('--theta1',
-                              default=np.pi,
-                              help='Maximum azimuth (in radians)',
-                              type=float)
-    parser_rotate.add_argument('--n',
-                              help='Number of columns (azimuths) in matrix',
-                              default=100,
-                              type=int)
+                                    'rotated',
+                                    'use a rotational transform to find data at all azimuths',
+                                    rotate,
+                                    'rotated')
+    parser_rotate.add_argument('-nthetas',
+                               type=int,
+                               help='number of theta values to rotate into')
     _add_def_args(parser_rotate)
 
-    # Calculation of the HHVV coherence
+    # Coherence 2D
     parser_coherence = _add_procparser(subparsers,
-                                       'coherence',
-                                       'Calculate HHVV coherence',
+                                       'chhvv',
+                                       '2-dimensional coherence between HH and VV polarizations',
                                        coherence,
-                                       defname='coherence')
-    parser_coherence.add_argument('--dtheta',
-                              default=20.0 * np.pi / 180.0,
-                              help='Window size in azimuth, in radians. Default equivalent to 20 degrees.',
-                              type=float)
-    parser_coherence.add_argument('--drange',
-                              default=100.,
-                              help='Window in the vertical, in meters. Default 100.',
-                              type=float)
+                                       'chhvv')
+    parser_coherence.add_argument('-dtheta',
+                                  type=int,
+                                  help='size of coherence window in theta direction')
+    parser_coherence.add_argument('-drange',
+                                  type=int,
+                                  help='size of coherence window in range direction')
     _add_def_args(parser_coherence)
+
+    # Cross-Polarized Extinction
+    parser_cpe = _add_procparser(subparsers,
+                                 'cpe',
+                                 'find the depth-azimuth profile for cross-polarized extinction',
+                                 cross_polarized_extinction,
+                                 'cpe')
+    parser_cpe.add_argument('-Wn',
+                            type=float,
+                            help='filter frequency')
+    parser_cpe.add_argument('-fs',
+                            type=float,
+                            help='sampling frequency')
+    _add_def_args(parser_cpe)
+
+    # Plot Quad Pol Apres Acquisition
+    parser_plot = _add_procparser(subparsers,
+                                  'plot',
+                                  'plot apres data from a single acquisition',
+                                  plot_quadpol)
+    parser_plot.add_argument('-s',
+                             action='store_true',
+                             help='save file (do not plt.show())')
+    parser_plot.add_argument('-yd', action='store_true',
+                             help='plot the depth rather than travel time')
+    _add_def_args(parser_plot)
+
     return parser
 
 
@@ -93,14 +128,6 @@ def _add_def_args(parser):
                         help='Output to this file (folder if multiple inputs)')
 
 
-def rotate(dat, theta0=0, theta1=np.pi, n=100, **kwargs):
-    return dat.rotational_transform(theta_start=theta0, theta_end=theta1, n_thetas=n)
-
-
-def coherence(dat, dtheta=0.1, drange=100.0, **kwargs):
-    return dat.coherence2d(delta_theta=dtheta, delta_range=drange)
-
-
 def main():
     """Get arguments, process data, handle saving."""
     parser = _get_args()
@@ -108,38 +135,60 @@ def main():
     if not hasattr(args, 'func'):
         parser.parse_args(['-h'])
 
+    try:
+        qp_data = load_apres.load_quadpol(args.fns)
+    except:
+        qp_data = QuadPol(args.fns[0])
+
+
     if args.name == 'load':
-        apres_data = [load_quadpol.load_quadpol(fn) for fn in args.fns]
+        name = 'raw'
         pass
     else:
-        apres_data = [load_quadpol.load_quadpol(fn, load_single_pol=False) for fn in args.fns]
-        for dat in apres_data:
-            args.func(dat, **vars(args))
-
-    if args.name == 'load':
-        name = 'qp'
-    else:
         name = args.name
+        args.func(apres_data, **vars(args))
 
     if args.o is not None:
-        if ((len(apres_data) > 1) or (args.o[-1] == '/')):
-            for d, f in zip(apres_data, args.fns):
-                bn = os.path.split(os.path.splitext(f)[0])[1]
-                if bn[-3:] == '_qp':
-                    bn = bn[:-3]
-                out_fn = os.path.join(args.o, bn + '_{:s}.h5'.format(name))
-                d.save(out_fn)
-        else:
-            out_fn = args.o
-            apres_data[0].save(out_fn)
+        out_fn = args.o
+        qp_data.save(out_fn)
     else:
-        for d, f in zip(apres_data, args.fns):
-            bn = os.path.splitext(f)[0]
-            if bn[-4:] == '_qp':
-                bn = bn[:-4]
-            out_fn = bn + '_{:s}.h5'.format(name)
-            d.save(out_fn)
+        bn = os.path.splitext(args.fns[0])[0]
+        if bn[-4:] == '_raw':
+            bn = bn[:-4]
+        out_fn = bn + '_{:s}.mat'.format(name)
+        qp_data.save(out_fn)
 
+
+def full_processing(dat, nthetas=100, dtheta=20.0*np.pi/180.,
+                    drange=100., Wn=0., fs=0., **kwargs):
+    """Full processing flow for QuadPol object.
+    Range conversion, stacking, uncertainty."""
+    dat.rotational_transform(n_thetas=nthetas, **kwargs)
+    dat.coherence2d(delta_theta=dtheta, delta_range=drange)
+    dat.power_anomaly()
+    dat.lowpass(Wn=Wn, fs=fs)
+
+
+def rotate(dat, nthetas=100, **kwargs):
+    """Range conversion."""
+    dat.rotational_transform(n_thetas=nthetas, **kwargs)
+
+
+def coherence(dat, dtheta=20.0*np.pi/180., drange=100., **kwargs):
+    """Stack chirps."""
+    dat.coherence2d(delta_theta=dtheta, delta_range=drange)
+
+
+def cross_polarized_extinction(dat,
+                               Wn=0., fs=0., **kwargs):
+    """Calculate uncertainty."""
+    dat.power_anomaly()
+    dat.lowpass(Wn=Wn, fs=fs)
+
+
+def plot_quadpol(dat, s=False, o=None, o_fmt='png',
+                 dpi=300, **kwargs):
+    plot.plot_quadpol(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
 
 
 if __name__ == '__main__':

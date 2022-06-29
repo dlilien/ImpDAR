@@ -199,10 +199,6 @@ def _add_def_args(parser):
                         help='Output to this file (folder if multiple inputs)')
 
 
-def apres_range(dat, pad, max_range=4000, winfun='blackman', **kwargs):
-    return dat.apres_range(pad, max_range=max_range, winfun=winfun)
-
-
 def main():
     """Get arguments, process data, handle saving."""
     parser = _get_args()

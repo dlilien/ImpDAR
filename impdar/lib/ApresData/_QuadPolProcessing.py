@@ -77,11 +77,6 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     nrange = int(delta_range//abs(self.range[0]-self.range[1]))
     ntheta = int(delta_theta//abs(self.thetas[0]-self.thetas[1]))
 
-    # THs, Rs = self.thetas, self.range
-    # theta_start = THs[:ntheta]
-    # theta_end = THs[-ntheta:]
-    # THs = np.hstack((theta_end - np.pi, THs, theta_start + np.pi))
-
     HH_start = self.HH[:, :ntheta]
     HH_end = self.HH[:, -ntheta:]
     HH_ = np.hstack((HH_end, self.HH, HH_start))
