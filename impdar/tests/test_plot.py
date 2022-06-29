@@ -114,13 +114,13 @@ class TestPlot(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_raw(self, mock_plot_apres, moch_show):
+    def test_plotApRES_raw(self, mock_plot_apres_raw, mock_show):
         dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         plot.plot_apres(dat)
 
     @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_raw(self, mock_plot_apres, moch_show):
+    def test_plotApRES_proc(self, mock_plot_apres, mock_show):
         dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         dat.apres_range(2)
         dat.stacking()
@@ -129,7 +129,7 @@ class TestPlot(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
     @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
-    def test_plotApRES_diff(self, mock_plot_apres_diff, moch_show):
+    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
         apresdata_1 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         apresdata_1.apres_range(2)
         apresdata_1.stacking()
