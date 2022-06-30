@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.com>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -120,7 +120,7 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
     2014/10/22 KWN - edited to allow for new headers in RMB2 files
     """
 
-    # We can be raw, impdar mat, BAS mat, or impdar h5
+    # We can be raw, impdar mat, BAS mat, impdar h5, or BAS nc
     ext = os.path.splitext(fn_apres)[1]
     if ext == '.mat':
         dat = loadmat(fn_apres)
@@ -140,6 +140,9 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
 
     elif ext == '.h5':
         return ApresData(fn_apres)
+
+    elif ext == '.nc':
+        return load_BAS_nc(fn_apres)
 
     elif ext not in ['.dat','.DAT']:
         raise ValueError('Expecting a certain filetype; either .mat, .h5, .dat, .DAT')
@@ -181,8 +184,7 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             # preallocate array
             data_load = np.zeros((apres_data.cnum, apres_data.snum))
             apres_data.chirp_num = np.arange(apres_data.cnum)
-            apres_data.chirp_att = np.zeros(
-                (apres_data.cnum)).astype(np.cdouble)
+            apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
             apres_data.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
             for chirp in range(apres_data.cnum):
@@ -199,6 +201,8 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
     apres_data.travel_time *= 1.0e6
 
     apres_data.data_dtype = apres_data.data.dtype
+
+    apres_data.check_attrs()
 
     return apres_data
 
@@ -437,3 +441,103 @@ def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
     apres_data.check_attrs()
     return apres_data
 
+
+def load_BAS_nc(fn, fs=40000, chirp_interval=1.6384/(24.*3600.), *args, **kwargs):
+    """Load apres data from a netcdf file saved by software from the British Antarctic Survey.
+    https://github.com/antarctica/bas-apres
+
+    Parameters
+    ----------
+    fn: str
+        netCDF file name for ApresData
+
+    Returns
+    -------
+    apres_data: class
+        ImpDAR data object
+    """
+
+    apres_data = ApresData(None)
+
+    apres_data.bnum = 0.
+
+    with Dataset(fn, 'r') as fin:
+        # Convert each netCDF group to an ApRESBurst object
+        for key in fin.groups:
+            # each key is its own burst
+            apres_data.bnum += 1.
+            attrs = vars(fin.groups[key]).copy()
+
+            if apres_data.data is None:
+                apres_data.data = np.array([[fin.groups[key].variables['data'][:]]])
+
+                apres_data.header.fs = fs
+                apres_data.header.fn = fn
+                apres_data.header.file_format = 'BAS_nc'
+                apres_data.header.noDwellHigh = int(attrs['NoDwell']) 1
+                #apres_data.header.noDwellLow = int(attrs['NoDwell']) 0
+                apres_data.header.f0 = float(attrs['StartFreq'])
+                apres_data.header.f_stop = float(attrs['StopFreq'])
+                apres_data.header.ramp_up_step = float(attrs['FreqStepUp'])
+                apres_data.header.ramp_down_step = float(attrs['FreqStepDn'])
+                apres_data.header.tstep_up = float(attrs['TStepUp'])
+                apres_data.header.tstep_down = float(attrs['TStepDn'])
+                apres_data.header.ramp_dir = 'up'
+                apres_data.header.f1 = apres_data.header.f0 + \
+                    apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
+                apres_data.header.bandwidth = apres_data.header.chirp_length * \
+                    apres_data.header.chirp_grad/2/np.pi
+                apres_data.header.fc = apres_data.header.f0 + apres_data.header.bandwidth/2.
+                apres_data.header.er = 3.18
+                apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er)
+                apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc
+                apres_data.header.n_attenuators = int(attrs['nAttenuators'])
+                apres_data.header.attenuator1 = int(attrs['Attenuator1'])
+                if 'Attenuator2' in attrs:
+                    apres_data.header.attenuator2 = int(attrs['Attenuator2'])
+                apres_data.header.tx_ant = attrs['TxAnt']
+                apres_data.header.rx_ant = attrs['RxAnt']
+
+                # Should be the same for every burst
+                apres_data.average = float(attrs['Average'])
+                apres_data.chirp_interval = chirp_interval
+                apres_data.dt = 1.0 / apres_data.header.fs
+                apres_data.snum = float(attrs['N_ADC_SAMPLES'])
+                apres_data.cnum = float(attrs['NSubBursts'])
+
+                # Should be appended to every burst
+                apres_data.temperature1 = np.array([float(attrs['Temp1'])])
+                apres_data.temperature2 = np.array([float(attrs['Temp2'])])
+                apres_data.battery_voltage = np.array([float(attrs['BatteryVoltage'])])
+
+                time_stamp = attrs['Time stamp']
+                apres_data.time_stamp = np.array([[datetime.datetime.strptime(time_stamp, '%Y-%m-%d %H:%M:%S')]])
+
+            else:
+                # Append to these data arrays for subsequent bursts
+                apres_data.temperature1 = np.append(apres_data.temperature1,float(attrs['Temp1']))
+                apres_data.temperature2 = np.append(apres_data.temperature2,float(attrs['Temp2']))
+                apres_data.battery_voltage = np.append(apres_data.battery_voltage,float(attrs['BatteryVoltage']))
+
+                time_stamp = attrs['Time stamp']
+                apres_data.time_stamp = np.append(apres_data.time_stamp,
+                                                  [datetime.datetime.strptime(time_stamp, '%Y-%m-%d %H:%M:%S')],
+                                                  axis=0)
+
+                apres_data.chirp_num = np.append(apres_data.chirp_num,
+                                                 [np.arange(apres_data.cnum) + 1],
+                                                 axis=0)
+
+    timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
+    day_offset = apres_data.time_stamp - timezero
+    apres_data.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
+
+    apres_data.travel_time = apres_data.dt * np.arange(apres_data.snum)
+    apres_data.frequencies = apres_data.header.f0 + apres_data.travel_time * apres_data.header.chirp_grad/(2.*np.pi)
+    apres_data.travel_time *= 1.0e6
+
+    apres_data.data_dtype = apres_data.data.dtype
+
+    apres_data.check_attrs()
+
+    return apres_data
