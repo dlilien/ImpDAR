@@ -26,31 +26,38 @@ class TestApres(unittest.TestCase):
 
     @patch('impdar.bin.apdar.load_apres.load_apres')
     def test_load(self, load_patch):
-        apdar.sys.argv = ['dummy', 'load', './input_data/apres_2.DAT']
+        fn = os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')
+        apdar.sys.argv = ['dummy', 'load', fn]
         apdar.main()
         self.assertTrue(load_patch.called)
         aca, kwca = load_patch.call_args
-        self.assertEqual(aca[0], ['./input_data/apres_2.DAT'])
+        self.assertEqual(aca[0], [fn])
 
     @patch('impdar.bin.apdar.full_processing')
     def test_proc(self, proc_patch):
-        apdar.sys.argv = ['dummy', 'proc', './input_data/apres_1.mat']
+        fn = os.path.join(THIS_DIR, 'input_data', 'apres_1.mat')
+        apdar.sys.argv = ['dummy', 'proc', fn]
         apdar.main()
-        apdar.sys.argv = ['dummy', 'load', './input_data/apres_2.DAT']
+        fn = os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')
+        apdar.sys.argv = ['dummy', 'load', fn]
         apdar.main()
-        apdar.sys.argv = ['dummy', 'proc', './input_data/apres_2_raw.mat']
+        fn = os.path.join(THIS_DIR, 'input_data', 'apres_2_raw.mat')
+        apdar.sys.argv = ['dummy', 'proc', fn]
         apdar.main()
         self.assertTrue(proc_patch.called)
 
     @patch('impdar.bin.apdar.ApresDiff')
     def test_load_diff(self, load_patch):
-        apdar.sys.argv = ['dummy', 'diffload', './input_data/apres_1_proc.mat', './input_data/apres_2_proc.mat']
+        fn1 = os.path.join(THIS_DIR, 'input_data', 'apres_1_proc.mat')
+        fn2 = os.path.join(THIS_DIR, 'input_data', 'apres_2_proc.mat')
+        apdar.sys.argv = ['dummy', 'diffload', fn1, fn2]
         apdar.main()
         self.assertTrue(load_patch.called)
 
     @patch('impdar.bin.apdar.full_differencing')
     def test_proc_diff(self, proc_patch):
-        apdar.sys.argv = ['dummy', 'diffproc', './input_data/diffdat.mat']
+        fn = os.path.join(THIS_DIR, 'input_data', 'diffdat.mat')
+        apdar.sys.argv = ['dummy', 'diffproc', fn]
         apdar.main()
         self.assertTrue(proc_patch.called)
 
