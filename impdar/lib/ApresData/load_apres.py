@@ -566,9 +566,11 @@ def load_BAS_nc(fn, fs=40000, chirp_interval=1.6384/(24.*3600.), *args, **kwargs
                 timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
                 day_offset = ts - timezero
                 print(np.shape(day_offset))
-                decday_hold = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366.
-                apres_data.decday = np.append(apres_data.decday,decday,axis=0)
-                apres_data.chirp_time = decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
+                decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366.
+                apres_data.decday = np.append(apres_data.decday, decday, axis=0)
+                apres_data.chirp_time = np.append(apres_data.chirp_time,
+                                                  decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0),
+                                                  axis=0)
 
                 apres_data.chirp_num = np.append(apres_data.chirp_num,
                                                  [np.arange(apres_data.cnum) + 1],
