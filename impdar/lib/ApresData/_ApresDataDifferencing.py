@@ -56,6 +56,7 @@ class ApresDiff():
                       'w',
                       'w_err',
                       'w_0',
+                      'u',
                       'eps_zz',
                       'bed']
 
@@ -312,6 +313,11 @@ class ApresDiff():
             r_uncertainty = phase2range(self,self.unc1,self.header.lambdac) + phase2range(self,self.unc2,self.header.lambdac)
             idxs = np.arange(win//2,(len(self.data)-win//2),step)
             self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
+
+        if self.x_coord and self.x_coord2:
+            # Calculate the surface velocity
+            self.u = (self.x_coord2-self.x_coord,
+                      self.y_coord2-self.y_coord)
 
 
     def strain_rate(self,strain_window=(200,1200),w_surf=0.):
