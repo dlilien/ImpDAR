@@ -32,7 +32,9 @@ except ImportError:
     USE_C = False
 
 
-def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
+def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100,
+                         cross_pol_exception=False,
+                         cross_pol_flip=False):
     """
     Azimuthal (rotational) shift of principal axes
     at the transmitting and receiving antennas
@@ -45,6 +47,21 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100):
     theta : complex
             rotational offset
     """
+
+    # Antennas are not symmetric on 180 degree
+    # Issues have come up with flipped antennas, so check
+    if abs(np.sum(np.imag(self.shv)+np.imag(self.svh))) < \
+            abs(np.sum(np.imag(self.shv)-np.imag(self.svh))):
+        if cross_pol_exception:
+            pass
+        elif cross_pol_flip == 'HV':
+            Warning('Flipping sign of cross-polarized term HV')
+            self.shv *= -1.
+        elif cross_pol_flip == 'VH':
+            Warning('Flipping sign of cross-polarized term VH')
+            self.svh *= -1.
+        else:
+            raise ValueError('Cross-polarized terms are off the opposite sign, check and update.')
 
     self.thetas = np.linspace(theta_start,theta_end,n_thetas)
 

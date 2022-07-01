@@ -64,7 +64,7 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
                 print('Restacked acquisition #{:d} to a 1-d array.'.format(i + 1))
             except ImpdarError:
                 print('Acquisition #{:d} is already stacked to shape: {:s}'.format(i + 1, str(np.shape(acquisition.data))))
-            if acquisition.flags.range[0] == 0:
+            if acquisition.flags.range == 0:
                 print('Acquisition #',i+1,'has not been converted to range. Range conversion now...')
                 acquisition.apres_range(2)
 
