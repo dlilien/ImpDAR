@@ -32,7 +32,7 @@ def _get_args():
                                   defname='load')
     _add_def_args(parser_load)
 
-    # Initial range conversion (pulse compression)
+    # Full processing flow for a single ApRES acquisition
     parser_fullproc = _add_procparser(subparsers,
                                   'proc',
                                   'full processing flow on the apres data object',
@@ -40,7 +40,7 @@ def _get_args():
                                   'proc')
     parser_fullproc.add_argument('-max_range',
                                  type=int,
-                                 help='maximum range for the pulse compression',
+                                 help='maximum range for the range conversion',
                                  default=4000.)
     parser_fullproc.add_argument('-num_chirps',
                                  type=int,
@@ -53,16 +53,16 @@ def _get_args():
                                  default=3000.)
     _add_def_args(parser_fullproc)
 
-    # Initial range conversion (pulse compression)
+    # Initial range conversion (deramping)
     parser_range = _add_procparser(subparsers,
                                   'range',
                                   'convert the recieved waveform to a \
                                         range-amplitude array',
-                                  pulse_compression,
+                                  range_conversion,
                                   'range')
     parser_range.add_argument('-max_range',
                              type=int,
-                             help='maximum range for the pulse compression',
+                             help='maximum range for the range conversion',
                              default=4000.)
     _add_def_args(parser_range)
 
@@ -254,7 +254,7 @@ def full_processing(dat, p=2, max_range=4000., num_chirps=0., noise_bed_range=30
     dat.phase_uncertainty(noise_bed_range)
 
 
-def pulse_compression(dat, p=2, max_range=4000, **kwargs):
+def range_conversion(dat, p=2, max_range=4000, **kwargs):
     """Range conversion."""
     dat.apres_range(p,max_range)
 

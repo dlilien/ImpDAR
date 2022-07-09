@@ -314,7 +314,7 @@ class ApresDiff():
             idxs = np.arange(win//2,(len(self.data)-win//2),step)
             self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
 
-        if self.x_coord and self.x_coord2:
+        if hasattr(self, 'x_coord') and hasattr(self, 'x_coord2'):
             # Calculate the surface velocity
             self.u = (self.x_coord2-self.x_coord,
                       self.y_coord2-self.y_coord)
