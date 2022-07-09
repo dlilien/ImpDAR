@@ -41,11 +41,19 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100,
     Mott, 2006
 
     Parameters
-    --------
-    S : array
-        2-d array with [[shh,svh][shv,svv]] of complex numbers
-    theta : complex
-            rotational offset
+    ---------
+    self: class
+        QuadPolData object
+    theta_start: float
+        Starting point for array of azimuths
+    theta_end: float
+        Ending point for array of azimuths
+    n_thetas: int
+        number of thetas to rotate through
+    cross_pol_exception: bool
+        continue even if the cross-polarized terms do not look correct
+    cross_pol_flip: bool or string
+        Which cross-polarized term to flip if they look inverted
     """
 
     # Antennas are not symmetric on 180 degree
@@ -61,7 +69,7 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100,
             Warning('Flipping sign of cross-polarized term VH')
             self.svh *= -1.
         else:
-            raise ValueError('Cross-polarized terms are off the opposite sign, check and update.')
+            raise ValueError('Cross-polarized terms are of the opposite sign, check and update.')
 
     self.thetas = np.linspace(theta_start,theta_end,n_thetas)
 
@@ -85,7 +93,9 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     Jordan et al. (2019) eq. 19
 
     Parameters
-    --------
+    ---------
+    self: class
+        QuadPolData object
     delta_theta : float
             window size in the azimuthal dimension; default: 20 degrees
     delta_range: float
@@ -147,7 +157,9 @@ def phase_gradient2d(self,filt=None,Wn=0):
     Jordan et al. (2019) eq 23
 
     Parameters
-    --------
+    ---------
+    self: class
+        QuadPolData object
     filt : string
             filter type; default lowpass
     Wn : float
@@ -171,6 +183,40 @@ def phase_gradient2d(self,filt=None,Wn=0):
     self.dphi_dz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
 
     self.flags.phasegradient = True
+
+
+def find_cpe(self, Wn=50, rad_start=1.5*np.pi/4., rad_end=1.5*3*np.pi/4.,
+             *args, **kwargs):
+    """
+    Find the cross-polarized extinction axis
+
+    Parameters
+    ---------
+    self: class
+        QuadPolData object
+    Wn: float
+        Filter frequency
+    rad_start: float
+        Starting point for the azimuthal window to look within for cpe axis
+    rad_end: float
+        Ending point for the azimuthal window to look within for cpe axis
+    """
+
+    # Power anomaly
+    HV_pa = power_anomaly(self.HV.copy())
+    # Lowpass filter
+    HV_pa = lowpass(HV_pa,Wn,1./self.dt)
+
+    # Find the index of the cross-polarized extinction axis
+    idx_start = np.argmin(abs(self.thetas-rad_start))
+    idx_stop = np.argmin(abs(self.thetas-rad_end))
+    CPE_idxs = np.empty_like(self.range).astype(int)
+    for i in range(len(CPE_idxs)):
+        CPE_idxs[i] = np.argmin(HV_pa[i,idx_start:idx_stop])
+    CPE_idxs += idx_start
+
+    self.cpe_idxs = CPE_idxs
+    self.cpe = np.array([self.thetas[i] for i in CPE_idxs]).astype(float)
 
 # --------------------------------------------------------------------------------------------
 
