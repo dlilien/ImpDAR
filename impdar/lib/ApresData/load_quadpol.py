@@ -53,7 +53,7 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         elif len(fn) == 4:
             fns = fn
         else:
-            raise ValueError('fn must be a glob for files with _HH, HV, etc., or a 4-tuple')
+            raise ValueError('fn must be a glob for files with _HH, _HV, etc., or a 4-tuple')
         single_acquisitions = [load_apres(f) for f in fns]
 
         # Check that the data have gone through the initial processing steps

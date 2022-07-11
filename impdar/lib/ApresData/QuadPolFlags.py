@@ -29,8 +29,9 @@ class QuadPolFlags():
         self.rotation = np.zeros((2,))
         self.coherence = np.zeros((3,))
         self.phasegradient = False
-        self.attrs = ['rotation','coherence','phasegradient']
-        self.attr_dims = [2,3,None]
+        self.cpe = True
+        self.attrs = ['rotation', 'coherence', 'phasegradient', 'cpe']
+        self.attr_dims = [2, 3, None, None]
 
     def read_h5(self, grp):
         subgrp = grp['QuadPolFlags']

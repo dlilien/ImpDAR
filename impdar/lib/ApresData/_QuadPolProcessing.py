@@ -25,6 +25,8 @@ import numpy as np
 from ._ApresDiffProcessing import coherence
 from scipy.signal import butter, filtfilt
 
+from ..ImpdarError import ImpdarError
+
 try:
     USE_C = True
     from .coherence import coherence2d_loop
@@ -32,7 +34,7 @@ except ImportError:
     USE_C = False
 
 
-def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100,
+def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
                          cross_pol_exception=False,
                          cross_pol_flip=False):
     """
@@ -69,22 +71,31 @@ def rotational_transform(self,theta_start=0,theta_end=np.pi,n_thetas=100,
             Warning('Flipping sign of cross-polarized term VH')
             self.svh *= -1.
         else:
-            raise ValueError('Cross-polarized terms are of the opposite sign, check and update.')
+            raise ValueError('Cross-polarized terms are of the \
+                             opposite sign, check and update.')
 
-    self.thetas = np.linspace(theta_start,theta_end,n_thetas)
+    self.thetas = np.linspace(theta_start, theta_end, n_thetas)
 
-    self.HH = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
-    self.HV = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
-    self.VH = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
-    self.VV = np.empty((len(self.range),len(self.thetas))).astype(np.complex)
+    self.HH = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
+    self.HV = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
+    self.VH = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
+    self.VV = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
 
-    for i,theta in enumerate(self.thetas):
-        self.HH[:,i] = self.shh*np.cos(theta)**2.+(self.svh+self.shv)*np.sin(theta)*np.cos(theta)+self.svv*np.sin(theta)**2
-        self.HV[:,i] = self.shv*np.cos(theta)**2.+(self.svv-self.shh)*np.sin(theta)*np.cos(theta)-self.svh*np.sin(theta)**2
-        self.VH[:,i] = self.svh*np.cos(theta)**2.+(self.svv-self.shh)*np.sin(theta)*np.cos(theta)-self.shv*np.sin(theta)**2
-        self.VV[:,i] = self.svv*np.cos(theta)**2.-(self.svh+self.shv)*np.sin(theta)*np.cos(theta)+self.shh*np.sin(theta)**2
+    for i, theta in enumerate(self.thetas):
+        self.HH[:, i] = self.shh*np.cos(theta)**2. + \
+            (self.svh + self.shv)*np.sin(theta)*np.cos(theta) + \
+            self.svv*np.sin(theta)**2
+        self.HV[:, i] = self.shv*np.cos(theta)**2. + \
+            (self.svv - self.shh)*np.sin(theta)*np.cos(theta) - \
+            self.svh*np.sin(theta)**2
+        self.VH[:, i] = self.svh*np.cos(theta)**2. + \
+            (self.svv - self.shh)*np.sin(theta)*np.cos(theta) - \
+            self.shv*np.sin(theta)**2
+        self.VV[:, i] = self.svv*np.cos(theta)**2. - \
+            (self.svh + self.shv)*np.sin(theta)*np.cos(theta) + \
+            self.shh*np.sin(theta)**2
 
-    self.flags.rotation = np.array([1,n_thetas])
+    self.flags.rotation = np.array([1, n_thetas])
 
 
 def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
@@ -101,6 +112,11 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     delta_range: float
             window size in the vertical; default: 100.
     """
+
+    if self.flags.rotation[0] != 1:
+        raise ImpdarError('Rotate the quad-pol acquisition before \
+                          calling this function.')
+
     nrange = int(delta_range//abs(self.range[0]-self.range[1]))
     ntheta = int(delta_theta//abs(self.thetas[0]-self.thetas[1]))
 
@@ -125,7 +141,8 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
                                  range_bins,
                                  azimuth_bins)
     else:
-        print('Beginning iteration through {:d} azimuths'.format(azimuth_bins - 2 * ntheta))
+        print('Beginning iteration through {:d} \
+              azimuths'.format(azimuth_bins - 2 * ntheta))
         print('Azimuth bin: ', end='')
         sys.stdout.flush()
         for i in range(HH_.shape[1]):
@@ -139,19 +156,26 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
             for j in range(HH_.shape[0]):
                 imin, imax = i - ntheta, i + ntheta
                 jmin, jmax = max(0, j - nrange), min(HH_.shape[0], j + nrange)
-                chhvv[j,i] = coherence(VV_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten(),
-                                        HH_[j-nrange:j+nrange,i-ntheta:i+ntheta].flatten())
+                chhvv[j, i] = coherence(VV_[j-nrange:j+nrange,
+                                            i-ntheta:i+ntheta].flatten(),
+                                        HH_[j-nrange:j+nrange,
+                                            i-ntheta:i+ntheta].flatten())
         print('coherence calculation done')
     t1 = time.time()
-    print('Execution with c code={:s} took {:6.2f}'.format(str(USE_C), t1 - t0))
+    print('Execution with c code={:s} \
+          took {:6.2f}'.format(str(USE_C), t1 - t0))
 
     self.chhvv = chhvv[:, ntheta:-ntheta]
+
+    # If the cpe axis has already been identified, get coherence along it
+    if self.flags.cpe is True:
+        self.chhvv_cpe = self.chhvv[np.arange(self.snum), self.cpe_idxs]
 
     self.flags.coherence = np.array([1, delta_theta, delta_range])
 
 # --------------------------------------------------------------------------------------------
 
-def phase_gradient2d(self,filt=None,Wn=0):
+def phase_gradient2d(self, filt=None, Wn=0):
     """
     Depth-gradient of hhvv coherence image.
     Jordan et al. (2019) eq 23
@@ -166,26 +190,37 @@ def phase_gradient2d(self,filt=None,Wn=0):
             filter frequency
     """
 
-    # Real and imaginary parts of the hhvv coherence
-    R = np.real(self.chhvv).copy()
-    I = np.imag(self.chhvv).copy()
+    if self.flags.coherence[0] != 1:
+        raise ImpdarError('Calculate coherence before calling this function.')
 
+    # Real and imaginary parts of the hhvv coherence
+    R_ = np.real(self.chhvv).copy()
+    I_ = np.imag(self.chhvv).copy()
+
+    # Filter image before gradient calculation
     if filt is not None:
         if filt == 'lowpass':
-            R = lowpass(R,Wn,1./self.dt)
-            I = lowpass(I,Wn,1./self.dt)
+            R_ = lowpass(R_, Wn, 1./self.dt)
+            I_ = lowpass(I_, Wn, 1./self.dt)
         else:
-            raise TypeError('Filter: %s has not been implemented yet.'%filt)
+            raise TypeError('Filter: %s has \
+                            not been implemented yet.' % filt)
 
-    dRdz = np.gradient(R,self.range,axis=0)
-    dIdz = np.gradient(I,self.range,axis=0)
+    # Depth gradient for each component
+    dRdz = np.gradient(R_, self.range, axis=0)
+    dIdz = np.gradient(I_, self.range, axis=0)
 
-    self.dphi_dz = (R*dIdz-I*dRdz)/(R**2.+I**2.)
+    # Phase-depth gradient from Jordan et al. (2019) eq. 23
+    self.dphi_dz = (R_*dIdz-I_*dRdz)/(R_**2.+I_**2.)
+
+    # If the cpe axis has already been identified, get phase_gradient along it
+    if self.flags.cpe is True:
+        self.dphi_dz_cpe = self.dphi_dz[np.arange(self.snum), self.cpe_idxs]
 
     self.flags.phasegradient = True
 
 
-def find_cpe(self, Wn=50, rad_start=1.5*np.pi/4., rad_end=1.5*3*np.pi/4.,
+def find_cpe(self, Wn=50, rad_start=np.pi/4., rad_end=3.*np.pi/4.,
              *args, **kwargs):
     """
     Find the cross-polarized extinction axis
@@ -205,18 +240,56 @@ def find_cpe(self, Wn=50, rad_start=1.5*np.pi/4., rad_end=1.5*3*np.pi/4.,
     # Power anomaly
     HV_pa = power_anomaly(self.HV.copy())
     # Lowpass filter
-    HV_pa = lowpass(HV_pa,Wn,1./self.dt)
+    HV_pa = lowpass(HV_pa, Wn, 1./self.dt)
 
     # Find the index of the cross-polarized extinction axis
     idx_start = np.argmin(abs(self.thetas-rad_start))
     idx_stop = np.argmin(abs(self.thetas-rad_end))
     CPE_idxs = np.empty_like(self.range).astype(int)
     for i in range(len(CPE_idxs)):
-        CPE_idxs[i] = np.argmin(HV_pa[i,idx_start:idx_stop])
+        CPE_idxs[i] = np.argmin(HV_pa[i, idx_start:idx_stop])
     CPE_idxs += idx_start
 
     self.cpe_idxs = CPE_idxs
     self.cpe = np.array([self.thetas[i] for i in CPE_idxs]).astype(float)
+
+    # If the coherence calculation has already been done
+    # get it along the cpe axis
+    if self.flags.coherence[0] == 1.:
+        self.chhvv_cpe = self.chhvv[np.arange(self.snum), self.cpe_idxs]
+    # If the phase gradient calculation has already been done
+    # get it along the cpe axis
+    if self.flags.phase_gradient:
+        self.dphi_dz_cpe = self.dphi_dz[np.arange(self.snum), self.cpe_idxs]
+
+    self.flags.cpe = True
+
+# --------------------------------------------------------------------------------------------
+
+def phase_gradient_to_fabric(self, c=300e6, fc=300e6, delta_eps=0.035, eps=3.12):
+    """
+    Calculate the fabric strength from phase gradient
+    Jordan et al. (2019)
+
+    Parameters
+    ---------
+    self: class
+        QuadPolData object
+    c: float
+        speed of light
+    fc: float
+        center frequency
+    delta_eps: float
+        ice crystal permittivity anisotropy
+    eps: float
+        permittivity of ice
+    """
+
+    if not hasattr(self, 'dphi_dz_cpe'):
+        raise AttributeError("Get the phase gradient along CPE axis \
+                             before calling this function.")
+
+    self.e2e1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(eps)/delta_eps)*self.dphi_dz_cpe
 
 # --------------------------------------------------------------------------------------------
 
@@ -234,7 +307,7 @@ def power_anomaly(data):
     # Calculate Power
     P = 10.*np.log10((data)**2.)
     # Remove the mean for each row
-    Pa = np.transpose(np.transpose(P) - np.mean(P,axis=1))
+    Pa = np.transpose(np.transpose(P) - np.mean(P, axis=1))
 
     return Pa
 
@@ -246,18 +319,18 @@ def lowpass(data, Wn, fs, order=3):
 
     Parameters
     --------
-    data : array
+    data: array
             2-d array of azimuth-depth return
-    Wn : float
+    Wn: float
             filter frequency
-    fs : float
+    fs: float
             sample frequency
-    order : int
+    order: int
             order of filter
     """
 
     # Subset the array around nan values
-    nan_idx = next(k for k, value in enumerate(data[:,0]) if ~np.isnan(value))
+    nan_idx = next(k for k, value in enumerate(data[:, 0]) if ~np.isnan(value))
     if nan_idx != 0:
         data_sub = data[nan_idx:-nan_idx+1]
     else:
@@ -298,50 +371,12 @@ def azimuthal_rotation(data,thetas,azi):
     thetas += azi
     if azi < 0:
         idx_clip = np.argwhere(thetas > 0)[0][0]
-        hold = data[:,idx_clip:]
-        data = np.append(hold, data[:,:idx_clip],axis=1)
+        hold = data[:, idx_clip:]
+        data = np.append(hold, data[:, :idx_clip], axis=1)
     elif azi > 0:
         idx_clip = np.argwhere(thetas > np.pi)[0][0]
-        hold = data[:,idx_clip:]
-        data = np.append(hold, data[:,:idx_clip],axis=1)
+        hold = data[:, idx_clip:]
+        data = np.append(hold, data[:, :idx_clip], axis=1)
     thetas -= azi
 
     return data
-
-# --------------------------------------------------------------------------------------------
-
-def birefringent_phase_shift(z,freq=300e6,eps_bi=0.00354,eps=3.15,c=3e8):
-    """
-    Two-way birefringent phase shift
-    Jordan et al. (2019)
-
-    Parameters
-    ---------
-    z: float
-        depth
-    freq: float
-        center frequency
-    eps_bi: float
-        birefringent permittivity difference (i.e. eps_parallel - eps_perpendicular)
-    eps: float
-        mean permittivity (relative)
-    c: float
-        light speed in vacuum
-    """
-
-    #TODO: This function is not updated for ImpDAR yet
-    delta = 4.*np.pi*freq/c*(z*eps_bi/(2.*np.sqrt(eps)))
-
-    return delta
-
-# --------------------------------------------------------------------------------------------
-
-def phase_gradient_to_fabric(self,c=300e6,fc=300e6,delta_eps=0.035,eps=3.12):
-    """
-    """
-
-    #TODO: This function is not updated for ImpDAR yet
-    max_idx = np.argmax(self.dphi_dz,axis=1)
-    E2E1 = (c/(4.*np.pi*fc))*(2.*np.sqrt(eps)/delta_eps)*self.dphi_dz[max_idx,np.arange(len(self.range))]
-
-    return E2E1
