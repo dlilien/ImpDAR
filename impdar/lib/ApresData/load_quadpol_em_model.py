@@ -24,7 +24,7 @@ from . import QuadPolData
 
 # -----------------------------------------------------------------------------------------------------
 
-def load_quadpol_em_model(model):
+def load_quadpol_fujita(model):
     """
     Load processed modeled apres profiles from all four polarizations: hh, hv, vh, vv
     into one data object

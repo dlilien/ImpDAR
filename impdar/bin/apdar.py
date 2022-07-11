@@ -14,8 +14,8 @@ import sys
 import os.path
 import argparse
 
-from impdar.lib.ApresData import FILETYPE_OPTIONS
-from impdar.lib.ApresData import load_apres, ApresDiff
+from impdar.lib.ApresData import load_apres, load_diff
+from impdar.lib.ApresData import FILETYPE_OPTIONS, ApresDiffData
 
 from impdar.lib import plot
 
@@ -33,10 +33,10 @@ def _get_args():
 
     # Initial range conversion (pulse compression)
     parser_fullproc = _add_procparser(subparsers,
-                                  'proc',
-                                  'full processing flow on the apres data object',
-                                  full_processing,
-                                  'proc')
+                                      'proc',
+                                      'full processing flow on the apres data object',
+                                      full_processing,
+                                      'proc')
     parser_fullproc.add_argument('-max_range',
                              type=int,
                              help='maximum range for the pulse compression')
@@ -207,12 +207,12 @@ def main():
         parser.parse_args(['-h'])
 
     if args.name == 'diffload':
-        apres_data = ApresDiff(args.fns[0],args.fns[1])
+        apres_data = load_diff.load_diff(args.fns[0],args.fns[1])
     else:
         try:
             apres_data = load_apres.load_apres(args.fns)
         except:
-            apres_data = ApresDiff(args.fns[0])
+            apres_data = ApresDiffData(args.fns[0])
 
 
     if args.name == 'load':

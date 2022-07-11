@@ -107,7 +107,6 @@ class ApresData(object):
             self.temperature1 = None
             self.temperature2 = None
             self.battery_voltage = None
-            self.Rcoarse = None
 
             # Special attributes
             self.flags = ApresFlags()
@@ -200,7 +199,7 @@ class ApresData(object):
 
 # ------------------------------------------------
 
-class ApresDiff():
+class ApresDiffData():
     """
     Class for differencing between two Apres acquisitions.
 
@@ -210,7 +209,7 @@ class ApresDiff():
     #: Attributes that every ApresData object should have and should not be None.
     attrs_guaranteed = ['data',
                         'data2',
-                        'Rcoarse',
+                        'range',
                         'fn1',
                         'fn2',
                         'fn']
@@ -233,7 +232,7 @@ class ApresDiff():
     from ._ApresDiffProcessing import phase_diff, phase_unwrap, range_diff, strain_rate, bed_pick
     from ._ApresDataSaving import save
 
-    def __init__(self,fn,dat2=None):
+    def __init__(self,fn):
         """Initialize differencing fields
 
         fn: class or string
@@ -265,7 +264,7 @@ class ApresDiff():
 
             # Sample-wise attributes
             #: np.ndarray(snum,) The range for each sample, in m
-            self.Rcoarse = None
+            self.range = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
             self.x_coord = None
@@ -285,95 +284,57 @@ class ApresDiff():
             self.data_dtype = None
             return
 
-        if dat2 is None:
-            if os.path.splitext(fn)[1] == '.h5':
-                with h5py.File(fn, 'r') as fin:
-                    grp = fin['dat']
-                    for attr in grp.keys():
-                        if attr in ['ApresFlags', 'ApresHeader']:
-                            continue
-                        val = grp[attr][:]
-                        if isinstance(val, h5py.Empty):
-                            val = None
-                        setattr(self, attr, val)
-                    for attr in grp.attrs.keys():
-                        val = grp.attrs[attr]
-                        if isinstance(val, h5py.Empty):
-                            val = None
-                        setattr(self, attr, val)
-                    self.flags = ApresFlags()
-                    self.header = ApresHeader()
-                    self.flags.read_h5(grp)
-                    self.header.read_h5(grp)
-                # Set the file name
-                self.fn = fn
+        if os.path.splitext(fn)[1] == '.h5':
+            with h5py.File(fn, 'r') as fin:
+                grp = fin['dat']
+                for attr in grp.keys():
+                    if attr in ['ApresFlags', 'ApresHeader']:
+                        continue
+                    val = grp[attr][:]
+                    if isinstance(val, h5py.Empty):
+                        val = None
+                    setattr(self, attr, val)
+                for attr in grp.attrs.keys():
+                    val = grp.attrs[attr]
+                    if isinstance(val, h5py.Empty):
+                        val = None
+                    setattr(self, attr, val)
+                self.flags = ApresFlags()
+                self.header = ApresHeader()
+                self.flags.read_h5(grp)
+                self.header.read_h5(grp)
 
-            elif os.path.splitext(fn)[1] == '.mat':
-                mat = loadmat(fn)
-                for attr in self.attrs_guaranteed:
+        elif os.path.splitext(fn)[1] == '.mat':
+            mat = loadmat(fn)
+            for attr in self.attrs_guaranteed:
+                if mat[attr].shape == (1, 1):
+                    setattr(self, attr, mat[attr][0][0])
+                elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
+                    setattr(self, attr, mat[attr].flatten())
+                else:
+                    setattr(self, attr, mat[attr])
+            # We may have some additional variables
+            for attr in self.attrs_optional:
+                if attr in mat:
                     if mat[attr].shape == (1, 1):
                         setattr(self, attr, mat[attr][0][0])
                     elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
                         setattr(self, attr, mat[attr].flatten())
                     else:
                         setattr(self, attr, mat[attr])
-                # We may have some additional variables
-                for attr in self.attrs_optional:
-                    if attr in mat:
-                        if mat[attr].shape == (1, 1):
-                            setattr(self, attr, mat[attr][0][0])
-                        elif mat[attr].shape[0] == 1 or mat[attr].shape[1] == 1:
-                            setattr(self, attr, mat[attr].flatten())
-                        else:
-                            setattr(self, attr, mat[attr])
-                    else:
-                        setattr(self, attr, None)
-                self.data_dtype = self.data.dtype
-                self.flags = ApresFlags()
-                self.flags.from_matlab(mat['flags'])
-                self.header = ApresHeader()
-                self.header.from_matlab(mat['header'])
-                # Set the file name
-                self.fn = fn
-
-            else:
-                raise ImportError('ApresDiff can only load .h5, .mat, or 2 data objects in parallel.')
+                else:
+                    setattr(self, attr, None)
+            self.data_dtype = self.data.dtype
+            self.flags = ApresFlags()
+            self.flags.from_matlab(mat['flags'])
+            self.header = ApresHeader()
+            self.header.from_matlab(mat['header'])
 
         else:
-            dat1 = fn
-            if type(dat1) == str and type(dat2) == str:
-                dat1 = ApresData(dat1)
-                dat2 = ApresData(dat2)
-            self.fn1 = dat1.header.fn
-            self.fn2 = dat2.header.fn
-            self.fn = self.fn1+'_diff_'+self.fn2
+            raise ImportError('ApresDiffData() is looking for an .h5 or .mat file \
+                              saved as an Apdar object.')
 
-            if dat1.flags.range == 0 or dat2.flags.range == 0:
-                raise TypeError('The range filter has not been executed on this data class, do that before proceeding.')
-            if dat1.flags.stack == 0 or dat2.flags.stack == 0:
-                raise TypeError('The stacking filter has not been executed on this data class, do that before proceeding.')
-
-            # check that the two data objects are comparable
-            if np.shape(dat1.data) != np.shape(dat2.data):
-                raise TypeError('Acquisition inputs must be of the same shape.')
-            if not np.all(abs(dat1.Rcoarse - dat2.Rcoarse) < 1e04):
-                raise ValueError('Range vector should be the same for both acquisitions')
-
-            # instantiate the differencing class
-            self.data = dat1.data[0][0]
-            self.data2 = dat2.data[0][0]
-            self.Rcoarse = dat1.Rcoarse
-
-            # if uncertainties were calculated, bring those in too
-            if hasattr(dat1,'uncertainty'):
-                self.unc1 = dat1.uncertainty
-            if hasattr(dat2,'uncertainty'):
-                self.unc2 = dat2.uncertainty
-
-            # take the flags and header from the first data object
-            self.flags = dat1.flags
-            self.header = dat1.header
-
+        self.fn = fn
         self.check_attrs()
 
     def check_attrs(self):

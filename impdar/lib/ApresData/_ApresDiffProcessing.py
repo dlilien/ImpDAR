@@ -54,7 +54,7 @@ def coherence(s1, s2):
     return c
 
 
-def phase_diff(self, win, step, Rcoarse=None):
+def phase_diff(self, win, step, Range=None):
     """
     Calculate the phase offset using a correlation coefficient.
 
@@ -66,16 +66,16 @@ def phase_diff(self, win, step, Rcoarse=None):
         window size over which to do the correlation coefficient calculation
     step: int
         step size for the window to move between calculations
-    Rcoarse: array; optional
+    Range: array; optional
         if an external depth array is desired, input here
     """
 
-    # Fill a depth array which will be more sparse than the full Rcoarse vector
+    # Fill a depth array which will be more sparse than the full Range vector
     idxs = np.arange(win//2, len(self.data)-win//2, step).astype(int)
-    if Rcoarse is not None:
-        self.ds = Rcoarse[idxs]
+    if Range is not None:
+        self.ds = Range[idxs]
     else:
-        self.ds = self.Rcoarse[idxs]
+        self.ds = self.range[idxs]
 
     # Create data and coherence vectors
     acq1 = self.data
@@ -230,7 +230,7 @@ def bed_pick(self, sample_threshold=50, coherence_threshold=0.9,
 
     bed_samp = (bed_idx1+bed_idx2)//2
     bed_power = (mfilt1[bed_idx1]+mfilt2[bed_idx2])/2.
-    bed_range = self.Rcoarse[bed_samp]
+    bed_range = self.range[bed_samp]
 
     diff_idx = np.argmin(abs(self.ds-bed_range))
     bed_coherence = np.median(abs(self.co[diff_idx-10:diff_idx+10]))

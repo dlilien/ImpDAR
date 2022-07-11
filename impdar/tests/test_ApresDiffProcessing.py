@@ -13,8 +13,9 @@ import os
 import sys
 import unittest
 import numpy as np
-from impdar.lib.ApresData import ApresData, ApresDiff
+from impdar.lib.ApresData import ApresData, ApresDiffData
 from impdar.lib.ApresData.load_apres import load_apres
+from impdar.lib.ApresData.load_diff import load_diff
 from impdar.lib.ApresData._ApresDiffProcessing import *
 
 data_dummy = np.ones((500, 400))
@@ -32,13 +33,13 @@ class TestProcessing(unittest.TestCase):
         apresdata_2.apres_range(2)
         apresdata_2.stacking()
         apresdata_2.phase_uncertainty(3000)
-        diffdat = ApresDiff(apresdata_1,apresdata_2)
+        diffdat = load_diff([apresdata_1,apresdata_2])
         self.assertTrue(hasattr(diffdat,'data'))
         self.assertTrue(hasattr(diffdat,'data2'))
         diffdat.save(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
 
     def test_phase_differencing(self):
-        diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
+        diffdat = ApresDiffData(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         win = 20
         step = 20
         diffdat.phase_diff(win, step)
@@ -47,13 +48,13 @@ class TestProcessing(unittest.TestCase):
         self.assertTrue(min(abs(diffdat.co))>=0.)
 
     def test_unwrap(self):
-        diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
+        diffdat = ApresDiffData(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.phase_unwrap()
         self.assertTrue(diffdat.phi.dtype == np.float64)
 
     def test_range_diff(self):
-        diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
+        diffdat = ApresDiffData(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.phase_unwrap()
         diffdat.range_diff()
@@ -61,14 +62,14 @@ class TestProcessing(unittest.TestCase):
         self.assertTrue(max(abs(diffdat.w))<100.)
 
     def test_strain_rate(self):
-        diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
+        diffdat = ApresDiffData(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.phase_unwrap()
         diffdat.range_diff()
         diffdat.strain_rate((200,1000))
 
     def test_pick_bed(self):
-        diffdat = ApresDiff(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
+        diffdat = ApresDiffData(os.path.join(THIS_DIR, 'input_data', 'diffdat.mat'))
         diffdat.phase_diff(20, 20)
         diffdat.bed_pick()
         self.assertTrue(np.shape(diffdat.bed)==(4,))
