@@ -26,7 +26,7 @@ from scipy.signal import medfilt, find_peaks
 
 def coherence(s1, s2):
     """
-    phase correlation between two elements of the scattering matrix
+    Phase correlation between two elements of the scattering matrix
     Jodan et al. (2019) eq. 13
 
     Parameters
@@ -54,9 +54,10 @@ def coherence(s1, s2):
     return c
 
 
-def phase_diff(self, win, step, Range=None):
+def phase_diff(self, win, step, range_ext=None):
     """
-    Calculate the phase offset using a correlation coefficient.
+    Calculate the phase offset along the full ApRES acquisition
+    using a correlation coefficient within a moving window.
 
     Parameters
     ---------
@@ -66,14 +67,14 @@ def phase_diff(self, win, step, Range=None):
         window size over which to do the correlation coefficient calculation
     step: int
         step size for the window to move between calculations
-    Range: array; optional
+    range_ext: array; optional
         if an external depth array is desired, input here
     """
 
     # Fill a depth array which will be more sparse than the full Range vector
     idxs = np.arange(win//2, len(self.data)-win//2, step).astype(int)
-    if Range is not None:
-        self.ds = Range[idxs]
+    if range_ext is not None:
+        self.ds = range_ext[idxs]
     else:
         self.ds = self.range[idxs]
 
@@ -94,7 +95,8 @@ def phase_diff(self, win, step, Range=None):
 
 def phase_unwrap(self, win=10, thresh=0.9):
     """
-    Unwrap the phase profile to get a
+    Unwrap the phase profile to get one that is
+    either monotonically increasing or monotonically decreasing.
 
     Parameters
     ---------
@@ -121,16 +123,16 @@ def phase_unwrap(self, win=10, thresh=0.9):
             self.phi[idx:] += 2.*np.pi
 
 
-def range_diff(self, uncertainty='CR'):
+def range_diff(self, uncertainty='noise_phasor'):
     """
-    Convert the phase profile to range offset (vertical velocity)
+    Convert the phase profile to range offset (vertical velocity).
 
     Parameters
     ---------
     self: class
         ApresData object
     uncertainty: string;
-        default 'CR' Cramer-Rao bound as in Jordan et al. (2020)
+        default 'noise_phasor' as in Kingslake et al. (2014)
     """
 
     # Check for unwrap
@@ -167,7 +169,8 @@ def range_diff(self, uncertainty='CR'):
 
 def strain_rate(self, strain_window=(200, 1200), w_surf=0.):
     """
-    Estimate the location of the ice-bed interface.
+    Estimate the average vertical strain rate within some
+    range span provided.
 
     Parameters
     ---------

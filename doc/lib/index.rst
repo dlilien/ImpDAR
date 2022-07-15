@@ -17,4 +17,7 @@ Contents:
         Picking
         load
         process
+        ApresData
+        ApresDiffData
+        QuadPolData
         ImpdarError

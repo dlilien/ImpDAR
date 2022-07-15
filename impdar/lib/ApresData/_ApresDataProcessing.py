@@ -31,19 +31,10 @@ def apres_range(self, p, max_range=4000, winfun='blackman'):
         ApresData object
     p: int
         pad factor, level of interpolation for fft
+    max_range: float
+        cut off after some maximum range
     winfun: str
         window function for fft
-
-    Output
-    --------
-    Rcoarse: array
-        range to bin centers (m)
-    Rfine: array
-        range to reflector from bin center (m)
-    spec_cor: array
-        spectrum corrected. Positive frequency half of spectrum with
-        ref phase subtracted. This is the complex signal which can be used for
-        cross-correlating two shot segments.
 
 
     ### Original Matlab File Notes ###
@@ -143,7 +134,7 @@ def phase_uncertainty(self, bed_range):
     self: class
         ApresData object
     bed_range: float
-        Distance of the bed, so noise floor can be calculated beneath it
+        Range to the ice-bed interface, so noise floor can be calculated beneath it
     """
 
     if self.flags.range == 0:
@@ -177,10 +168,6 @@ def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
     ci: float; optional
         propagation velocity (m/s)
 
-    Returns
-    --------
-    r: float or array
-        range (m)
 
     ### Original Matlab File Notes ###
     Craig Stewart
@@ -204,6 +191,7 @@ def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
 def stacking(self, num_chirps=None):
     """
     Stack traces/chirps together to beat down the noise.
+    Can stack across bursts if multiple are present.
 
     Parameters
     ---------

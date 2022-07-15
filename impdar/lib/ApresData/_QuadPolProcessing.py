@@ -223,7 +223,8 @@ def phase_gradient2d(self, filt=None, Wn=0):
 def find_cpe(self, Wn=50, rad_start=np.pi/4., rad_end=3.*np.pi/4.,
              *args, **kwargs):
     """
-    Find the cross-polarized extinction axis
+    Find the cross-polarized extinction axis.
+    Ershadi et al. (2022)
 
     Parameters
     ---------

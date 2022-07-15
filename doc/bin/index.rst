@@ -11,6 +11,10 @@ ImpDAR has four executables:
 
 :doc:`imppick <imppick>` calls up the interpretation GUI. Some processing can also be done through this GUI.
 
+:doc:`apdar <apdar>` is a call to the apdar processing flow. This is built for a separate data class structure than impdar, so only use it for ApRES data.
+
+:doc:`qpdar <qpdar>` is a call to the qpdar processing flow. Similar to apdar, this is executable is only for ApRES data, and here specifically quad-polarized acquisitions.
+
 Contents:
 
 .. toctree::
@@ -20,3 +24,5 @@ Contents:
         impproc
         impplot
         imppick
+        apdar
+        qpdar

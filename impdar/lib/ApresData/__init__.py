@@ -37,7 +37,10 @@ FILETYPE_OPTIONS = ['DAT', 'dat', 'mat', 'h5']
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.
 
-    We keep track of processing steps with the flags attribute.
+    Data are bundled across bursts into the same object if they are loaded together.
+    Some information such as the instrument temperature, battery voltage, etc., are recorded for each burst.
+    Some information is written to the header subclass instead of each burst individually.
+    We track the processing steps with the flags attribute.
     """
     #: Attributes that every ApresData object should have and should not be None.
     attrs_guaranteed = ['data',
@@ -202,9 +205,6 @@ class ApresData(object):
 class ApresDiffData():
     """
     Class for differencing between two Apres acquisitions.
-
-    We keep track of processing steps with the flags attribute.
-    This base version's __init__ takes two filenames of .mat files in the old StODeep format to load.
     """
     #: Attributes that every ApresData object should have and should not be None.
     attrs_guaranteed = ['data',
@@ -362,12 +362,11 @@ class ApresDiffData():
 # ------------------------------------------------
 
 class QuadPolData(object):
-    """A class that holds the relevant information for an quad-polarized ApRES acquisition.
-
-    We keep track of processing steps with the flags attribute.
-    This base version's __init__ takes a filename of a .mat file in the old StODeep format to load.
     """
-    #: Attributes that every ApresData object should have and should not be None.
+    A class that holds the relevant information for a quad-polarized ApRES acquisition.
+    """
+
+    #: Attributes that every QuadPolData object should have and should not be None.
     attrs_guaranteed = ['shh',
                         'shv',
                         'svh',

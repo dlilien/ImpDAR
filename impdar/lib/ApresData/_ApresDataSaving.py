@@ -20,7 +20,7 @@ from .ApresHeader import ApresHeader
 
 
 def save(self, fn):
-    """Save the radar data
+    """Save the apres data
 
     Parameters
     ----------
@@ -40,7 +40,7 @@ def save(self, fn):
 
 
 def save_mat(self, fn):
-    """Save the radar data as an ImpDAR .mat file
+    """Save the apres data as an ImpDAR .mat file
 
     Parameters
     ----------
@@ -94,7 +94,7 @@ def save_mat(self, fn):
 
 
 def save_h5(self, fn):
-    """Save the radar data as an h5 file
+    """Save the apres data as an h5 file
 
     Parameters
     ----------

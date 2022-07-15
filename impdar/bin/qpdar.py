@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """
-Make an executable for single actions of QuadPol apres handling.
+Make an executable for single actions of QuadPolData apres handling.
 """
 
 import sys
@@ -16,7 +16,7 @@ import argparse
 import numpy as np
 
 from impdar.lib.ApresData import FILETYPE_OPTIONS
-from impdar.lib.ApresData import load_apres, QuadPol
+from impdar.lib.ApresData import load_apres, QuadPolData
 
 from impdar.lib import plot
 
@@ -51,7 +51,7 @@ def _get_args():
 
     # Initial range conversion (pulse compression)
     parser_rotate = _add_procparser(subparsers,
-                                    'rotated',
+                                    'rotate',
                                     'use a rotational transform to find data at all azimuths',
                                     rotate,
                                     'rotated')
@@ -62,7 +62,7 @@ def _get_args():
 
     # Coherence 2D
     parser_coherence = _add_procparser(subparsers,
-                                       'chhvv',
+                                       'coherence',
                                        '2-dimensional coherence between HH and VV polarizations',
                                        coherence,
                                        'chhvv')
@@ -138,7 +138,7 @@ def main():
     try:
         qp_data = load_apres.load_quadpol(args.fns)
     except:
-        qp_data = QuadPol(args.fns[0])
+        qp_data = QuadPolData(args.fns[0])
 
 
     if args.name == 'load':
@@ -161,12 +161,11 @@ def main():
 
 def full_processing(dat, nthetas=100, dtheta=20.0*np.pi/180.,
                     drange=100., Wn=0., fs=0., **kwargs):
-    """Full processing flow for QuadPol object.
+    """Full processing flow for QuadPolData object.
     Range conversion, stacking, uncertainty."""
     dat.rotational_transform(n_thetas=nthetas, **kwargs)
+    dat.find_cpe()
     dat.coherence2d(delta_theta=dtheta, delta_range=drange)
-    dat.power_anomaly()
-    dat.lowpass(Wn=Wn, fs=fs)
 
 
 def rotate(dat, nthetas=100, **kwargs):
@@ -182,8 +181,7 @@ def coherence(dat, dtheta=20.0*np.pi/180., drange=100., **kwargs):
 def cross_polarized_extinction(dat,
                                Wn=0., fs=0., **kwargs):
     """Calculate uncertainty."""
-    dat.power_anomaly()
-    dat.lowpass(Wn=Wn, fs=fs)
+    dat.find_cpe(Wn=Wn)
 
 
 def plot_quadpol(dat, s=False, o=None, o_fmt='png',
