@@ -20,7 +20,11 @@ class TestLoad(unittest.TestCase):
 
     def test_loaddat(self):
         data = load_apres.load_apres_single_file(os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT'))
-        self.assertEqual(data.data.shape, (data.n_subbursts, data.snum))
+        self.assertEqual(data.data.shape, (data.header.n_subbursts, data.snum))
+
+    def test_bas_nc(self):
+        data = load_apres.load_BAS_nc(os.path.join(THIS_DIR, 'input_data', 'apres_1.nc'))
+        self.assertEqual(data.data.shape, (data.bnum, data.cnum, data.snum))
 
     def test_loadbad(self):
         with self.assertRaises(ValueError):

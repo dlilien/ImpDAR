@@ -31,45 +31,50 @@ def _get_args():
                                   defname='load')
     _add_def_args(parser_load)
 
-    # Initial range conversion (pulse compression)
+    # Full processing flow for a single ApRES acquisition
     parser_fullproc = _add_procparser(subparsers,
                                       'proc',
                                       'full processing flow on the apres data object',
                                       full_processing,
                                       'proc')
     parser_fullproc.add_argument('-max_range',
-                             type=int,
-                             help='maximum range for the pulse compression')
+                                 type=int,
+                                 help='maximum range for the range conversion',
+                                 default=4000.)
     parser_fullproc.add_argument('-num_chirps',
-                             type=int,
-                              help='number of chirps to stack (default: stack all)')
-    parser_fullproc.add_argument('noise_bed_range',
-                             type=int,
-                              help='bed range under which \
-                                    the noise phasor will be calculated')
+                                 type=int,
+                                 help='number of chirps to stack (default: stack all)',
+                                 default=3000.)
+    parser_fullproc.add_argument('-noise_bed_range',
+                                 type=int,
+                                 help='bed range under which \
+                                    the noise phasor will be calculated',
+                                 default=3000.)
     _add_def_args(parser_fullproc)
 
-    # Initial range conversion (pulse compression)
+    # Initial range conversion (deramping)
     parser_range = _add_procparser(subparsers,
                                   'range',
                                   'convert the recieved waveform to a \
                                         range-amplitude array',
-                                  pulse_compression,
+                                  range_conversion,
                                   'range')
     parser_range.add_argument('-max_range',
                              type=int,
-                             help='maximum range for the pulse compression')
+                             help='maximum range for the range conversion',
+                             default=4000.)
     _add_def_args(parser_range)
 
     # Stacking
     parser_stack = _add_procparser(subparsers,
-                                  'stack',
-                                  'stack apres chirps into a single array',
-                                  stack,
-                                  'stacked')
+                                   'stack',
+                                   'stack apres chirps into a single array',
+                                   stack,
+                                   'stacked')
     parser_stack.add_argument('-num_chirps',
-                             type=int,
-                              help='number of chirps to stack (default: stack all)')
+                              type=int,
+                              help='number of chirps to stack (default: stack all)',
+                              default=0)
     _add_def_args(parser_stack)
 
     # Uncertainty
@@ -79,9 +84,10 @@ def _get_args():
                                   uncertainty,
                                   'uncertainty')
     parser_unc.add_argument('-noise_bed_range',
-                             type=int,
-                              help='bed range under which \
-                                    the noise phasor will be calculated')
+                            type=int,
+                            help='bed range under which \
+                                    the noise phasor will be calculated',
+                            default=3000.)
     _add_def_args(parser_unc)
 
     # Load Differencing Object from two impdar acquisitions
@@ -122,7 +128,8 @@ def _get_args():
                                   'pdiff',
                                   'unwrap the differenced phase profile \
                                        from top to bottom',
-                                  phase_differencing)
+                                  phase_differencing,
+                                  'pdiff')
     parser_pdiff.add_argument('-window',
                              type=int,
                               help='window size over which the cross correlation is done')
@@ -214,9 +221,11 @@ def main():
         except:
             apres_data = ApresDiffData(args.fns[0])
 
-
     if args.name == 'load':
         name = 'raw'
+        pass
+    elif args.name == 'diffload':
+        name = 'diffraw'
         pass
     else:
         name = args.name
@@ -233,18 +242,18 @@ def main():
         apres_data.save(out_fn)
 
 
-def full_processing(dat, p=2, max_range=4000, num_chirps=0, noise_bed_range=3000, **kwargs):
+def full_processing(dat, p=2, max_range=4000., num_chirps=0., noise_bed_range=3000., **kwargs):
     """Full processing flow for ApresData object.
     Range conversion, stacking, uncertainty."""
     dat.apres_range(p,max_range)
-    if num_chirps == 0:
+    if num_chirps == 0.:
         dat.stacking()
     else:
         dat.stacking(num_chirps)
     dat.phase_uncertainty(noise_bed_range)
 
 
-def pulse_compression(dat, p=2, max_range=4000, **kwargs):
+def range_conversion(dat, p=2, max_range=4000, **kwargs):
     """Range conversion."""
     dat.apres_range(p,max_range)
 

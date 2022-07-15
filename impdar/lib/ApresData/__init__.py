@@ -32,7 +32,7 @@ from .QuadPolFlags import QuadPolFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
-FILETYPE_OPTIONS = ['DAT', 'dat', 'mat', 'h5']
+FILETYPE_OPTIONS = ['DAT', 'dat', 'mat', 'h5', 'nc']
 
 class ApresData(object):
     """A class that holds the relevant information for an ApRES acquisition.

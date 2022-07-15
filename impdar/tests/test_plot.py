@@ -17,6 +17,8 @@ from impdar.lib.RadarData import RadarData
 from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.Picks import Picks
 from impdar.lib import plot
+from impdar.lib.ApresData.load_apres import load_apres
+from impdar.lib.ApresData._ApresDataDifferencing import ApresDiff
 import matplotlib.pyplot as plt
 if sys.version_info[0] >= 3:
     from unittest.mock import patch
@@ -110,6 +112,34 @@ class TestPlot(unittest.TestCase):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
+    def test_plotApRES_raw(self, mock_plot_apres_raw, mock_show):
+        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        plot.plot_apres(dat)
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
+    def test_plotApRES_proc(self, mock_plot_apres, mock_show):
+        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        dat.apres_range(2)
+        dat.stacking()
+        dat.phase_uncertainty(3000)
+        plot.plot_apres(dat)
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
+    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
+        apresdata_1 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        apresdata_1.apres_range(2)
+        apresdata_1.stacking()
+        apresdata_1.phase_uncertainty(3000)
+        apresdata_2 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')])
+        apresdata_2.apres_range(2)
+        apresdata_2.stacking()
+        apresdata_2.phase_uncertainty(3000)
+        diffdat = ApresDiff(apresdata_1,apresdata_2)
+        plot.plot_apres_diff(diffdat)
 
     def test_plotBADINPUT(self):
         with self.assertRaises(ValueError):
@@ -172,7 +202,7 @@ class TestPlotPower(unittest.TestCase):
         dat.picks.power[:] = 10.5
         # works with constant power
         fig, ax = plot.plot_power(dat, 10)
-        
+
         # works with various inputs
         fig, ax = plt.subplots()
         plot.plot_power(dat, 10, fig=fig)
@@ -286,7 +316,7 @@ class TestPlotRadargram(unittest.TestCase):
 
 
 class TestPlotFT(unittest.TestCase):
-    
+
     @patch('impdar.lib.plot.plt.show')
     def test_plot_ft(self, mcok_show):
         # Only checking that these do not throw errors
@@ -301,7 +331,7 @@ class TestPlotFT(unittest.TestCase):
 
 
 class TestPlotHFT(unittest.TestCase):
-    
+
     @patch('impdar.lib.plot.plt.show')
     def test_plot_hft(self, mock_show):
         # Only checking that these do not throw errors
@@ -316,7 +346,7 @@ class TestPlotHFT(unittest.TestCase):
 
 
 class TestPlotPicks(unittest.TestCase):
-    
+
     @patch('impdar.lib.plot.plt.show')
     def test_plot_picks_via_radargram(self, mock_show):
         """We want to be able to call this via plot_radargram"""

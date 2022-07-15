@@ -146,7 +146,7 @@ def main():
         pass
     else:
         name = args.name
-        args.func(apres_data, **vars(args))
+        args.func(qp_data, **vars(args))
 
     if args.o is not None:
         out_fn = args.o

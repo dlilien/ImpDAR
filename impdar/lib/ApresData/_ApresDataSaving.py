@@ -93,7 +93,7 @@ def save_mat(self, fn):
     savemat(fn, mat)
 
 
-def save_h5(self, fn):
+def save_h5(self, fn, groupname='dat'):
     """Save the apres data as an h5 file
 
     Parameters
