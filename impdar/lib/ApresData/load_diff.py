@@ -43,13 +43,14 @@ def load_diff(fn, load_single_pol=True, *args, **kwargs):
                 if len(f) != 1:
                     raise FileNotFoundError('Need exactly one file \
                                             matching each polarization')
+
         elif len(fn) == 2:
-            fns = fn
+            fns = [[fn[0]], [fn[1]]]
         else:
             raise ValueError('fn must be a glob for files with \
                              _time1, _time2, or a 2-tuple')
 
-        if isinstance(fns[0], str):
+        if isinstance(fns[0][0], str):
             single_acquisitions = [load_apres(f) for f in fns]
         else:
             single_acquisitions = [dat for dat in fns]

@@ -93,7 +93,7 @@ def _get_args():
     # Load Differencing Object from two impdar acquisitions
     parser_diffload = _add_procparser(subparsers,
                                     'diffload',
-                                    'create an ApresDiff object',
+                                    'create an ApresDiffData object',
                                     lambda x: x,
                                     defname='diffload')
     _add_def_args(parser_diffload)
@@ -214,7 +214,7 @@ def main():
         parser.parse_args(['-h'])
 
     if args.name == 'diffload':
-        apres_data = load_diff.load_diff(args.fns[0],args.fns[1])
+        apres_data = load_diff.load_diff([args.fns[0],args.fns[1]])
     else:
         try:
             apres_data = load_apres.load_apres(args.fns)

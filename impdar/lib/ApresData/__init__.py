@@ -78,28 +78,29 @@ class ApresData(object):
             self.snum = None  #: int number of samples per chirp
             self.cnum = None  #: int, the number of chirps in a burst
             self.bnum = None  #: int, the number of bursts
-            self.data = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.data = None  #: np.ndarray(bnum, cnum, snum) of the actual return amplitude
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
+            self.uncertainty = None  #: float, phase uncertainty
 
-            # Per-trace attributes
-            #: np.ndarray(tnum,) of the acquisition time of each trace
+            # Per-chirp attributes
+            #: np.ndarray(bnum, cnum) of the acquisition time of each trace
             #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
             #: for convenience, use the `datetime` attribute to access a python version of the day
             self.decday = None
-            #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
+            #: np.ndarray(bnum, cnum) latitude/longitude along the profile. Generally not in projected coordinates
             self.lat = None
-            #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
             self.long = None
 
             # chirp
-            self.chirp_num = None  #: np.ndarray(cnum,) The 1-indexed number of the chirp
-            self.chirp_att = None  #: np.ndarray(cnum,) Chirp attenuation settings
-            self.chirp_time = None  #: np.ndarray(cnum,) Time at beginning of chirp (serial day)
+            self.chirp_num = None  #: np.ndarray(bnum, cnum,) The 1-indexed number of the chirp
+            self.chirp_att = None  #: np.ndarray(bnum, cnum,) Chirp attenuation settings
+            self.chirp_time = None  #: np.ndarray(bnum, cnum,) Time at beginning of chirp (serial day)
 
             # Sample-wise attributes
             #: np.ndarray(snum,) The two way travel time to each sample, in us
             self.travel_time = None
             self.Rcoarse = None
+            self.frequencies = None
 
             #: float Optional. Projected coordinates of the acquisition location
             self.x_coord = None

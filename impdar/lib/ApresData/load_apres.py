@@ -46,6 +46,10 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     ----------
     fns_apres: list of file names for ApresData
         each loads object to concatenate
+    burst: int
+
+    fs: int
+        sampling frequency (per second)
 
     Returns
     -------
