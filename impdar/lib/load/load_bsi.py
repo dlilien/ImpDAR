@@ -49,8 +49,9 @@ def _dt_from_comment(dset):
     return datetime.datetime(dmy[2], dmy[0], dmy[1], 0, 0, 0)
 
 
-def load_bsi(fn_h5, nans=None, *args, **kwargs):
+def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
     """Load a BSI IceRadar file, which is just an h5 file, into ImpDAR."""
+
     if not H5:
         raise ImportError('You need H5 to load bsi')
 
@@ -81,33 +82,56 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
             time = np.zeros((h5_data.tnum,))
             h5_data.data = np.zeros((h5_data.snum, h5_data.tnum))
 
-            if type(dset['location_0']['datacapture_0']['echogram_0'].attrs['Digitizer-MetaData_xml']) == str:
-                digitizer_data = dset['location_0']['datacapture_0'][
-                    'echogram_0'].attrs['Digitizer-MetaData_xml']
+            if not XIPR:
+                dig_meta_str = 'Digitizer-MetaData_xml'
+                gps_cluster_str = 'GPS Cluster- MetaData_xml'
+                gps_fix_str = 'GPS Fix valid'
+                gps_message_str = 'GPS Message ok'
+                sample_rate_str = ' Sample Rate'
+                trigger_level_str = 'trigger level'
+                gps_timestamp_str = 'GPS_timestamp_UTC'
+            elif XIPR:
+                dig_meta_str = 'DigitizerMetaData_xml'
+                gps_cluster_str = 'GPSData_xml'
+                gps_fix_str = 'GPSFixValid'
+                gps_message_str = 'GPSMessageOk'
+                sample_rate_str = 'SampleRate'
+                trigger_level_str = 'TriggerLevel'
+                gps_timestamp_str = 'GPSTimestamp_UTC'
+                if channel == 0 or channel == 'unamped':
+                    ch = '0'
+                    h5_data.chan = 0
+                if channel == 1 or channel == 'amped':
+                    ch = '1'
+                    h5_data.chan = 1
+
+            if type(dset['location_0']['datacapture_'+ch]['echogram_'+ch].attrs[dig_meta_str]) == str:
+                digitizer_data = dset['location_0']['datacapture_'+ch][
+                    'echogram_'+ch].attrs[dig_meta_str]
             else:
-                digitizer_data = dset['location_0']['datacapture_0'][
-                    'echogram_0'].attrs['Digitizer-MetaData_xml'].decode('utf-8')
+                digitizer_data = dset['location_0']['datacapture_'+ch][
+                    'echogram_'+ch].attrs[dig_meta_str].decode('utf-8')
             for location_num in range(h5_data.tnum):
                 # apparently settings can change mid-line
-                nsamps = dset['location_{:d}'.format(location_num)]['datacapture_0']['echogram_0'].shape[0]
+                nsamps = dset['location_{:d}'.format(location_num)]['datacapture_'+ch]['echogram_'+ch].shape[0]
                 if nsamps > h5_data.snum:
                     h5_data.data = np.vstack((h5_data.data, np.zeros((nsamps - h5_data.snum, h5_data.tnum))))
                     h5_data.snum = nsamps
                 h5_data.data[:, location_num] = dset[
                     'location_{:d}'.format(location_num)][
-                        'datacapture_0']['echogram_0']
+                        'datacapture_'+ch]['echogram_'+ch]
                 if type(dset['location_{:d}'.format(location_num)][
-                    'datacapture_0']['echogram_0'].attrs[
-                        'GPS Cluster- MetaData_xml']) == str:
+                    'datacapture_'+ch]['echogram_'+ch].attrs[
+                        gps_cluster_str]) == str:
                     gps_data = dset['location_{:d}'.format(location_num)][
-                        'datacapture_0']['echogram_0'].attrs[
-                            'GPS Cluster- MetaData_xml']
+                        'datacapture_'+ch]['echogram_'+ch].attrs[
+                            gps_cluster_str]
                 else:
                     gps_data = dset['location_{:d}'.format(location_num)][
-                        'datacapture_0']['echogram_0'].attrs[
-                            'GPS Cluster- MetaData_xml'].decode('utf-8')
-                if (float(_xmlGetVal(gps_data, 'GPS Fix valid')) > 0) and (
-                        float(_xmlGetVal(gps_data, 'GPS Message ok')) > 0):
+                        'datacapture_'+ch]['echogram_'+ch].attrs[
+                            gps_cluster_str].decode('utf-8')
+                if (float(_xmlGetVal(gps_data, gps_fix_str)) > 0) and (
+                        float(_xmlGetVal(gps_data, gps_message_str)) > 0):
                     # sometimes, there are bad entries that are unmarked
                     try:
                         lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
@@ -129,13 +153,13 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                     h5_data.elev[location_num] = np.nan
 
             h5_data.dt = 1.0 / float(
-                _xmlGetVal(digitizer_data, ' Sample Rate'))
+                _xmlGetVal(digitizer_data, sample_rate_str))
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
 
             # Other information that ImpDAR currently cannot use
             # _xmlGetVal(digitizer_data, 'vertical range')
             h5_data.trig_level = float(
-                _xmlGetVal(digitizer_data, 'trigger level'))
+                _xmlGetVal(digitizer_data, trigger_level_str))
             time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
             h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
 
@@ -179,7 +203,14 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                 time_offset) / h5_data.dt)
 
             # need to access a comment to get the day
-            day_collection = _dt_from_comment(dset)
+            try:
+                day_collection = _dt_from_comment(dset)
+            except:
+                c_timestamp = dset['location_0'].attrs['CreationTimestamp'].decode('utf-8')
+                c_timestamp = c_timestamp[:c_timestamp.find(' ')]
+                dmy = list(map(int, c_timestamp.split('/')))
+                day_collection = datetime.datetime(dmy[2], dmy[1], dmy[0], 0, 0, 0)
+
             day_offset = (day_collection - datetime.datetime(1, 1, 1, 0, 0, 0)
                           ).days
             h5_data.decday = gpslib.hhmmss2dec(time) + day_offset
@@ -199,7 +230,7 @@ def load_bsi(fn_h5, nans=None, *args, **kwargs):
                  np.diff(h5_data.dist)))
             h5_data.pressure = np.zeros_like(h5_data.lat)
 
-            h5_data.chan = 0
             h5_data.check_attrs()
             h5_data_list.append(h5_data)
+
     return h5_data_list
