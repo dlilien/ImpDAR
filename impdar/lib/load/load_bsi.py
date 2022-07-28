@@ -93,6 +93,8 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 trigger_level_str = 'trigger level'
                 gps_timestamp_str = 'GPS_timestamp_UTC'
                 alt_asl = 'Alt_asl_m'
+                ch = '0'
+                h5_data.chan = 0
             elif XIPR:
                 dig_meta_str = 'DigitizerMetaData_xml'
                 gps_cluster_str = 'GPSData_xml'

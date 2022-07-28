@@ -18,10 +18,10 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestBSI(unittest.TestCase):
- 
+
     @unittest.skipIf(not load_bsi.H5, 'h5py is not available')
     def test_load_bsi(self):
-        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'))
+        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'), XIPR=False)
 
     @unittest.skipIf(load_bsi.H5, 'h5py is available')
     def test_load_bsi_noh5py(self):
