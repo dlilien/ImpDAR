@@ -49,7 +49,7 @@ def _dt_from_comment(dset):
     return datetime.datetime(dmy[2], dmy[0], dmy[1], 0, 0, 0)
 
 
-def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
+def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs):
     """Load a BSI IceRadar file, which is just an h5 file, into ImpDAR."""
 
     if not H5:
@@ -64,6 +64,8 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
     with h5py.File(fn_h5, 'r') as f_in:
         dset_names = [key for key in f_in.keys()]
         for dset_name in dset_names:
+            if line != None and dset_name != 'line_' + str(line):
+                continue
             print('Loading {:s} from {:s}'.format(dset_name, fn_h5))
             # Just in case there is something else that can be here
             if 'line_' not in dset_name:
@@ -90,6 +92,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
                 sample_rate_str = ' Sample Rate'
                 trigger_level_str = 'trigger level'
                 gps_timestamp_str = 'GPS_timestamp_UTC'
+                alt_asl = 'Alt_asl_m'
             elif XIPR:
                 dig_meta_str = 'DigitizerMetaData_xml'
                 gps_cluster_str = 'GPSData_xml'
@@ -98,6 +101,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
                 sample_rate_str = 'SampleRate'
                 trigger_level_str = 'TriggerLevel'
                 gps_timestamp_str = 'GPSTimestamp_UTC'
+                alt_asl = 'Alt_ASL_m'
                 if channel == 0 or channel == 'unamped':
                     ch = '0'
                     h5_data.chan = 0
@@ -134,13 +138,13 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
                         float(_xmlGetVal(gps_data, gps_message_str)) > 0):
                     # sometimes, there are bad entries that are unmarked
                     try:
-                        lat[location_num] = float(_xmlGetVal(gps_data, 'Lat_N'))
+                        lat[location_num] = float(_xmlGetVal(gps_data, 'Lat'))
                         lon[location_num] = float(
-                            _xmlGetVal(gps_data, 'Long_ W'))
+                            _xmlGetVal(gps_data, 'Long'))
                         time[location_num] = float(
-                            _xmlGetVal(gps_data, 'GPS_timestamp_UTC'))
+                            _xmlGetVal(gps_data, gps_timestamp_str))
                         h5_data.elev[location_num] = float(
-                            _xmlGetVal(gps_data, 'Alt_asl_m'))
+                            _xmlGetVal(gps_data, alt_asl))
                     except:
                         lat[location_num] = np.nan
                         lon[location_num] = np.nan
@@ -196,7 +200,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
                 h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
             else:
                 h5_data.lat = _dm2dec(lat)
-                h5_data.long = -_dm2dec(lon)
+                h5_data.long = np.sign(lon) * _dm2dec(abs(lon))
                 h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
 
             h5_data.trig = np.floor(np.ones((h5_data.tnum, )) * np.abs(
@@ -206,7 +210,9 @@ def load_bsi(fn_h5, XIPR=True, channel=0., nans=None, *args, **kwargs):
             try:
                 day_collection = _dt_from_comment(dset)
             except:
-                c_timestamp = dset['location_0'].attrs['CreationTimestamp'].decode('utf-8')
+                c_timestamp = dset['location_0'].attrs['CreationTimestamp']
+                if not isinstance(c_timestamp, str):
+                    c_timestamp = c_timestamp.decode('utf-8')
                 c_timestamp = c_timestamp[:c_timestamp.find(' ')]
                 dmy = list(map(int, c_timestamp.split('/')))
                 day_collection = datetime.datetime(dmy[2], dmy[1], dmy[0], 0, 0, 0)
