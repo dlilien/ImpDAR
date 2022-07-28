@@ -89,7 +89,7 @@ jobs:
     - name: Run tests no GUI
       if: ${{ !matrix.qt5 }}
       run: |
-        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
+        coverage run --source impdar --omit=impdar/tests/*,impdar/lib/analysis/* -m pytest 
 
     - name: Produce xml coverage
       run: coverage xml
