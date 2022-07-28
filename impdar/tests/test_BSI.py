@@ -26,7 +26,7 @@ class TestBSI(unittest.TestCase):
     @unittest.skipIf(load_bsi.H5, 'h5py is available')
     def test_load_bsi_noh5py(self):
         with self.assertRaises(ImportError):
-            load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'))
+            load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'), XIPR=False)
 
 
 if __name__ == '__main__':
