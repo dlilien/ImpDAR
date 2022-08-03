@@ -201,6 +201,7 @@ def load_pe(fn_dt1, *args, **kwargs):
                     doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
             if i == 2 and pe_data.version == '1.5.340':
                 doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
@@ -249,13 +250,13 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.y_coord = pe_data.gps_data.y
         pe_data.dist = pe_data.gps_data.dist.flatten()
         pe_data.elev = pe_data.gps_data.z
-        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
-        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
-        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.
-        # 366 for matlab compat
-        pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
         pe_data.trace_int = np.hstack((np.array(np.nanmean(
             np.diff(pe_data.dist))), np.diff(pe_data.dist)))
+
+        tmin = day_offset.toordinal() + np.min(pe_data.gps_data.dectime) + 366.
+        tmax = day_offset.toordinal() + np.max(pe_data.gps_data.dectime) + 366.  # 366 for matlab compatability
+        pe_data.decday = np.linspace(tmin, tmax, pe_data.tnum)
+
     else:
         print('Warning: Cannot find gps file, %s.' % gps_fn)
         pe_data.lat = np.zeros((pe_data.data.shape[1],))
@@ -264,8 +265,10 @@ def load_pe(fn_dt1, *args, **kwargs):
         pe_data.y_coord = np.zeros((pe_data.data.shape[1],))
         pe_data.dist = np.zeros((pe_data.data.shape[1],))
         pe_data.elev = np.zeros((pe_data.data.shape[1],))
-        pe_data.decday = np.arange(pe_data.data.shape[1])
         pe_data.trace_int = np.ones((pe_data.data.shape[1],))
+
+        seconds_of_day = pe_data.traceheaders.time_of_day.flatten()
+        pe_data.decday = day_offset.toordinal() + 366. + seconds_of_day/60./60./24.
 
     pe_data.check_attrs()
     return pe_data
