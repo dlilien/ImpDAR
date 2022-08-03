@@ -223,15 +223,18 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                           ).days
             h5_data.decday = gpslib.hhmmss2dec(time) + day_offset
 
-            try:
-                h5_data.get_projected_coords()
-            except ImportError:
-                temp_x = h5_data.long * 110. * np.cos(h5_data.lat)
-                temp_y = 110. * h5_data.lat
-                h5_data.dist = np.hstack((
-                    [0], np.cumsum(np.sqrt(
-                        np.diff(temp_x) ** 2.0 + np.diff(temp_y) ** 2.0))))
-                print('Geographic coordinate conversion skipped: no ogr')
+            if np.any(np.isfinite(h5_data.lat)):
+                try:
+                    h5_data.get_projected_coords()
+                except ImportError:
+                    temp_x = h5_data.long * 110. * np.cos(h5_data.lat)
+                    temp_y = 110. * h5_data.lat
+                    h5_data.dist = np.hstack((
+                        [0], np.cumsum(np.sqrt(
+                            np.diff(temp_x) ** 2.0 + np.diff(temp_y) ** 2.0))))
+                    print('Geographic coordinate conversion skipped: no ogr')
+            else:
+                h5_data.dist = np.zeros(h5_data.tnum)
 
             h5_data.trace_int = np.hstack(
                 (np.array(np.nanmean(np.diff(h5_data.dist))),
