@@ -18,7 +18,7 @@ from impdar.lib.NoInitRadarData import NoInitRadarData
 from impdar.lib.Picks import Picks
 from impdar.lib import plot
 from impdar.lib.ApresData.load_apres import load_apres
-from impdar.lib.ApresData import ApresDiffData
+from impdar.lib.ApresData.load_time_diff import load_time_diff
 import matplotlib.pyplot as plt
 if sys.version_info[0] >= 3:
     from unittest.mock import patch
@@ -138,7 +138,7 @@ class TestPlot(unittest.TestCase):
         apresdata_2.apres_range(2)
         apresdata_2.stacking()
         apresdata_2.phase_uncertainty(3000)
-        diffdat = ApresDiffData(apresdata_1,apresdata_2)
+        diffdat = load_time_diff([apresdata_1,apresdata_2])
         plot.plot_apres_diff(diffdat)
 
     def test_plotBADINPUT(self):

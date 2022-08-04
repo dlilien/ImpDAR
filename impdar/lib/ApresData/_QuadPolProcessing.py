@@ -22,7 +22,7 @@ import sys
 import time
 
 import numpy as np
-from ._ApresDiffProcessing import coherence
+from ._TimeDiffProcessing import coherence
 from scipy.signal import butter, filtfilt
 
 from ..ImpdarError import ImpdarError
@@ -45,7 +45,7 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
     Parameters
     ---------
     self: class
-        QuadPolData object
+        ApresQuadPol object
     theta_start: float
         Starting point for array of azimuths
     theta_end: float
@@ -76,10 +76,10 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
 
     self.thetas = np.linspace(theta_start, theta_end, n_thetas)
 
-    self.HH = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
-    self.HV = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
-    self.VH = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
-    self.VV = np.empty((len(self.range), len(self.thetas))).astype(np.complex)
+    self.HH = np.empty((len(self.range), len(self.thetas))).astype(complex)
+    self.HV = np.empty((len(self.range), len(self.thetas))).astype(complex)
+    self.VH = np.empty((len(self.range), len(self.thetas))).astype(complex)
+    self.VV = np.empty((len(self.range), len(self.thetas))).astype(complex)
 
     for i, theta in enumerate(self.thetas):
         self.HH[:, i] = self.shh*np.cos(theta)**2. + \
@@ -106,7 +106,7 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     Parameters
     ---------
     self: class
-        QuadPolData object
+        ApresQuadPol object
     delta_theta : float
             window size in the azimuthal dimension; default: 20 degrees
     delta_range: float
@@ -128,7 +128,7 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     VV_end = self.VV[:, -ntheta:]
     VV_ = np.hstack((VV_end, self.VV, VV_start))
 
-    chhvv = np.nan*np.ones_like(HH_).astype(np.complex)
+    chhvv = np.nan*np.ones_like(HH_).astype(complex)
     range_bins, azimuth_bins = HH_.shape[0], HH_.shape[1]
 
     t0 = time.time()
@@ -183,7 +183,7 @@ def phase_gradient2d(self, filt=None, Wn=0):
     Parameters
     ---------
     self: class
-        QuadPolData object
+        ApresQuadPol object
     filt : string
             filter type; default lowpass
     Wn : float
@@ -229,7 +229,7 @@ def find_cpe(self, Wn=50, rad_start=np.pi/4., rad_end=3.*np.pi/4.,
     Parameters
     ---------
     self: class
-        QuadPolData object
+        ApresQuadPol object
     Wn: float
         Filter frequency
     rad_start: float
@@ -237,6 +237,10 @@ def find_cpe(self, Wn=50, rad_start=np.pi/4., rad_end=3.*np.pi/4.,
     rad_end: float
         Ending point for the azimuthal window to look within for cpe axis
     """
+
+    if self.flags.rotation[0] != 1:
+        raise ImpdarError('Rotate the quad-pol acquisition before \
+                          calling this function.')
 
     # Power anomaly
     HV_pa = power_anomaly(self.HV.copy())
@@ -260,7 +264,7 @@ def find_cpe(self, Wn=50, rad_start=np.pi/4., rad_end=3.*np.pi/4.,
         self.chhvv_cpe = self.chhvv[np.arange(self.snum), self.cpe_idxs]
     # If the phase gradient calculation has already been done
     # get it along the cpe axis
-    if self.flags.phase_gradient:
+    if self.flags.phasegradient:
         self.dphi_dz_cpe = self.dphi_dz[np.arange(self.snum), self.cpe_idxs]
 
     self.flags.cpe = True
@@ -275,7 +279,7 @@ def phase_gradient_to_fabric(self, c=300e6, fc=300e6, delta_eps=0.035, eps=3.12)
     Parameters
     ---------
     self: class
-        QuadPolData object
+        ApresQuadPol object
     c: float
         speed of light
     fc: float

@@ -161,9 +161,7 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
     else:
         ApresFlags().write_h5(grp)
 
-    # No header for quadpol
-    if hasattr(self, 'header'):
-        if self.header is not None:
-            self.header.write_h5(grp)
-        else:
-            ApresHeader().write_h5(grp)
+    if self.header is not None:
+        self.header.write_h5(grp)
+    else:
+        ApresHeader().write_h5(grp)

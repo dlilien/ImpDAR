@@ -13,24 +13,26 @@
 import os
 import unittest
 import numpy as np
-from impdar.lib.ApresData import ApresFlags
+from impdar.lib.ApresData import ApresFlags, TimeDiffFlags, QuadPolFlags
 
 
 class TestFlags(unittest.TestCase):
 
     def setUp(self):
         self.apf = ApresFlags()
+        self.tdf = TimeDiffFlags()
+        self.qpf = QuadPolFlags()
 
     def test_BoolOutputConversion(self):
         # Make sure the value is as expected
-        out = self.apf.to_matlab()
+        out = self.tdf.to_matlab()
         self.assertFalse(out['unwrap'])
 
-        self.apf.bed_pick = True
-        out = self.apf.to_matlab()
+        self.tdf.bed_pick = True
+        out = self.tdf.to_matlab()
         self.assertTrue(out['bed_pick'])
 
-        for attr in self.apf.attrs:
+        for attr in self.tdf.attrs:
             self.assertTrue(attr in out)
 
     def test_InputConversion(self):
@@ -38,11 +40,7 @@ class TestFlags(unittest.TestCase):
         in_flags_bad_format = {'file_read_code': None,
                                'range': 0,
                                'stack': 1,
-                               'uncertainty': 0,
-                               'phase_diff': 0,
-                               'unwrap': False,
-                               'strain': np.array([0., 0.]),
-                               'bed_pick': False}
+                               'uncertainty': 0}
         in_flags_bad = {'unwrap': False}
 
         with self.assertRaises(KeyError):
@@ -52,7 +50,6 @@ class TestFlags(unittest.TestCase):
 
     def tearDown(self):
         del self.apf
-
 
 if __name__ == '__main__':
     unittest.main()

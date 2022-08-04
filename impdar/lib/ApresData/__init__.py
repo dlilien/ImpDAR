@@ -27,8 +27,7 @@ import numpy as np
 from scipy.io import loadmat
 import h5py
 
-from .ApresFlags import ApresFlags
-from .QuadPolFlags import QuadPolFlags
+from .ApresFlags import ApresFlags, TimeDiffFlags, QuadPolFlags
 from .ApresHeader import ApresHeader
 from ..ImpdarError import ImpdarError
 
@@ -201,15 +200,21 @@ class ApresData(object):
         return np.array([datetime.datetime.fromordinal(int(dd)) + datetime.timedelta(days=dd % 1) - datetime.timedelta(days=366)
                          for dd in self.decday], dtype=np.datetime64)
 
+
 # ------------------------------------------------
 
-class ApresDiffData():
+
+class ApresTimeDiff(object):
     """
     Class for differencing between two Apres acquisitions.
     """
     #: Attributes that every ApresData object should have and should not be None.
     attrs_guaranteed = ['data',
                         'data2',
+                        'decday1',
+                        'decday2',
+                        'dt',
+                        'snum',
                         'range',
                         'fn1',
                         'fn2',
@@ -219,7 +224,17 @@ class ApresDiffData():
     #: These may not have existed in old StoDeep files that we are compatible with,
     #: and they often cannot be set at the initial data load.
     #: If they exist, they all have units of meters.
-    attrs_optional = ['unc1',
+    attrs_optional = ['lat1',
+                      'lat2',
+                      'long1',
+                      'long2',
+                      'x_coord1',
+                      'x_coord2',
+                      'y_coord1',
+                      'y_coord2',
+                      'elev1',
+                      'elev2',
+                      'unc1',
                       'unc2',
                       'ds',
                       'co',
@@ -230,7 +245,7 @@ class ApresDiffData():
                       'eps_zz',
                       'bed']
 
-    from ._ApresDiffProcessing import phase_diff, phase_unwrap, range_diff, strain_rate, bed_pick
+    from ._TimeDiffProcessing import phase_diff, phase_unwrap, range_diff, strain_rate, bed_pick
     from ._ApresDataSaving import save
 
     def __init__(self,fn):
@@ -254,13 +269,13 @@ class ApresDiffData():
             #: np.ndarray(tnum,) of the acquisition time of each trace
             #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
             #: for convenience, use the `datetime` attribute to access a python version of the day
-            self.decday = None
+            self.decday1 = None
             self.decday2 = None
             #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
-            self.lat = None
+            self.lat1 = None
             self.lat2 = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
-            self.long = None
+            self.long1 = None
             self.long2 = None
 
             # Sample-wise attributes
@@ -268,18 +283,18 @@ class ApresDiffData():
             self.range = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
-            self.x_coord = None
+            self.x_coord1 = None
             self.x_coord2 = None
             #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
-            self.y_coord = None
+            self.y_coord1 = None
             self.y_coord2 = None
             #: np.ndarray(tnum,) Optional. Elevation along the profile.
-            self.elev = None
+            self.elev1 = None
             self.elev2 = None
 
             # Special attributes
             #: impdar.lib.RadarFlags object containing information about the processing steps done.
-            self.flags = ApresFlags()
+            self.flags = TimeDiffFlags()
             self.header = ApresHeader()
 
             self.data_dtype = None
@@ -289,7 +304,7 @@ class ApresDiffData():
             with h5py.File(fn, 'r') as fin:
                 grp = fin['dat']
                 for attr in grp.keys():
-                    if attr in ['ApresFlags', 'ApresHeader']:
+                    if attr in ['TimeDiffFlags', 'ApresHeader']:
                         continue
                     val = grp[attr][:]
                     if isinstance(val, h5py.Empty):
@@ -300,7 +315,7 @@ class ApresDiffData():
                     if isinstance(val, h5py.Empty):
                         val = None
                     setattr(self, attr, val)
-                self.flags = ApresFlags()
+                self.flags = TimeDiffFlags()
                 self.header = ApresHeader()
                 self.flags.read_h5(grp)
                 self.header.read_h5(grp)
@@ -326,13 +341,13 @@ class ApresDiffData():
                 else:
                     setattr(self, attr, None)
             self.data_dtype = self.data.dtype
-            self.flags = ApresFlags()
+            self.flags = TimeDiffFlags()
             self.flags.from_matlab(mat['flags'])
             self.header = ApresHeader()
             self.header.from_matlab(mat['header'])
 
         else:
-            raise ImportError('ApresDiffData() is looking for an .h5 or .mat file \
+            raise ImportError('ApresTimeDiff() is looking for an .h5 or .mat file \
                               saved as an Apdar object.')
 
         self.fn = fn
@@ -351,10 +366,10 @@ class ApresDiffData():
         for attr in self.attrs_guaranteed:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
-                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+                    It appears that this is an ill-defined ApresTimeDiff object'.format(attr))
             if getattr(self, attr) is None:
                 raise ImpdarError('{:s} is None. \
-                    It appears that this is an ill-defined ApresDiff object'.format(attr))
+                    It appears that this is an ill-defined ApresTimeDiff object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.data.dtype
@@ -362,13 +377,14 @@ class ApresDiffData():
 
 # ------------------------------------------------
 
-class QuadPolData(object):
+class ApresQuadPol(object):
     """
     A class that holds the relevant information for a quad-polarized ApRES acquisition.
     """
 
-    #: Attributes that every QuadPolData object should have and should not be None.
-    attrs_guaranteed = ['shh',
+    #: Attributes that every ApresQuadPol object should have and should not be None.
+    attrs_guaranteed = ['data',
+                        'shh',
                         'shv',
                         'svh',
                         'svv',
@@ -493,10 +509,10 @@ class QuadPolData(object):
         for attr in self.attrs_guaranteed:
             if not hasattr(self, attr):
                 raise ImpdarError('{:s} is missing. \
-                    It appears that this is an ill-defined ApresData object'.format(attr))
+                    It appears that this is an ill-defined ApresQuadPol object'.format(attr))
             if getattr(self, attr) is None:
                 raise ImpdarError('{:s} is None. \
-                    It appears that this is an ill-defined ApresData object'.format(attr))
+                    It appears that this is an ill-defined ApresQuadPol object'.format(attr))
 
         if not hasattr(self, 'data_dtype') or self.data_dtype is None:
             self.data_dtype = self.shh.dtype

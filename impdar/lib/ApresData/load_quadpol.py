@@ -20,7 +20,9 @@ Oct 13 2020
 
 import numpy as np
 import glob
-from . import QuadPolData
+import datetime
+from . import ApresQuadPol
+from .ApresFlags import QuadPolFlags
 from .load_apres import load_apres
 from ..ImpdarError import ImpdarError
 
@@ -41,7 +43,7 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
     """
 
     if not load_single_pol:
-        quadpol_data = QuadPolData(fn)
+        quadpol_data = ApresQuadPol(fn)
     else:
         # Load each of the individual polarizations as their own ApresData object
         polarizations = ['HH', 'HV', 'VH', 'VV']
@@ -80,18 +82,67 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
                 # TODO: ask to proceed
                 Warning('It looks like these acquisitions were not all taken on the same day.')
 
-        # load into the QuadPolData object
-        quadpol_data = QuadPolData(None)
+        # load into the ApresQuadPol object
+        quadpol_data = ApresQuadPol(None)
         quadpol_data.snum = hh.snum
-        quadpol_data.shh = hh.data.flatten().astype(np.complex)
-        quadpol_data.shv = single_acquisitions[1].data.flatten().astype(np.complex)
-        quadpol_data.svh = single_acquisitions[2].data.flatten().astype(np.complex)
-        quadpol_data.svv = single_acquisitions[3].data.flatten().astype(np.complex)
+        quadpol_data.shh = hh.data.flatten().astype(complex)
+        quadpol_data.shv = single_acquisitions[1].data.flatten().astype(complex)
+        quadpol_data.svh = single_acquisitions[2].data.flatten().astype(complex)
+        quadpol_data.svv = single_acquisitions[3].data.flatten().astype(complex)
         quadpol_data.decday = hh.decday
         quadpol_data.range = hh.Rcoarse
         quadpol_data.dt = hh.dt
         quadpol_data.travel_time = hh.travel_time
 
-        quadpol_data.data_dtype = quadpol_data.shh.dtype
+        # save a 'data' field to make this class play nice with the save scripts etc.
+        quadpol_data.data = quadpol_data.shh.copy()
+        quadpol_data.data_dtype = quadpol_data.data.dtype
+
+        # take the flags and header from the first data object
+        quadpol_data.flags = QuadPolFlags()
+        quadpol_data.flags.file_read_code = single_acquisitions[0].flags.file_read_code
+        quadpol_data.header = single_acquisitions[0].header
+
+    return quadpol_data
+
+
+# ------------------------------------------------
+
+
+def load_quadpol_fujita(model):
+    """
+    Load processed modeled apres profiles from all four polarizations: hh, hv, vh, vv
+    into one data object
+
+    Parameters
+    ----------
+    model : class
+        output from the effective medium model
+
+    Returns
+    -------
+    quadpol_data: class
+        quad-polarized apres data object
+    """
+
+    # load into the ApresQuadPol object
+    quadpol_data = ApresQuadPol(None)
+    quadpol_data.shh = model.shh
+    quadpol_data.shv = model.shv
+    quadpol_data.svh = model.svh
+    quadpol_data.svv = model.svv
+    quadpol_data.range = model.range
+
+    now = datetime.now()
+    timezero = datetime(1, 1, 1, 0, 0, 0)
+    offset = now-timezero
+    quadpol_data.decday = offset.days + offset.seconds/(3600.*24.) + 377. # Matlab compatable
+
+    quadpol_data.snum = len(model.shh)
+    v = model.c/np.sqrt(model.epsr)
+    quadpol_data.travel_time = quadpol_data.range/v
+    quadpol_data.dt = np.mean(np.gradient(quadpol_data.travel_time))
+
+    quadpol_data.data_dtype = quadpol_data.shh.dtype
 
     return quadpol_data
