@@ -41,6 +41,9 @@ class TestLoad(unittest.TestCase):
     def test_loadtek(self):
         data = load.load('tek', os.path.join(THIS_DIR, 'input_data', 'test_tek.DAT'))
 
+    def test_load_apresprofile(self):
+        data = load.load('apres', os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT'))
+
     def test_load_and_exitmat(self):
         data = load.load_and_exit('mat', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), o=os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat'))
         self.assertTrue(os.path.exists(os.path.join(THIS_DIR, 'input_data', 'small_data_rawrrr.mat')))

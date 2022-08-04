@@ -84,7 +84,7 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
         if not np.all(dat1.travel_time == dat2.travel_time):
             raise ValueError('Need matching travel time vectors')
 
-        # load into the QuadPolData object
+        # load into the ApresTimeDiff object
         diff_data = ApresTimeDiff(None)
         diff_data.snum = dat1.snum
         diff_data.data = dat1.data.flatten().astype(complex)

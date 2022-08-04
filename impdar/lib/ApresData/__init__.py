@@ -208,7 +208,7 @@ class ApresTimeDiff(object):
     """
     Class for differencing between two Apres acquisitions.
     """
-    #: Attributes that every ApresData object should have and should not be None.
+    #: Attributes that every ApresTimeDiff object should have and should not be None.
     attrs_guaranteed = ['data',
                         'data2',
                         'decday1',
@@ -375,7 +375,9 @@ class ApresTimeDiff(object):
             self.data_dtype = self.data.dtype
         return
 
+
 # ------------------------------------------------
+
 
 class ApresQuadPol(object):
     """
