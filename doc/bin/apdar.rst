@@ -6,4 +6,4 @@ The executable syntax is described below, but look to :doc:`../examples/apres` e
 .. argparse::
     :module: impdar.bin.apdar
     :func: _get_args
-    :prog: impproc
+    :prog: apdar

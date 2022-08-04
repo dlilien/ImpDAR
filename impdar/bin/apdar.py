@@ -13,12 +13,13 @@ Make an executable for single actions of ApRES handling.
 import sys
 import os.path
 import argparse
+import numpy as np
 
-from impdar.lib.ApresData import FILETYPE_OPTIONS
-from impdar.lib.ApresData import load_apres
-from impdar.lib.ApresData._ApresDataDifferencing import ApresDiff
+from impdar.lib.ApresData import load_apres, load_diff, load_quadpol,
+                                    FILETYPE_OPTIONS, ApresDiffData, QuadPolData
 
 from impdar.lib import plot
+
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -30,14 +31,18 @@ def _get_args():
                                   'load apres data',
                                   lambda x: x,
                                   defname='load')
+    parser_load.add_argument('-acq_type',
+                                 type=str,
+                                 help='Acquisition type',
+                                 default='single')
     _add_def_args(parser_load)
 
     # Full processing flow for a single ApRES acquisition
     parser_fullproc = _add_procparser(subparsers,
-                                  'proc',
-                                  'full processing flow on the apres data object',
-                                  full_processing,
-                                  'proc')
+                                      'proc',
+                                      'full processing flow on the apres data object',
+                                      full_processing,
+                                      'proc')
     parser_fullproc.add_argument('-max_range',
                                  type=int,
                                  help='maximum range for the range conversion',
@@ -52,6 +57,52 @@ def _get_args():
                                     the noise phasor will be calculated',
                                  default=3000.)
     _add_def_args(parser_fullproc)
+
+    # Full Difference Processing
+    parser_diffproc = _add_procparser(subparsers,
+                                    'diffproc',
+                                    'create an ApresDiff object and then execuate \
+                                        the full differencing processing flow',
+                                    full_differencing,
+                                    'diffproc')
+    parser_diffproc.add_argument('-window',
+                             type=int,
+                              help='window size over which the cross correlation is done')
+    parser_diffproc.add_argument('-step',
+                             type=int,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-thresh',
+                             type=int,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-strain_window',
+                             type=tuple,
+                              help='step size in samples for the moving window')
+    parser_diffproc.add_argument('-w_surf',
+                             type=float,
+                              help='surface vertical velocity (ice equivalent accumulation rate)')
+    parser_diffproc.set_defaults(window=20, step=20,thresh=0.95,strain_window=(200,1000),w_surf=-0.15)
+    _add_def_args(parser_diffproc)
+
+
+    # Full quadpol processing
+    parser_fullproc = _add_procparser(subparsers,
+                                      'proc',
+                                      'full processing flow on the quadpol data object',
+                                      full_processing,
+                                      'proc')
+    parser_fullproc.add_argument('-nthetas',
+                                 type=int,
+                                 help='number of theta values to rotate into')
+    parser_fullproc.add_argument('-dtheta',
+                                 type=int,
+                                 help='size of coherence window in theta direction')
+    parser_fullproc.add_argument('-drange',
+                                 type=int,
+                                 help='size of coherence window in range direction')
+    _add_def_args(parser_fullproc)
+
+
+
 
     # Initial range conversion (deramping)
     parser_range = _add_procparser(subparsers,
@@ -91,39 +142,6 @@ def _get_args():
                             default=3000.)
     _add_def_args(parser_unc)
 
-    # Load Differencing Object from two impdar acquisitions
-    parser_diffload = _add_procparser(subparsers,
-                                    'diffload',
-                                    'create an ApresDiff object',
-                                    lambda x: x,
-                                    defname='diffload')
-    _add_def_args(parser_diffload)
-
-    # Full Difference Processing
-    parser_diffproc = _add_procparser(subparsers,
-                                    'diffproc',
-                                    'create an ApresDiff object and then execuate \
-                                        the full differencing processing flow',
-                                    full_differencing,
-                                    'diffproc')
-    parser_diffproc.add_argument('-window',
-                             type=int,
-                              help='window size over which the cross correlation is done')
-    parser_diffproc.add_argument('-step',
-                             type=int,
-                              help='step size in samples for the moving window')
-    parser_diffproc.add_argument('-thresh',
-                             type=int,
-                              help='step size in samples for the moving window')
-    parser_diffproc.add_argument('-strain_window',
-                             type=tuple,
-                              help='step size in samples for the moving window')
-    parser_diffproc.add_argument('-w_surf',
-                             type=float,
-                              help='surface vertical velocity (ice equivalent accumulation rate)')
-    parser_diffproc.set_defaults(window=20, step=20,thresh=0.95,strain_window=(200,1000),w_surf=-0.15)
-    _add_def_args(parser_diffproc)
-
     # Phase Differencing
     parser_pdiff = _add_procparser(subparsers,
                                   'pdiff',
@@ -155,29 +173,59 @@ def _get_args():
                                   range_differencing)
     _add_def_args(parser_rdiff)
 
-    # Plot Single Apres Acquisition
+    # Rotation, fill in data at all azimuths
+    parser_rotate = _add_procparser(subparsers,
+                                    'rotate',
+                                    'use a rotational transform to find data at all azimuths',
+                                    rotate,
+                                    'rotated')
+    parser_rotate.add_argument('-nthetas',
+                               type=int,
+                               help='number of theta values to rotate into')
+    _add_def_args(parser_rotate)
+
+    # Coherence 2D
+    parser_coherence = _add_procparser(subparsers,
+                                       'coherence',
+                                       '2-dimensional coherence between HH and VV polarizations',
+                                       coherence,
+                                       'chhvv')
+    parser_coherence.add_argument('-dtheta',
+                                  type=int,
+                                  help='size of coherence window in theta direction')
+    parser_coherence.add_argument('-drange',
+                                  type=int,
+                                  help='size of coherence window in range direction')
+    _add_def_args(parser_coherence)
+
+    # Cross-Polarized Extinction
+    parser_cpe = _add_procparser(subparsers,
+                                 'cpe',
+                                 'find the depth-azimuth profile for cross-polarized extinction',
+                                 cross_polarized_extinction,
+                                 'cpe')
+    parser_cpe.add_argument('-Wn',
+                            type=float,
+                            help='filter frequency')
+    parser_cpe.add_argument('-fs',
+                            type=float,
+                            help='sampling frequency')
+    _add_def_args(parser_cpe)
+
+    # Plot Apres Acquisition
     parser_plot = _add_procparser(subparsers,
                                   'plot',
                                   'plot apres data from a single acquisition',
-                                  plot_single)
+                                  plot_apres)
+    parser_plot.add_argument('-s',
+                             action='store_true',
+                             help='Save file (do not plt.show())')
     parser_plot.add_argument('-s',
                              action='store_true',
                              help='save file (do not plt.show())')
     parser_plot.add_argument('-yd', action='store_true',
                              help='plot the depth rather than travel time')
     _add_def_args(parser_plot)
-
-    # Plot Differenced Apres Acquisitions
-    parser_plotdiff = _add_procparser(subparsers,
-                                  'plot_diff',
-                                  'plot profiles for differenced apres acquisitions',
-                                  plot_differenced)
-    parser_plotdiff.add_argument('-s',
-                             action='store_true',
-                             help='Save file (do not plt.show())')
-    parser_plotdiff.add_argument('-yd', action='store_true',
-                             help='Plot the depth rather than travel time')
-    _add_def_args(parser_plotdiff)
 
     return parser
 
@@ -215,18 +263,19 @@ def main():
         parser.parse_args(['-h'])
 
     if args.name == 'diffload':
-        apres_data = ApresDiff(args.fns[0],args.fns[1])
+        apres_data = load_diff.load_diff([args.fns[0],args.fns[1]])
     else:
         try:
             apres_data = load_apres.load_apres(args.fns)
         except:
-            apres_data = ApresDiff(args.fns[0])
+            apres_data = ApresDiffData(args.fns[0])
+    try:
+        apres_data = load_apres.load_quadpol(args.fns)
+    except:
+        apres_data = QuadPolData(args.fns[0])
 
     if args.name == 'load':
         name = 'raw'
-        pass
-    elif args.name == 'diffload':
-        name = 'diffraw'
         pass
     else:
         name = args.name
@@ -243,6 +292,8 @@ def main():
         apres_data.save(out_fn)
 
 
+
+
 def full_processing(dat, p=2, max_range=4000., num_chirps=0., noise_bed_range=3000., **kwargs):
     """Full processing flow for ApresData object.
     Range conversion, stacking, uncertainty."""
@@ -252,6 +303,23 @@ def full_processing(dat, p=2, max_range=4000., num_chirps=0., noise_bed_range=30
     else:
         dat.stacking(num_chirps)
     dat.phase_uncertainty(noise_bed_range)
+
+def full_differencing(diffdat, win=20, step=20, thresh=0.95,
+                      strain_window=(200,1000), w_surf=-0.15, **kwargs):
+    diffdat.phase_diff(win,step)
+    diffdat.phase_unwrap(win,thresh)
+    diffdat.range_diff()
+    diffdat.strain_rate(strain_window=strain_window,w_surf=w_surf)
+    diffdat.bed_pick()
+
+def full_processing(dat, nthetas=100, dtheta=20.0*np.pi/180.,
+                    drange=100., Wn=0., fs=0., **kwargs):
+    """Full processing flow for QuadPolData object.
+    Range conversion, stacking, uncertainty."""
+    dat.rotational_transform(n_thetas=nthetas, **kwargs)
+    dat.find_cpe()
+    dat.coherence2d(delta_theta=dtheta, delta_range=drange)
+
 
 
 def range_conversion(dat, p=2, max_range=4000, **kwargs):
@@ -272,15 +340,6 @@ def uncertainty(dat,noise_bed_range=3000, **kwargs):
     dat.phase_uncertainty(noise_bed_range)
 
 
-def full_differencing(diffdat, win=20, step=20, thresh=0.95,
-                      strain_window=(200,1000), w_surf=-0.15, **kwargs):
-    diffdat.phase_diff(win,step)
-    diffdat.phase_unwrap(win,thresh)
-    diffdat.range_diff()
-    diffdat.strain_rate(strain_window=strain_window,w_surf=w_surf)
-    diffdat.bed_pick()
-
-
 def phase_differencing(diffdat, win=20, step=20, **kwargs):
     diffdat.phase_diff(win,step)
 
@@ -293,14 +352,30 @@ def range_differencing(diffdat, **kwargs):
     diffdat.range_diff()
 
 
-def plot_single(dat, s=False, o=None, o_fmt='png',
-               dpi=300, **kwargs):
-    """Plot the return power of a particular layer."""
-    plot.plot_apres(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
+def rotate(dat, nthetas=100, **kwargs):
+    """Range conversion."""
+    dat.rotational_transform(n_thetas=nthetas, **kwargs)
 
-def plot_differenced(dat, s=False, o=None, o_fmt='png',
-                     dpi=300, **kwargs):
-    plot.plot_apres_diff(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
+
+def coherence(dat, dtheta=20.0*np.pi/180., drange=100., **kwargs):
+    """Stack chirps."""
+    dat.coherence2d(delta_theta=dtheta, delta_range=drange)
+
+
+def cross_polarized_extinction(dat,
+                               Wn=0., fs=0., **kwargs):
+    """Calculate uncertainty."""
+    dat.find_cpe(Wn=Wn)
+
+
+def plot_apres(dat, acq_type='single', s=False, o=None, o_fmt='png',
+                 dpi=300, **kwargs):
+    if acq_type == 'single':
+        plot.plot_apres(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
+    elif acq_type == 'diff':
+        plot.plot_apres_diff(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
+    elif acq_type == 'quadpol':
+        plot.plot_quadpol(dat, s=s, o=o, ftype=o_fmt, dpi=dpi)
 
 
 if __name__ == '__main__':

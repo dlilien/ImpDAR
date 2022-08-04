@@ -46,7 +46,7 @@ class TestApres(unittest.TestCase):
         apdar.main()
         self.assertTrue(proc_patch.called)
 
-    @patch('impdar.bin.apdar.ApresDiff')
+    @patch('impdar.bin.apdar.ApresDiffData')
     def test_load_diff(self, load_patch):
         fn1 = os.path.join(THIS_DIR, 'input_data', 'apres_1_proc.mat')
         fn2 = os.path.join(THIS_DIR, 'input_data', 'apres_2_proc.mat')

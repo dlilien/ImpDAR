@@ -20,7 +20,8 @@ Sept 23 2019
 
 import numpy as np
 
-def apres_range(self,p,max_range=4000,winfun='blackman'):
+
+def apres_range(self, p, max_range=4000, winfun='blackman'):
     """
     Range conversion.
 
@@ -30,19 +31,10 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
         ApresData object
     p: int
         pad factor, level of interpolation for fft
+    max_range: float
+        cut off after some maximum range
     winfun: str
         window function for fft
-
-    Output
-    --------
-    Rcoarse: array
-        range to bin centres (m)
-    Rfine: array
-        range to reflector from bin centre (m)
-    spec_cor: array
-        spectrum corrected. positive frequency half of spectrum with
-        ref phase subtracted. This is the complex signal which can be used for
-        cross-correlating two shot segements.
 
 
     ### Original Matlab File Notes ###
@@ -66,7 +58,7 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
     # Processing settings
     nf = int(np.floor(p*self.snum/2))    # number of frequencies to recover
     # window for fft
-    if winfun not in ['blackman','bartlett','hamming','hanning','kaiser']:
+    if winfun not in ['blackman', 'bartlett', 'hamming', 'hanning', 'kaiser']:
         raise TypeError('Window must be in: blackman, bartlett, hamming, hanning, kaiser')
     elif winfun == 'blackman':
         win = np.blackman(self.snum)
@@ -87,51 +79,51 @@ def apres_range(self,p,max_range=4000,winfun='blackman'):
 
     # Calculate phase of each range bin center for correction
     # Brennan et al. (2014) eq. 17 measured at t=T/2
-    self.phiref = 2.*np.pi*self.header.fc*tau -(self.header.chirp_grad*tau**2.)/2
+    self.phiref = 2.*np.pi*self.header.fc*tau - (self.header.chirp_grad*tau**2.)/2
 
     # --- Loop through for each chirp in burst --- #
 
     # pre-allocate
-    spec = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
-    spec_cor = np.zeros((self.bnum,self.cnum,nf)).astype(np.cdouble)
+    spec = np.zeros((self.bnum, self.cnum, nf)).astype(np.cdouble)
+    spec_cor = np.zeros((self.bnum, self.cnum, nf)).astype(np.cdouble)
 
     for ib in range(self.bnum):
         for ic in range(self.cnum):
             # isolate the chirp and preprocess before transform
-            chirp = self.data[ib,ic,:].copy()
-            chirp = chirp-np.mean(chirp) # de-mean
-            chirp *= win # windowed
+            chirp = self.data[ib, ic, :].copy()
+            chirp = chirp-np.mean(chirp)  # de-mean
+            chirp *= win  # windowed
 
             # fourier transform
-            fft_chirp = (np.sqrt(2.*p)/len(chirp))*np.fft.fft(chirp,p*self.snum) # fft and scale for padding
-            fft_chirp /= np.sqrt(np.mean(win**2.)) # scale with rms of window
+            fft_chirp = (np.sqrt(2.*p)/len(chirp))*np.fft.fft(chirp, p*self.snum)  # fft and scale for padding
+            fft_chirp /= np.sqrt(np.mean(win**2.))  # scale with rms of window
 
             # output
-            spec[ib,ic,:] = fft_chirp[:nf] # positive frequency half of spectrum up to (nyquist minus deltaf)
-            comp = np.exp(-1j*(self.phiref)) # unit phasor with conjugate of phiref phase
-            spec_cor[ib,ic,:] = comp*fft_chirp[:nf] # positive frequency half of spectrum with ref phase subtracted
+            spec[ib, ic, :] = fft_chirp[:nf]  # positive frequency half of spectrum up to (nyquist minus deltaf)
+            comp = np.exp(-1j*(self.phiref))  # unit phasor with conjugate of phiref phase
+            spec_cor[ib, ic, :] = comp*fft_chirp[:nf] # positive frequency half of spectrum with ref phase subtracted
 
     self.data = spec_cor.copy()
     self.spec = spec.copy()
     self.data_dtype = self.data.dtype
 
     # precise range measurement
-    self.Rfine = phase2range(self,np.angle(self.data),self.header.lambdac,
-            np.tile(self.Rcoarse,(self.bnum,self.cnum,1)),
-            self.header.chirp_grad,self.header.ci)
+    self.Rfine = phase2range(self, np.angle(self.data), self.header.lambdac,
+                             np.tile(self.Rcoarse, (self.bnum, self.cnum, 1)),
+                             self.header.chirp_grad, self.header.ci)
 
     # Crop output variables to useful depth range only
-    n = np.argmin(self.Rcoarse<=max_range)
+    n = np.argmin(self.Rcoarse <= max_range)
     self.Rcoarse = self.Rcoarse[:n]
     self.Rfine = self.Rfine[:n]
-    self.data = self.data[:,:,:n]
-    self.spec = self.spec[:,:,:n]
+    self.data = self.data[:, :, :n]
+    self.spec = self.spec[:, :, :n]
     self.snum = n
 
     self.flags.range = max_range
 
 
-def phase_uncertainty(self,bed_range):
+def phase_uncertainty(self, bed_range):
     """
     Calculate the phase uncertainty using a noise phasor.
 
@@ -142,7 +134,7 @@ def phase_uncertainty(self,bed_range):
     self: class
         ApresData object
     bed_range: float
-        Distance of the bed, so noise floor can be calculated beneath it
+        Range to the ice-bed interface, so noise floor can be calculated beneath it
     """
 
     if self.flags.range == 0:
@@ -176,10 +168,6 @@ def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
     ci: float; optional
         propagation velocity (m/s)
 
-    Returns
-    --------
-    r: float or array
-        range (m)
 
     ### Original Matlab File Notes ###
     Craig Stewart
@@ -200,9 +188,10 @@ def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
     return r
 
 
-def stacking(self,num_chirps=None):
+def stacking(self, num_chirps=None):
     """
     Stack traces/chirps together to beat down the noise.
+    Can stack across bursts if multiple are present.
 
     Parameters
     ---------
@@ -231,3 +220,4 @@ def stacking(self,num_chirps=None):
         self.cnum = 1
 
     self.flags.stack = num_chirps
+

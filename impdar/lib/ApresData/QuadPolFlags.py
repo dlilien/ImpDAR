@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 Benjamin Hills <bhills@uw.edu>
+# Copyright © 2019 David Lilien <dlilien90@gmail.com>
 #
 # Distributed under terms of the GNU GPL3.0 license.
 
@@ -13,33 +13,33 @@ Flags to keep track of processing steps
 import numpy as np
 import h5py
 
-class ApresFlags():
+
+class QuadPolFlags():
     """Flags that indicate the processing that has been used on the data.
 
     These are used for figuring out whether different processing steps have been performed. They also contain some information about the input arguments for some (but not all) of the processing steps.
 
     Attributes
     ----------
-    file_read_code
-    range: float
-        max range
-    stack: int
-        number of chirps stacked
+    batch: bool
+        Legacy indication of whether we are batch processing. Always False.
      """
 
     def __init__(self):
-        self.file_read_code = None
-        self.range = 0
-        self.stack = 0
-        self.uncertainty = False
-        self.phase_diff = False
-        self.unwrap = False
-        self.strain = np.zeros((2,))
-        self.bed_pick = False
-        self.attrs = ['file_read_code', 'range', 'stack', 'uncertainty',
-                      'phase_diff', 'unwrap', 'strain', 'bed_pick']
-        self.attr_dims = [None, None, None, None,
-                          None, None, 2, None]
+        self.rotation = np.zeros((2,))
+        self.coherence = np.zeros((3,))
+        self.phasegradient = False
+        self.cpe = True
+        self.attrs = ['rotation', 'coherence', 'phasegradient', 'cpe']
+        self.attr_dims = [2, 3, None, None]
+
+    def read_h5(self, grp):
+        subgrp = grp['QuadPolFlags']
+        for attr in subgrp.attrs.keys():
+            val = subgrp.attrs[attr]
+            if isinstance(val, h5py.Empty):
+                val = None
+            setattr(self, attr, val)
 
     def write_h5(self, grp):
         """Write to a subgroup in hdf5 file
@@ -49,7 +49,7 @@ class ApresFlags():
         grp: h5py.Group
             The group to which the ApresFlags subgroup is written
         """
-        subgrp = grp.create_group('ApresFlags')
+        subgrp = grp.create_group('QuadPolFlags')
         for attr in self.attrs:
             val = getattr(self, attr)
             if val is None:
@@ -59,18 +59,10 @@ class ApresFlags():
                     val = val.astype('f')
                 subgrp.attrs[attr] = val
 
-    def read_h5(self, grp):
-        subgrp = grp['ApresFlags']
-        for attr in subgrp.attrs.keys():
-            val = subgrp.attrs[attr]
-            if isinstance(val, h5py.Empty):
-                val = None
-            setattr(self, attr, val)
-
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
-        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.NaN) for att in self.attrs}
+        outmat = {att: getattr(self, att) for att in self.attrs}
         return outmat
 
     def from_matlab(self, matlab_struct):
