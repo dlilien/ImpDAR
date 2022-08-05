@@ -144,14 +144,12 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.,
                                  range_bins,
                                  azimuth_bins)
         t1 = time.time()
-        print('Execution with c code={:s} \
-               took {:6.2f}'.format(str(USE_C), t1 - t0))
+        print('Execution with c code={:s} took {:6.2f}'.format(str(USE_C), t1 - t0))
     else:
-        print('Beginning iteration through {:d} \
-              azimuths'.format(azimuth_bins - 2 * ntheta))
+        print('Beginning iteration through {:d} azimuths'.format(azimuth_bins - 2 * ntheta))
         print('Azimuth bin: ', end='')
         sys.stdout.flush()
-        for i in range(HH_.shape[1]):
+        for i in range(azimuth_bins):
             if (i < ntheta) or (i > azimuth_bins - ntheta - 1):
                 continue
             if (i - ntheta) % 10 == 0:
@@ -166,8 +164,7 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.,
                                         VV_[jmin:jmax,imin:imax].flatten())
         print('coherence calculation done')
         t1 = time.time()
-        print('Execution with c code={:s} \
-              took {:6.2f}'.format(str(False), t1 - t0))
+        print('Execution with c code={:s} took {:6.2f}'.format(str(False), t1 - t0))
 
     self.chhvv = chhvv[:, ntheta:-ntheta]
 

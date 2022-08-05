@@ -261,8 +261,8 @@ class ApresTimeDiff(object):
             # Write these out so we can document them
             # Very basics
             self.snum = None  #: int number of samples per chirp
-            self.data = None  #: np.ndarray(snum x tnum) of the actual return power
-            self.data2 = None  #: np.ndarray(snum x tnum) of the actual return power
+            self.data = None  #: np.ndarray(bnum, cnum, snum) of the actual return amplitude
+            self.data2 = None  #: np.ndarray(bnum, cnum, snum) of the actual return amplitude
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
             # Per-trace attributes
@@ -425,7 +425,8 @@ class ApresQuadPol(object):
         if fn is None:
             # Write these out so we can document them
             # Very basics
-            self.snum = None  #: int number of samples per chirp
+            self.data = None  #: np.ndarray(snum) of the actual return amplitude; copy of shh so that this class has a data array
+            self.snum = None  #: int, number of samples per chirp
             self.dt = None  #: float, The spacing between samples in travel time, in seconds
 
             # Sample-wise attributes

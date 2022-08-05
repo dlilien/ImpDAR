@@ -134,10 +134,10 @@ def load_quadpol_fujita(model):
     quadpol_data.svv = model.svv
     quadpol_data.range = model.range
 
-    now = datetime.now()
-    timezero = datetime(1, 1, 1, 0, 0, 0)
+    now = datetime.datetime.now()
+    timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
     offset = now-timezero
-    quadpol_data.decday = offset.days + offset.seconds/(3600.*24.) + 377. # Matlab compatable
+    quadpol_data.decday = offset.days + offset.seconds/(3600.*24.) + 366. # Matlab compatable
 
     quadpol_data.snum = len(model.shh)
     v = model.c/np.sqrt(model.epsr)
