@@ -61,7 +61,9 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
     # Antennas are not symmetric on 180 degree
     # Issues have come up with flipped antennas, so check
     if abs(np.sum(np.imag(self.shv)+np.imag(self.svh))) < \
-            abs(np.sum(np.imag(self.shv)-np.imag(self.svh))):
+            abs(np.sum(np.imag(self.shv)-np.imag(self.svh))) or \
+            abs(np.sum(np.real(self.shv)+np.real(self.svh))) < \
+            abs(np.sum(np.real(self.shv)-np.real(self.svh))):
         if cross_pol_exception:
             pass
         elif cross_pol_flip == 'HV':
@@ -76,10 +78,10 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
 
     self.thetas = np.linspace(theta_start, theta_end, n_thetas)
 
-    self.HH = np.empty((len(self.range), len(self.thetas))).astype(complex)
-    self.HV = np.empty((len(self.range), len(self.thetas))).astype(complex)
-    self.VH = np.empty((len(self.range), len(self.thetas))).astype(complex)
-    self.VV = np.empty((len(self.range), len(self.thetas))).astype(complex)
+    self.HH = np.empty((len(self.range), len(self.thetas))).astype(np.cdouble)
+    self.HV = np.empty((len(self.range), len(self.thetas))).astype(np.cdouble)
+    self.VH = np.empty((len(self.range), len(self.thetas))).astype(np.cdouble)
+    self.VV = np.empty((len(self.range), len(self.thetas))).astype(np.cdouble)
 
     for i, theta in enumerate(self.thetas):
         self.HH[:, i] = self.shh*np.cos(theta)**2. + \
@@ -98,7 +100,8 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
     self.flags.rotation = np.array([1, n_thetas])
 
 
-def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
+def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.,
+                force_python=False):
     """
     Coherence between two 2-d images (e.g. c_hhvv).
     Jordan et al. (2019) eq. 19
@@ -128,11 +131,11 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
     VV_end = self.VV[:, -ntheta:]
     VV_ = np.hstack((VV_end, self.VV, VV_start))
 
-    chhvv = np.nan*np.ones_like(HH_).astype(complex)
+    chhvv = np.nan*np.ones_like(HH_).astype(np.cdouble)
     range_bins, azimuth_bins = HH_.shape[0], HH_.shape[1]
 
     t0 = time.time()
-    if USE_C:
+    if USE_C and not force_python:
         chhvv = coherence2d_loop(np.ascontiguousarray(chhvv, dtype=np.cdouble),
                                  np.ascontiguousarray(HH_, dtype=np.cdouble),
                                  np.ascontiguousarray(VV_, dtype=np.cdouble),
@@ -140,6 +143,9 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
                                  ntheta,
                                  range_bins,
                                  azimuth_bins)
+        t1 = time.time()
+        print('Execution with c code={:s} \
+               took {:6.2f}'.format(str(USE_C), t1 - t0))
     else:
         print('Beginning iteration through {:d} \
               azimuths'.format(azimuth_bins - 2 * ntheta))
@@ -156,14 +162,14 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.):
             for j in range(HH_.shape[0]):
                 imin, imax = i - ntheta, i + ntheta
                 jmin, jmax = max(0, j - nrange), min(HH_.shape[0], j + nrange)
-                chhvv[j, i] = coherence(VV_[j-nrange:j+nrange,
+                chhvv[j, i] = coherence(HH_[j-nrange:j+nrange,
                                             i-ntheta:i+ntheta].flatten(),
-                                        HH_[j-nrange:j+nrange,
+                                        VV_[j-nrange:j+nrange,
                                             i-ntheta:i+ntheta].flatten())
         print('coherence calculation done')
-    t1 = time.time()
-    print('Execution with c code={:s} \
-          took {:6.2f}'.format(str(USE_C), t1 - t0))
+        t1 = time.time()
+        print('Execution with c code={:s} \
+              took {:6.2f}'.format(str(False), t1 - t0))
 
     self.chhvv = chhvv[:, ntheta:-ntheta]
 

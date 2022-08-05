@@ -52,7 +52,7 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
         # Load each of the individual acquisitions
         # as their own ApresData object
         if isinstance(fns[0], str):
-            single_acquisitions = [load_apres(f) for f in fns]
+            single_acquisitions = [load_apres([f]) for f in fns]
         else:
             single_acquisitions = [dat for dat in fns]
 

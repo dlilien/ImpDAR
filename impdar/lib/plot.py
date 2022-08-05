@@ -783,17 +783,17 @@ def plot_apres_diff(diffdat, s=False, facecolor = 'w',
 
     Parameters
     ----------
-    diffdat: impdar.lib._ApresDataDifferencing.ApresDiff
-        The ApresDiff object to plot.
+    diffdat: impdar.lib.ApresData.ApresTimeDiff
+        The ApresTimeDiff object to plot.
     """
 
     fig, axs = plt.subplots(1,4, figsize=(10, 6),facecolor=facecolor)
     for ax in axs:
         ax.invert_yaxis()
-    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.Rcoarse,
+    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.range,
                 marker=markerstyle, ms=markersize, linestyle=linestyle, c=markercolor,
                 label='acquisition 1')
-    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.Rcoarse,
+    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.range,
                 marker=markerstyle, ms=markersize//2, linestyle=linestyle, c=markercolor2,
                 label='acquisition 2')
     axs[0].legend()
@@ -822,6 +822,75 @@ def plot_apres_diff(diffdat, s=False, facecolor = 'w',
     axs[3].set_title('Vertical Velocity')
 
     fig.canvas.set_window_title(diffdat.fn)
+    if s:
+        fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_color='k',
+                        bed=2800, cmap1='hot', cmap2='Greys', cmap3='twilight_shifted',
+                        ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot relevant data fields for a quadpol data object, including:
+        1 - co-polarized image
+        2 - cross-polarized image
+        3 - co-polarized coherence
+        4 - phase gradient
+
+    Parameters
+    ----------
+    qpdat: impdar.lib.ApresData.ApresQuadPol
+        The ApresQuadPol object to plot.
+    """
+
+    Θs,Ds = np.meshgrid(qpdat.thetas,qpdat.range)
+
+    fig, axs = plt.subplots(1,5, figsize=(10, 4),facecolor=facecolor)
+
+    axs[0].tick_params(labelleft=True,color=tick_color,labelcolor=tick_color)
+    cf = axs[0].pcolormesh(Θs,Ds,10.*np.log10(qpdat.HH**2.).real,cmap=cmap1,zorder=-1)
+    axs[0].set_ylabel('Range (m)',c=tick_color)
+    axs[1].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    axs[1].pcolormesh(Θs,Ds,10.*np.log10(qpdat.HV**2.).real,cmap=cmap1,zorder=-1)
+    axs[1].plot(qpdat.cpe,qpdat.range,'m',zorder=3)
+    cb = plt.colorbar(cf, ax=axs[0], location='top')
+    cb.set_label('Power (dB)',c=fg_color)
+    cb = plt.colorbar(cf, ax=axs[1], location='top')
+    cb.set_label('Power (dB)')
+
+    axs[2].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    cf = axs[2].contourf(Θs,Ds,np.abs(qpdat.chhvv),cmap=cmap2,levels=100,zorder=-1)
+    cb = plt.colorbar(cf, ax=axs[2], ticks=[0,0.5,1.], location='top')
+    cb.set_label('$|c_{hhvv}|$',c=fg_color)
+
+    axs[3].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    cf = axs[3].contourf(Θs,Ds,np.angle(qpdat.chhvv),cmap=cmap3,levels=100,zorder=-1)
+    cb = plt.colorbar(cf, ax=axs[3], ticks=[-np.pi,0,np.pi], location='top')
+    cb.set_label('$\phi_{hhvv}$',c=fg_color)
+    cb.ax.set_xticklabels(['-π','0','π'],color=fg_color)
+
+    for ax in axs[:4]:
+        ax.fill_between(np.linspace(0,np.pi,10),bed,10000,color='w',alpha=0.8,zorder=1)
+        ax.axhline(bed,c='k',lw=2,zorder=2)
+        ax.set_ylim(bed+200,0)
+        ax.set_xlim(0,np.pi)
+        ax.set_xticks([0,np.pi/2.,np.pi])
+        ax.set_xticklabels(['0','π/2','π'],color=tick_color)
+
+    axs[4].tick_params(labelleft=False)
+    axs[4].plot(np.angle(qpdat.chhvv_cpe),Ds[:,0],'k.',ms=2)
+    axs[4].set_ylim(bed+200,0)
+    axs[4].set_xlim(-np.pi,np.pi)
+    axs[4].set_xticks([-np.pi,0.,np.pi])
+    axs[4].set_xticklabels(['-π','0','π'])
+    cf = axs[4].scatter(np.angle(qpdat.chhvv_cpe)+5.,Ds[:,0],c=np.zeros_like(Ds[:,0]),alpha=0.)
+    cb = plt.colorbar(cf, ax=axs[4], shrink=0.6,location='top')
+    cb.ax.xaxis.set_tick_params(color=facecolor)
+    cb.outline.set_edgecolor(facecolor)
+    plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color=facecolor)
+
+    fig.canvas.set_window_title(qpdat.fn)
     if s:
         fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
     else:

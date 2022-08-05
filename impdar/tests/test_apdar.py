@@ -33,7 +33,7 @@ class TestApres(unittest.TestCase):
         aca, kwca = load_patch.call_args
         self.assertEqual(aca[0], [fn])
 
-    @patch('impdar.bin.apdar.full_processing')
+    @patch('impdar.bin.apdar.single_processing')
     def test_proc(self, proc_patch):
         fn = os.path.join(THIS_DIR, 'input_data', 'apres_1.mat')
         apdar.sys.argv = ['dummy', 'proc', fn]
@@ -41,23 +41,37 @@ class TestApres(unittest.TestCase):
         fn = os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')
         apdar.sys.argv = ['dummy', 'load', fn]
         apdar.main()
-        fn = os.path.join(THIS_DIR, 'input_data', 'apres_2_raw.mat')
+        fn = os.path.join(THIS_DIR, 'input_data', 'apres_2_apraw.mat')
         apdar.sys.argv = ['dummy', 'proc', fn]
         apdar.main()
         self.assertTrue(proc_patch.called)
 
-    @patch('impdar.bin.apdar.ApresDiffData')
+    @patch('impdar.bin.apdar.load_time_diff.load_time_diff')
     def test_load_diff(self, load_patch):
         fn1 = os.path.join(THIS_DIR, 'input_data', 'apres_1_proc.mat')
         fn2 = os.path.join(THIS_DIR, 'input_data', 'apres_2_proc.mat')
-        apdar.sys.argv = ['dummy', 'diffload', fn1, fn2]
+        apdar.sys.argv = ['dummy', 'load', '-acq_type', 'timediff', fn1, fn2]
         apdar.main()
         self.assertTrue(load_patch.called)
 
-    @patch('impdar.bin.apdar.full_differencing')
+    @patch('impdar.bin.apdar.time_diff_processing')
     def test_proc_diff(self, proc_patch):
         fn = os.path.join(THIS_DIR, 'input_data', 'diffdat.mat')
         apdar.sys.argv = ['dummy', 'diffproc', fn]
+        apdar.main()
+        self.assertTrue(proc_patch.called)
+
+    @patch('impdar.bin.apdar.load_quadpol.load_quadpol')
+    def test_load_quadpol(self, load_patch):
+        apdar.sys.argv = ['dummy', 'load', '-acq_type', 'quadpol',
+                          os.path.join(THIS_DIR, 'input_data', 'quadpol_*')]
+        apdar.main()
+        self.assertTrue(load_patch.called)
+
+    @patch('impdar.bin.apdar.quadpol_processing')
+    def test_proc_quadpol(self, proc_patch):
+        fn = os.path.join(THIS_DIR, 'input_data', 'quadpol_HH.DAT')
+        apdar.sys.argv = ['dummy', 'qpproc', fn]
         apdar.main()
         self.assertTrue(proc_patch.called)
 

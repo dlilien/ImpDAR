@@ -81,7 +81,7 @@ def phase_diff(self, win, step, range_ext=None):
     # Create data and coherence vectors
     acq1 = self.data
     acq2 = self.data2
-    self.co = np.empty_like(self.ds).astype(complex)
+    self.co = np.empty_like(self.ds).astype(np.cdouble)
     for i, idx in enumerate(idxs):
         # index two sub_arrays to compare
         arr1 = acq1[idx-win//2:idx+win//2]

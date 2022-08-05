@@ -7,7 +7,7 @@
 # Distributed under terms of the GNU GPL3.0 license.
 # Worked from minimal example from scipy-examples.org
 
-"""Fast Migration. Just Kirchhoff for now"""
+"""Fast Coherence, just for quadpol calculation"""
 import sys
 cimport numpy as np
 np.import_array()

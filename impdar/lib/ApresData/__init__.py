@@ -211,7 +211,7 @@ class ApresTimeDiff(object):
     #: Attributes that every ApresTimeDiff object should have and should not be None.
     attrs_guaranteed = ['data',
                         'data2',
-                        'decday1',
+                        'decday',
                         'decday2',
                         'dt',
                         'snum',
@@ -224,15 +224,15 @@ class ApresTimeDiff(object):
     #: These may not have existed in old StoDeep files that we are compatible with,
     #: and they often cannot be set at the initial data load.
     #: If they exist, they all have units of meters.
-    attrs_optional = ['lat1',
+    attrs_optional = ['lat',
                       'lat2',
-                      'long1',
+                      'long',
                       'long2',
-                      'x_coord1',
+                      'x_coord',
                       'x_coord2',
-                      'y_coord1',
+                      'y_coord',
                       'y_coord2',
-                      'elev1',
+                      'elev',
                       'elev2',
                       'unc1',
                       'unc2',
@@ -269,13 +269,13 @@ class ApresTimeDiff(object):
             #: np.ndarray(tnum,) of the acquisition time of each trace
             #: note that this is referenced to Jan 1, 0 CE (matlabe datenum)
             #: for convenience, use the `datetime` attribute to access a python version of the day
-            self.decday1 = None
+            self.decday = None
             self.decday2 = None
             #: np.ndarray(tnum,) latitude along the profile. Generally not in projected coordinates
-            self.lat1 = None
+            self.lat = None
             self.lat2 = None
             #: np.ndarray(tnum,) longitude along the profile. Generally not in projected coords.
-            self.long1 = None
+            self.long = None
             self.long2 = None
 
             # Sample-wise attributes
@@ -283,13 +283,13 @@ class ApresTimeDiff(object):
             self.range = None
 
             #: np.ndarray(tnum,) Optional. Projected x-coordinate along the profile.
-            self.x_coord1 = None
+            self.x_coord = None
             self.x_coord2 = None
             #: np.ndarray(tnum,) Optional. Projected y-coordinate along the profile.
-            self.y_coord1 = None
+            self.y_coord = None
             self.y_coord2 = None
             #: np.ndarray(tnum,) Optional. Elevation along the profile.
-            self.elev1 = None
+            self.elev = None
             self.elev2 = None
 
             # Special attributes
@@ -411,7 +411,11 @@ class ApresQuadPol(object):
                       'VH',
                       'VV',
                       'chhvv',
-                      'dphi_dz']
+                      'dphi_dz',
+                      'cpe',
+                      'cpe_idxs',
+                      'chhvv_cpe',
+                      'dphi_dz_cpe']
 
     from ._QuadPolProcessing import rotational_transform, coherence2d, phase_gradient2d, find_cpe
     from ._ApresDataSaving import save

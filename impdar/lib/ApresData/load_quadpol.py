@@ -48,15 +48,16 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         # Load each of the individual polarizations as their own ApresData object
         polarizations = ['HH', 'HV', 'VH', 'VV']
         if isinstance(fn, str):
-            fns = [glob.glob(fn + '_{:s}*'.format(pol)) for pol in polarizations]
+            fns = [glob.glob(fn + '_{:s}.*'.format(pol)) for pol in polarizations]
             for pol, f in zip(polarizations, fns):
                 if len(f) != 1:
                     raise FileNotFoundError('Need exactly one file matching each polarization')
+            fns = np.squeeze(fns)
         elif len(fn) == 4:
             fns = fn
         else:
             raise ValueError('fn must be a glob for files with _HH, _HV, etc., or a 4-tuple')
-        single_acquisitions = [load_apres(f) for f in fns]
+        single_acquisitions = [load_apres([f]) for f in fns]
 
         # Check that the data have gone through the initial processing steps
         # If they haven't do range conversion and stack to one trace
@@ -85,10 +86,10 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
         # load into the ApresQuadPol object
         quadpol_data = ApresQuadPol(None)
         quadpol_data.snum = hh.snum
-        quadpol_data.shh = hh.data.flatten().astype(complex)
-        quadpol_data.shv = single_acquisitions[1].data.flatten().astype(complex)
-        quadpol_data.svh = single_acquisitions[2].data.flatten().astype(complex)
-        quadpol_data.svv = single_acquisitions[3].data.flatten().astype(complex)
+        quadpol_data.shh = hh.data.flatten().astype(np.cdouble)
+        quadpol_data.shv = single_acquisitions[1].data.flatten().astype(np.cdouble)
+        quadpol_data.svh = single_acquisitions[2].data.flatten().astype(np.cdouble)
+        quadpol_data.svv = single_acquisitions[3].data.flatten().astype(np.cdouble)
         quadpol_data.decday = hh.decday
         quadpol_data.range = hh.Rcoarse
         quadpol_data.dt = hh.dt
