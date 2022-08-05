@@ -152,20 +152,18 @@ def coherence2d(self, delta_theta=20.0*np.pi/180., delta_range=100.,
         print('Azimuth bin: ', end='')
         sys.stdout.flush()
         for i in range(HH_.shape[1]):
-            if (i < ntheta) or (i > HH_.shape[1] - ntheta - 1):
+            if (i < ntheta) or (i > azimuth_bins - ntheta - 1):
                 continue
             if (i - ntheta) % 10 == 0:
                 print('{:d}'.format(i - ntheta), end='')
             else:
                 print('.', end='')
             sys.stdout.flush()
-            for j in range(HH_.shape[0]):
+            for j in range(range_bins):
                 imin, imax = i - ntheta, i + ntheta
-                jmin, jmax = max(0, j - nrange), min(HH_.shape[0], j + nrange)
-                chhvv[j, i] = coherence(HH_[j-nrange:j+nrange,
-                                            i-ntheta:i+ntheta].flatten(),
-                                        VV_[j-nrange:j+nrange,
-                                            i-ntheta:i+ntheta].flatten())
+                jmin, jmax = max(0, j - nrange), min(range_bins-1, j + nrange)
+                chhvv[j, i] = coherence(HH_[jmin:jmax,imin:imax].flatten(),
+                                        VV_[jmin:jmax,imin:imax].flatten())
         print('coherence calculation done')
         t1 = time.time()
         print('Execution with c code={:s} \

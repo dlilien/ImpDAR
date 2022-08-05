@@ -18,7 +18,8 @@ void coherence2d (double complex * chhvv, double complex * HH, double complex * 
     int i, j, ii, jj;
     int imin, imax, jmin, jmax;
     double complex numerator;
-    double denominator;
+    double complex denominator1;
+    double complex denominator2;
     PySys_WriteStdout("Beginning iteration through %d azimuths...\nAzimuth bin: ", azimuth_bins);
     fflush(stdout);
 
@@ -42,14 +43,16 @@ void coherence2d (double complex * chhvv, double complex * HH, double complex * 
             jmin = max(0, j - nrange);
             jmax = min(range_bins - 1, j + nrange);
             numerator = 0.0 + 0.0 * _Complex_I;
-            denominator = 0.0 + 0.0 * _Complex_I;
+            denominator1 = 0.0 + 0.0 * _Complex_I;
+            denominator2 = 0.0 + 0.0 * _Complex_I;
             for (ii=imin; ii<imax; ii++){
                 for (jj=jmin; jj<jmax; jj++){
                     numerator += HH[jj * azimuth_bins + ii] * conj(VV[jj * azimuth_bins + ii]);
-                    denominator += sqrt(pow(cabs(HH[jj * azimuth_bins + ii]), 2) * pow(cabs(VV[jj * azimuth_bins + ii]), 2));
+                    denominator1 += pow(cabs(HH[jj * azimuth_bins + ii]), 2); 
+                    denominator2 += pow(cabs(VV[jj * azimuth_bins + ii]), 2);
                 }
             }
-            chhvv[j * azimuth_bins + i] = numerator;
+            chhvv[j * azimuth_bins + i] = numerator/(sqrt(denominator1) * sqrt(denominator2));
         }
     }
 }
