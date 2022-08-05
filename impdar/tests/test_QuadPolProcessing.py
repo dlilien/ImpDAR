@@ -12,7 +12,6 @@
 import os
 import sys
 import unittest
-import pickle
 import numpy as np
 from impdar.lib.ApresData import ApresData, ApresQuadPol
 from impdar.lib.ApresData.load_apres import load_apres
@@ -32,9 +31,7 @@ class TestProcessing(unittest.TestCase):
         qpdat.save(os.path.join(THIS_DIR, 'input_data', 'qpdat.mat'))
 
     def test_2_load_fujita(self):
-        with open(os.path.join(THIS_DIR, 'input_data', 'quadpol_fujita.pickle'), 'rb') as fin:
-            qp_fujita = pickle.load(fin)
-        data = load_quadpol_fujita(qp_fujita)
+        data = load_quadpol_fujita(os.path.join(THIS_DIR, 'input_data', 'quadpol_fujita.mat'))
         self.assertTrue(data.data_dtype == np.cdouble().dtype)
 
     def test_3_rotation(self):

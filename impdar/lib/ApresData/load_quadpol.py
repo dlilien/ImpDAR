@@ -21,6 +21,7 @@ Oct 13 2020
 import numpy as np
 import glob
 import datetime
+from scipy.io import loadmat
 from . import ApresQuadPol
 from .ApresFlags import QuadPolFlags
 from .load_apres import load_apres
@@ -110,7 +111,7 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
 # ------------------------------------------------
 
 
-def load_quadpol_fujita(model):
+def load_quadpol_fujita(model_name):
     """
     Load processed modeled apres profiles from all four polarizations: hh, hv, vh, vv
     into one data object
@@ -125,6 +126,16 @@ def load_quadpol_fujita(model):
     quadpol_data: class
         quad-polarized apres data object
     """
+
+    if type(model_name) is str:
+        class empty:
+            pass
+        model = empty()
+        data = loadmat(model_name)
+        for attr in data.keys():
+            setattr(model,attr,np.squeeze(data[attr]))
+    else:
+        model = model_name
 
     # load into the ApresQuadPol object
     quadpol_data = ApresQuadPol(None)
