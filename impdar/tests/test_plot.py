@@ -424,8 +424,7 @@ class TestPlotSpectral(unittest.TestCase):
 class TestPlotApres(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_raw(self, mock_plot_apres_raw, mock_show):
+    def test_plotApRES_raw(self, mock_show):
         dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         plot.plot_apres(dat)
         fig, ax = plt.subplots()
@@ -433,8 +432,7 @@ class TestPlotApres(unittest.TestCase):
         plot.plot_apres(dat, fig=fig)
 
     @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_proc(self, mock_plot_apres, mock_show):
+    def test_plotApRES_proc(self, mock_show):
         dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         dat.apres_range(2)
         dat.stacking()
@@ -450,8 +448,7 @@ class TestPlotApres(unittest.TestCase):
 class TestPlotApres_TimeDiff(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
-    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
+    def test_plotApRES_diff(self, mock_show):
         apresdata_1 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
         apresdata_1.apres_range(2)
         apresdata_1.stacking()
@@ -472,13 +469,12 @@ class TestPlotApres_TimeDiff(unittest.TestCase):
 class TestPlotApres_QuadPol(unittest.TestCase):
 
     @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
-    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
+    def test_plotApRES_diff(self, mock_show):
         qpdat = load_quadpol(os.path.join(THIS_DIR, 'input_data', 'qpdat_coh.mat'), load_single_pol=False)
         plot.plot_apres_quadpol(qpdat)
         fig, ax = plt.subplots()
-        plot.plot_apres_diff(qpdat, fig=fig, ax=ax)
-        plot.plot_apres_diff(qpdat, fig=fig)
+        plot.plot_apres_quadpol(qpdat, fig=fig, ax=ax)
+        plot.plot_apres_quadpol(qpdat, fig=fig)
 
     def tearDown(self):
         plt.close('all')

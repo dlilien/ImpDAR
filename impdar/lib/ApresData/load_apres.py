@@ -97,6 +97,8 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     else:
         out = deepcopy(apres_data[0])
 
+    out.fn = os.path.splitext(fns_apres[0])[0]
+
     return out
 
 

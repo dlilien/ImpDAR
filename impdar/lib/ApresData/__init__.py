@@ -292,6 +292,11 @@ class ApresTimeDiff(object):
             self.elev = None
             self.elev2 = None
 
+            # Differencing attributes
+            self.ds = None
+            self.co = None
+            self.w = None
+
             # Special attributes
             #: impdar.lib.RadarFlags object containing information about the processing steps done.
             self.flags = TimeDiffFlags()
