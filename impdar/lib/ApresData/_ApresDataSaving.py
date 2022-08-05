@@ -128,14 +128,14 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                     if hasattr(self, 'data_dtype') and self.data_dtype is not None:
                         dtype = self.data_dtype
                     else:
-                        dtype = 'f'
+                        dtype = np.dtype('f')
                 else:
                     dtype = val.dtype
                 grp.create_dataset(attr, data=val, dtype=dtype)
             else:
                 grp.attrs.create(attr, val)
         else:
-            grp.attrs[attr] = h5py.Empty('f')
+            grp.attrs[attr] = h5py.Empty(dtype = np.dtype('f'))
     for attr in self.attrs_optional:
         if hasattr(self, attr) and getattr(self, attr) is not None:
             val = getattr(self, attr)
@@ -144,7 +144,7 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
                     if hasattr(self, 'data_dtype') and self.data_dtype is not None:
                         dtype = self.data_dtype
                     else:
-                        dtype = 'f'
+                        dtype = np.dtype('f')
                 else:
                     # override the dtype for data
                     if attr == 'data':
@@ -154,7 +154,8 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
             else:
                 grp.attrs.create(attr, val)
         else:
-            grp.attrs.create(attr, h5py.Empty('f'))
+            print(attr)
+            grp.attrs.create(attr, h5py.Empty(dtype = np.dtype('f')))
 
     if self.flags is not None:
         self.flags.write_h5(grp)

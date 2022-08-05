@@ -61,6 +61,7 @@ class TestProcessing(unittest.TestCase):
         qpdat.coherence2d(delta_range=10, delta_theta=60.*np.pi/180., force_python=True)
         self.assertTrue(qpdat.chhvv.dtype == complex)
         self.assertTrue(np.all(abs(qpdat.chhvv - chhvv_hold) < 1e-5))
+        qpdat.find_cpe()
         qpdat.save(os.path.join(THIS_DIR, 'input_data', 'qpdat_coh.mat'))
 
     def test_6_phase_gradient(self):

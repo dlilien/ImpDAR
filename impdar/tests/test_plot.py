@@ -19,6 +19,7 @@ from impdar.lib.Picks import Picks
 from impdar.lib import plot
 from impdar.lib.ApresData.load_apres import load_apres
 from impdar.lib.ApresData.load_time_diff import load_time_diff
+from impdar.lib.ApresData.load_quadpol import load_quadpol
 import matplotlib.pyplot as plt
 if sys.version_info[0] >= 3:
     from unittest.mock import patch
@@ -112,34 +113,6 @@ class TestPlot(unittest.TestCase):
         plot.plot([os.path.join(THIS_DIR, 'input_data', 'test_pe.DT1')], filetype='pe')
         mock_plot_rad.assert_called_with(Any(RadarData), xdat='tnum', ydat='twtt', x_range=None, pick_colors=None, clims=None, cmap=Any(object), flatten_layer=None)
 
-    @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_raw(self, mock_plot_apres_raw, mock_show):
-        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
-        plot.plot_apres(dat)
-
-    @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
-    def test_plotApRES_proc(self, mock_plot_apres, mock_show):
-        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
-        dat.apres_range(2)
-        dat.stacking()
-        dat.phase_uncertainty(3000)
-        plot.plot_apres(dat)
-
-    @patch('impdar.lib.plot.plt.show')
-    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
-    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
-        apresdata_1 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
-        apresdata_1.apres_range(2)
-        apresdata_1.stacking()
-        apresdata_1.phase_uncertainty(3000)
-        apresdata_2 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')])
-        apresdata_2.apres_range(2)
-        apresdata_2.stacking()
-        apresdata_2.phase_uncertainty(3000)
-        diffdat = load_time_diff([apresdata_1,apresdata_2])
-        plot.plot_apres_diff(diffdat)
 
     def test_plotBADINPUT(self):
         with self.assertRaises(ValueError):
@@ -447,6 +420,68 @@ class TestPlotSpectral(unittest.TestCase):
     def tearDown(self):
         plt.close('all')
 
+
+class TestPlotApres(unittest.TestCase):
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
+    def test_plotApRES_raw(self, mock_plot_apres_raw, mock_show):
+        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        plot.plot_apres(dat)
+        fig, ax = plt.subplots()
+        plot.plot_apres(dat, fig=fig, ax=ax)
+        plot.plot_apres(dat, fig=fig)
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres', returns=[DummyFig(), None])
+    def test_plotApRES_proc(self, mock_plot_apres, mock_show):
+        dat = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        dat.apres_range(2)
+        dat.stacking()
+        dat.phase_uncertainty(3000)
+        plot.plot_apres(dat)
+        fig, ax = plt.subplots()
+        plot.plot_apres(dat, fig=fig, ax=ax)
+        plot.plot_apres(dat, fig=fig)
+
+    def tearDown(self):
+        plt.close('all')
+
+class TestPlotApres_TimeDiff(unittest.TestCase):
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
+    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
+        apresdata_1 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT')])
+        apresdata_1.apres_range(2)
+        apresdata_1.stacking()
+        apresdata_1.phase_uncertainty(3000)
+        apresdata_2 = load_apres([os.path.join(THIS_DIR, 'input_data', 'apres_2.DAT')])
+        apresdata_2.apres_range(2)
+        apresdata_2.stacking()
+        apresdata_2.phase_uncertainty(3000)
+        diffdat = load_time_diff([apresdata_1,apresdata_2])
+        plot.plot_apres_diff(diffdat)
+        fig, ax = plt.subplots()
+        plot.plot_apres_diff(diffdat, fig=fig, ax=ax)
+        plot.plot_apres_diff(diffdat, fig=fig)
+
+    def tearDown(self):
+        plt.close('all')
+
+class TestPlotApres_QuadPol(unittest.TestCase):
+
+    @patch('impdar.lib.plot.plt.show')
+    @patch('impdar.lib.plot.plot_apres_diff', returns=[DummyFig(), None])
+    def test_plotApRES_diff(self, mock_plot_apres_diff, mock_show):
+        qpdat = load_quadpol(os.path.join(THIS_DIR, 'input_data', 'qpdat_coh.mat'), load_single_pol=False)
+        plot.plot_apres_quadpol(qpdat)
+        fig, ax = plt.subplots()
+        plot.plot_apres_diff(qpdat, fig=fig, ax=ax)
+        plot.plot_apres_diff(qpdat, fig=fig)
+
+    def tearDown(self):
+        plt.close('all')
 
 if __name__ == '__main__':
     unittest.main()

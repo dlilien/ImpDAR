@@ -27,6 +27,13 @@ class TestRadarDataSaving(unittest.TestCase):
         # reload the object and check to make sure they are the same
         dat_reload = ApresData(os.path.join(THIS_DIR, 'input_data', 'test_out.mat'))
 
+    def test_ReadWrite_h5(self):
+        dat = load_apres_single_file(os.path.join(THIS_DIR, 'input_data', 'apres_1.DAT'))
+        dat.save(os.path.join(THIS_DIR, 'input_data', 'test_out.h5'))
+        # reload the object and check to make sure they are the same
+        dat_reload = ApresData(os.path.join(THIS_DIR, 'input_data', 'test_out.h5'))
+
+
     def tearDown(self):
         for fn in ['test_out.mat', 'test.shp', 'test.shx', 'test.prj', 'test.dbf']:
             if os.path.exists(os.path.join(THIS_DIR, 'input_data', fn)):
