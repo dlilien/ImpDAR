@@ -892,7 +892,7 @@ def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_col
 
     fig.canvas.set_window_title(qpdat.fn)
     if s:
-        fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
+        fig.savefig(os.path.splitext(qpdat.fn)[0] + '.' + ftype, dpi=dpi)
     else:
         plt.tight_layout()
         plt.show()
