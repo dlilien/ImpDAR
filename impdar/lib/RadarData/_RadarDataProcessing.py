@@ -60,7 +60,7 @@ def constant_sample_depth_spacing(self):
     self.nmo_depth = depths
 
 
-def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_profile=None, permittivity_model=firn_permittivity, const_sample=True):
+def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_profile=None, permittivity_model=firn_permittivity, const_sample=False):
     """Normal move-out correction.
 
     Converts travel time to distance accounting for antenna separation.
