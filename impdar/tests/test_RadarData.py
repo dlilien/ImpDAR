@@ -232,7 +232,7 @@ class TestRadarDataMethods(unittest.TestCase):
             self.data.elev_correct()
         self.data.nmo(0, 2.0e6)
         self.data.elev_correct(v_avg=2.0e6)
-        self.assertTrue(self.data.data.shape == (27, 40))
+        self.assertTrue(self.data.data.shape == (26, 40))
 
     def test_constant_space_real(self):
         # Basic check where there is movement every step

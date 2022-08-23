@@ -453,7 +453,7 @@ def rangegain(self, slope):
     slope: float
         The slope of the linear range gain to be applied. Maybe try 1.0e-2?
     """
-    if isinstance(self.trig, (float, int, np.float, np.int64)):
+    if isinstance(self.trig, (float, int, float, np.int64)):
         gain = self.travel_time[int(self.trig) + 1:] * slope
         self.data[int(self.trig + 1):, :] *= np.atleast_2d(gain).transpose()
     else:
