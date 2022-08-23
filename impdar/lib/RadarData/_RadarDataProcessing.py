@@ -125,7 +125,7 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
         eps = np.real(permittivity_model(profile_rho))
         profile_u = uair / np.sqrt(eps)
         # Interpolate velocity profile onto constant depth spacing
-        d_interp = np.linspace(np.min(profile_depth, 0), max(profile_depth), self.snum)
+        d_interp = np.linspace(np.min(profile_depth, 0), max(profile_depth), 10 * self.snum)
         u_interp = interp1d(profile_depth, profile_u)(d_interp)
 
     # --- Do the move-out correction --- #
@@ -133,25 +133,43 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
     # empty array to fill with new times
     nmotime = np.zeros((len(self.travel_time)))
 
+    if rho_profile is not None:
+        print('Iterating velocity profile in firn...')
     for i,t in enumerate(self.travel_time):
         if rho_profile is None:
             u_rms = uice
         else:
-            # get RMS velocity used for correction
-            d = minimize(optimize_moveout_depth,.5*t*uice,args=(t,ant_sep,d_interp,u_interp),
-                         tol=1e-8,bounds=[(0,0.5*t*uair)])['x'][0]
-            u_rms = np.sqrt(np.mean(u_interp[d_interp<d]**2.))
-        # get the upper leg of the trave_path triangle (direct arrival) from the antenna separation and the rms velocity
+            ### Get RMS velocity used for correction
+            d = t / 2. * uice * 1.0e-6  # start by guessing
+            d_last = d.copy()
+            j, tol = 0, 0.1 * self.dt / 2. * uice
+            while abs(d-d_last) > tol or j < 5:  # Iterate until convergence
+                d_last = d.copy()
+                vels = u_interp[d_interp<=d]
+                u_rms = np.sqrt(np.mean(vels**2.))
+                d = t / 2. * u_rms * 1.0e-6
+                j += 1
+        # get the upper leg of the travel_path triangle (direct arrival) from the antenna separation and the rms velocity
         tsep_ice = 1e6*(ant_sep / u_rms)
         # hypotenuese, adjust to 'transmit time' by adding the separation time
         thyp = t+tsep_ice
         # calculate the vertical two-way travel time
         nmotime[i] = np.sqrt((thyp)**2. - tsep_ice**2.)
 
+    # Time vector with original time step
+    self.travel_time = np.arange(min(self.travel_time),max(nmotime),self.dt*1e6)
+    self.snum = len(self.travel_time)
+
+    # Interpolate onto new time vector
+    newdata = np.empty((self.snum,self.tnum))
+    for ti in np.arange(self.tnum):
+        trace = self.data[:,ti]
+        f = interp1d(nmotime,trace,kind='linear')
+        newdata[:,ti] = f(self.travel_time)
+    self.data = newdata
+
     # --- Cleanup --- #
 
-    # save the updated time vector
-    self.travel_time = nmotime
     # time to depth conversion
     if rho_profile is None:
         self.nmo_depth = self.travel_time / 2. * uice * 1.0e-6
@@ -163,6 +181,8 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
     if const_firn_offset is not None:
         self.nmo_depth = self.nmo_depth + const_firn_offset
 
+    print('Normal Moveout filter complete.')
+
     # Set flags
     try:
         self.flags.nmo[0] = 1
@@ -170,33 +190,6 @@ def nmo(self, ant_sep, uice=1.69e8, uair=3.0e8, const_firn_offset=None, rho_prof
     except (IndexError, TypeError):
         self.flags.nmo = np.ones((2, ))
         self.flags.nmo[1] = ant_sep
-
-
-def optimize_moveout_depth(d_in, t, ant_sep, profile_depth, profile_u):
-    """Optimize depth in the nmo filter.
-
-    In the case of variable velocity, we need to iterate on the depth
-    and rms velocity within this function until it converges.
-
-    Parameters
-    ----------
-    d_in: float
-        initial guess at the depth
-    t: float
-        time
-    ant_sep: float
-        antennae separation
-    profile_depth: array
-        depths corresponding to input velocity profile
-    profile_u: array
-        velocity
-    """
-    args = np.argwhere(profile_depth<=d_in)
-    if len(args) == 0:
-        raise ValueError('Profile not shallow enough. Extend to cover top')
-    vels = profile_u[args][:,0]
-    u_rms = np.sqrt(np.mean(vels**2.))
-    return abs(np.sqrt((t/2.*u_rms)**2.-ant_sep**2.)-d_in)
 
 
 def traveltime_to_depth(self, profile_depth, profile_rho, c=3.0e8, permittivity_model=firn_permittivity):

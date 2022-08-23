@@ -218,16 +218,6 @@ class TestRadarDataMethods(unittest.TestCase):
         with self.assertRaises(Exception):
             self.data.nmo(0., rho_profile=os.path.join(THIS_DIR, 'input_data', 'velocity_layers.txt'))
 
-    def test_optimize_moveout_depth(self):
-        d = _RadarDataProcessing.optimize_moveout_depth(100.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
-        self.assertFalse(np.isnan(d))
-
-        d = _RadarDataProcessing.optimize_moveout_depth(2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
-        self.assertFalse(np.isnan(d))
-
-        with self.assertRaises(ValueError):
-            d = _RadarDataProcessing.optimize_moveout_depth(-2000.0, 100.0 / 1.68e8 * 2., 10.0, np.array([0., 10., 50., 1000.]), np.array([2.5e8, 2.0e8, 1.8e8, 1.68e8]))
-
     def test_restack_odd(self):
         self.data.restack(5)
         self.assertTrue(self.data.data.shape == (20, 8))
@@ -300,7 +290,7 @@ class TestRadarDataMethods(unittest.TestCase):
         self.assertTrue(self.data.picks.samp3.shape == (2, targ_size))
         self.assertTrue(self.data.picks.power.shape == (2, targ_size))
         self.assertTrue(self.data.picks.time.shape == (2, targ_size))
-        
+
     def test_constant_space_complex(self):
         # One of the few functions that really differs with complex data.
         self.data.data = self.data.data + 1.0j * self.data.data
