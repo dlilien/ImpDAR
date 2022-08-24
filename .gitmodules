@@ -1,3 +1,3 @@
-[submodule "doc/ImpDAR_tutorials"]
-	path = doc/ImpDAR_tutorials
-	url = https://github.com/Jakidxav/ImpDAR_tutorials.git
+[submodule "doc/impdar_tutorials"]
+	path = doc/impdar_tutorials
+	url = https://github.com/benhills/impdar_tutorials.git

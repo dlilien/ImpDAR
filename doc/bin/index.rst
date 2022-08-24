@@ -23,5 +23,3 @@ Contents:
         impplot
         imppick
         apdar
-        qpdar
-=======
