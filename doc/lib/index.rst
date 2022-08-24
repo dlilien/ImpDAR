@@ -18,6 +18,6 @@ Contents:
         load
         process
         ApresData
-        ApresDiffData
-        QuadPolData
+        ApresTimeDiff
+        ApresQuadPol
         ImpdarError
