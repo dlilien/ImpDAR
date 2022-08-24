@@ -41,13 +41,11 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
             fns = [glob.glob(fn + '_{:s}*'.format(t)) for t in times]
             for t, f in zip(times, fns):
                 if len(f) != 1:
-                    raise FileNotFoundError('Need exactly one file \
-                                            matching each time acqusition')
+                    raise FileNotFoundError('Need exactly one file matching each time acqusition')
         elif len(fn) == 2:
             fns = fn
         else:
-            raise ValueError('fn must be a glob for files with \
-                             _time1, _time2, or a 2-tuple')
+            raise ValueError('fn must be a glob for files with _time1, _time2, or a 2-tuple')
 
         # Load each of the individual acquisitions
         # as their own ApresData object
@@ -63,15 +61,12 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
         for i, acquisition in enumerate(single_acquisitions):
             try:
                 acquisition.stacking()
-                print('Restacked acquisition #{:d} to a \
-                      1-d array.'.format(i + 1))
+                print('Restacked acquisition #{:d} to a 1-d array.'.format(i + 1))
             except ImpdarError:
-                print('Acquisition #{:d} is already stacked to \
-                      shape: {:s}'.format(i + 1,
+                print('Acquisition #{:d} is already stacked to shape: {:s}'.format(i + 1,
                                           str(np.shape(acquisition.data))))
             if acquisition.flags.range == 0:
-                print('Acquisition #', i+1, 'has not been converted to range. \
-                      Range conversion now...')
+                print('Acquisition #', i+1, 'has not been converted to range. Range conversion now...')
                 acquisition.apres_range(2)
 
         # Check that all four acquisitions have the same attributes
@@ -79,8 +74,7 @@ def load_time_diff(fn, load_single_acquisitions=True, *args, **kwargs):
         dat1 = deepcopy(single_acquisitions[0])
         dat2 = deepcopy(single_acquisitions[1])
         if dat1.snum != dat2.snum:
-            raise ValueError('Need the same number of \
-                             vertical samples in each file')
+            raise ValueError('Need the same number of vertical samples in each file')
         if not np.all(dat1.travel_time == dat2.travel_time):
             raise ValueError('Need matching travel time vectors')
 

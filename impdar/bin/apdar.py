@@ -34,7 +34,8 @@ def _get_args():
     parser_load.add_argument('-acq_type',
                                  type=str,
                                  help='Acquisition type',
-                                 default='single')
+                                 default='single',
+                                 choices=['single', 'timediff', 'quadpol'])
     _add_def_args(parser_load)
 
     # Full processing flow for a single ApRES acquisition
@@ -224,7 +225,8 @@ def _get_args():
     parser_plot.add_argument('-acq_type',
                                  type=str,
                                  help='Acquisition type',
-                                 default='single')
+                                 default='single',
+                                 choices=['single', 'timediff', 'quadpol'])
     parser_plot.add_argument('-s',
                              action='store_true',
                              help='Save file (do not plt.show())')

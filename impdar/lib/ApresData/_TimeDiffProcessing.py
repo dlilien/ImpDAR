@@ -148,23 +148,26 @@ def range_diff(self, uncertainty='noise_phasor'):
                          self.header.chirp_grad,
                          self.header.ci)
 
-    if uncertainty == 'CR':
-        # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
-        sigma = (1./abs(self.co))*np.sqrt((1.-abs(self.co)**2.)/(2.*win))
-        # convert the phase offset to a distance vector
-        self.w_err = phase2range(self, sigma,
-                                 self.header.lambdac,
-                                 self.ds,
-                                 self.header.chirp_grad,
-                                 self.header.ci)
+    # If the individual acquisitions have had uncertainty calculations
+    if self.unc1 is not None:
 
-    elif uncertainty == 'noise_phasor':
-        # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
-        # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
-        r_uncertainty = phase2range(self, self.unc1, self.header.lambdac) +\
-            phase2range(self, self.unc2, self.header.lambdac)
-        idxs = np.arange(win//2, len(self.data)-win//2, step)
-        self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
+        if uncertainty == 'CR':
+            # Error from Cramer-Rao bound, Jordan et al. (2020) Ann. Glac. eq. (5)
+            sigma = (1./abs(self.co))*np.sqrt((1.-abs(self.co)**2.)/(2.*win))
+            # convert the phase offset to a distance vector
+            self.w_err = phase2range(self, sigma,
+                                     self.header.lambdac,
+                                     self.ds,
+                                     self.header.chirp_grad,
+                                     self.header.ci)
+
+        elif uncertainty == 'noise_phasor':
+            # Uncertainty from Noise Phasor as in Kingslake et al. (2014)
+            # r_uncertainty should be calculated using the function phase_uncertainty defined in this script
+            r_uncertainty = phase2range(self, self.unc1, self.header.lambdac) +\
+                phase2range(self, self.unc2, self.header.lambdac)
+            idxs = np.arange(win//2, len(self.data)-win//2, step)
+            self.w_err = np.array([np.nanmean(r_uncertainty[i-win//2:i+win//2]) for i in idxs])
 
 
 def strain_rate(self, strain_window=(200, 1200), w_surf=0.):

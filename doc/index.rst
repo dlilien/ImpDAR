@@ -28,7 +28,7 @@ To do anything involving geolocation, you will also need `GDAL <http://gdal.org>
 
 Examples
 --------
-Check out the :doc:`examples <\examples/index>`, particularly the Jupyter notebook examples beginning with :doc:`getting started <\ImpDAR_tutorials/getting_started/ImpDAR_GettingStarted>`, for an idea of how to run ImpDAR. These should be a good starting point that can be modified for a particular use case. While all of the output and input are on this website, if you actually want to run the code you can download all the notebooks and run them yourself. You can get those `here <https://github.com/Jakidxav/ImpDAR_tutorials>`_.
+Check out the :doc:`examples <\examples/index>`, particularly the Jupyter notebook examples beginning with :doc:`getting started <\impdar_tutorials/getting_started/ImpDAR_GettingStarted>`, for an idea of how to run ImpDAR. These should be a good starting point that can be modified for a particular use case. While all of the output and input are on this website, if you actually want to run the code you can download all the notebooks and run them yourself. You can get those `here <https://github.com/benhills/impdar_tutorials>`_.
 
 Contributing
 ------------

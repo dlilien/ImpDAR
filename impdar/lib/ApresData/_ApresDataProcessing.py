@@ -153,7 +153,7 @@ def phase_uncertainty(self, bed_range):
     self.flags.uncertainty = True
 
 
-def phase2range(self,phi,lambdac=None,rc=None,K=None,ci=None):
+def phase2range(self, phi, lambdac=None, rc=None, K=None, ci=None):
     """
     Convert phase difference to range for FMCW radar
 
