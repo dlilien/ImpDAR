@@ -20,7 +20,7 @@ cdef extern from "mig_cython.h":
     void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double * zs, double * zs2, double * tt_sec, double vel, double * gradD, double max_travel_time, int nearfield)
 
 
-def migrationKirchoffLoop(np.ndarray[double, ndim=2, mode="c"] migdata not None,
+def migrationKirchhoffLoop(np.ndarray[double, ndim=2, mode="c"] migdata not None,
                           int tnum,
                           int snum,
                           np.ndarray[double, ndim=1, mode="c"] dist not None,
@@ -89,7 +89,7 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     # Cache the depths
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
-    migrationKirchoffLoop(migdata,
+    migrationKirchhoffLoop(migdata,
                           dat.tnum,
                           dat.snum,
                           np.ascontiguousarray(dat.dist, dtype=np.float64) * 1.0e3,

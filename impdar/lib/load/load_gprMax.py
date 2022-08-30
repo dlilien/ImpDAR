@@ -63,7 +63,7 @@ def load_gprMax(fn_h5, *args, **kwargs):
     h5_data.decday = np.arange(h5_data.tnum)
     h5_data.trace_int = np.ones((h5_data.tnum,))
 
-    h5_data.dist = np.arange(h5_data.tnum)
+    h5_data.dist = np.arange(h5_data.tnum) / 1e3
     h5_data.chan = -99.
     h5_data.check_attrs()
     return h5_data

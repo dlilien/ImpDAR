@@ -33,18 +33,15 @@ from scipy.interpolate import griddata, interp2d, interp1d
 
 
 def migrationKirchhoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
-    # Loop through all traces
+    # Loop through every point in the image (trace and sample)
+    # to look for a hyperbola propagating away from that point
     print('Migrating trace number:')
     for xi in range(tnum):
         print('{:d}, '.format(xi), end='')
         sys.stdout.flush()
-        # get the trace distance
-        x = dist[xi]
-        dists2 = (dist - x)**2.
-        # Loop through all samples
         for ti in range(snum):
-            # get the radial distances between input point and output point
-            rs = np.sqrt(dists2 + zs2[ti])
+            # get the radial distances between points and the surface location for this trace
+            rs = np.sqrt((dist - dist[xi])**2. + zs2[ti])
             # find the cosine of the angle of the tangent line, correct for obliquity factor
             with np.errstate(invalid='ignore'):
                 costheta = zs[ti] / rs
@@ -104,7 +101,19 @@ def migrationKirchhoff(dat, vel=1.69e8, nearfield=False):
     zs = vel * tt_sec / 2.0
     zs2 = zs**2.
 
-    migrationKirchhoffLoop(dat.data.astype(np.float64), migdata, dat.tnum, dat.snum, dat.dist.astype(np.float64), zs.astype(np.float64), zs2.astype(np.float64), tt_sec.astype(np.float64), vel, gradD.astype(np.float64), max_travel_time, nearfield)
+    migrationKirchhoffLoop(dat.data.astype(np.float64),
+                          migdata,
+                          dat.tnum,
+                          dat.snum,
+                          np.ascontiguousarray(dat.dist, dtype=np.float64) * 1.0e3,
+                          np.ascontiguousarray(zs, dtype=np.float64),
+                          np.ascontiguousarray(zs2, dtype=np.float64),
+                          np.ascontiguousarray(tt_sec, dtype=np.float64),
+                          vel,
+                          np.ascontiguousarray(gradD, dtype=np.float64),
+                          max_travel_time,
+                          nearfield
+                          )
 
     dat.data = migdata.copy()
     # print the total time
