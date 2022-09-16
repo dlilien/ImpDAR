@@ -122,6 +122,8 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
     grp = h5_file_descriptor.create_group(groupname)
     for attr in self.attrs_guaranteed:
         val = getattr(self, attr)
+        if type(val) is str:
+            continue
         if val is not None:
             if hasattr(val, 'shape') and np.any([s != 1 for s in val.shape]):
                 if val.dtype == 'O':
@@ -154,7 +156,6 @@ def save_as_h5_group(self, h5_file_descriptor, groupname='dat'):
             else:
                 grp.attrs.create(attr, val)
         else:
-            print(attr)
             grp.attrs.create(attr, h5py.Empty(dtype = np.dtype('f')))
 
     if self.flags is not None:

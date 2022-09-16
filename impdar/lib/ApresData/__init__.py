@@ -410,6 +410,8 @@ class ApresQuadPol(object):
                       'x_coord',
                       'y_coord',
                       'elev',
+                      'ant_sep',
+                      'ant_azi',
                       'thetas',
                       'HH',
                       'HV',
@@ -420,7 +422,8 @@ class ApresQuadPol(object):
                       'cpe',
                       'cpe_idxs',
                       'chhvv_cpe',
-                      'dphi_dz_cpe']
+                      'dphi_dz_cpe',
+                      'phi']
 
     from ._QuadPolProcessing import rotational_transform, coherence2d, phase_gradient2d, find_cpe
     from ._ApresDataSaving import save

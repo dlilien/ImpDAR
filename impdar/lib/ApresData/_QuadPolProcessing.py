@@ -36,7 +36,8 @@ except ImportError:
 
 def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
                          cross_pol_exception=False,
-                         cross_pol_flip=False):
+                         cross_pol_flip=False,
+                         flip_force=False):
     """
     Azimuthal (rotational) shift of principal axes
     at the transmitting and receiving antennas
@@ -63,7 +64,8 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
     if abs(np.sum(np.imag(self.shv)+np.imag(self.svh))) < \
             abs(np.sum(np.imag(self.shv)-np.imag(self.svh))) or \
             abs(np.sum(np.real(self.shv)+np.real(self.svh))) < \
-            abs(np.sum(np.real(self.shv)-np.real(self.svh))):
+            abs(np.sum(np.real(self.shv)-np.real(self.svh))) or \
+            flip_force:
         if cross_pol_exception:
             pass
         elif cross_pol_flip == 'HV':

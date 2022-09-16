@@ -80,7 +80,7 @@ def load_quadpol(fn, ftype='mat', load_single_pol=True, *args, **kwargs):
                 raise ValueError('Need the same number of vertical samples in each file')
             if not np.all(hh.travel_time == xx.travel_time):
                 raise ValueError('Need matching travel time vectors')
-            if abs(hh.decday - xx.decday) > 1.:
+            if abs(hh.decday[0] - xx.decday[0]) > 1.:
                 # TODO: ask to proceed
                 Warning('It looks like these acquisitions were not all taken on the same day.')
 

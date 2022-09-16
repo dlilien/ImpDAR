@@ -371,7 +371,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
         self.bnum = burst_count - 1
-        raise ValueError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
+        raise ImpdarError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
     else:
         if self.header.average == 2:
             self.data = np.fromfile(
