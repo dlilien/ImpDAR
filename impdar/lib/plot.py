@@ -89,7 +89,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 
     for fig, dat in zip(figs, radar_data):
         if dat.fn is not None:
-            fig[0].canvas.set_window_title(dat.fn)
+            fig[0].canvas.manager.set_window_title(dat.fn)
 
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi)
@@ -768,7 +768,7 @@ def plot_apres(dat, p=2, s=False, facecolor = 'w', linecolor = 'k', linewidth = 
         axs[2].set_xlabel('rad')
         axs[2].set_title('Phase Uncertainty')
 
-    fig.canvas.set_window_title(dat.fn)
+    fig.canvas.manager.set_window_title(dat.fn)
     if s:
         fig.savefig(os.path.splitext(dat.fn)[0] + '.' + ftype, dpi=dpi)
     else:
@@ -821,7 +821,7 @@ def plot_apres_diff(diffdat, s=False, facecolor = 'w',
     axs[3].set_xlabel('m/yr')
     axs[3].set_title('Vertical Velocity')
 
-    fig.canvas.set_window_title(diffdat.fn)
+    fig.canvas.manager.set_window_title(diffdat.fn)
     if s:
         fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
     else:
@@ -890,7 +890,7 @@ def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_col
     cb.outline.set_edgecolor(facecolor)
     plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color=facecolor)
 
-    fig.canvas.set_window_title(qpdat.fn)
+    fig.canvas.manager.set_window_title(qpdat.fn)
     if s:
         fig.savefig(os.path.splitext(qpdat.fn)[0] + '.' + ftype, dpi=dpi)
     else:
