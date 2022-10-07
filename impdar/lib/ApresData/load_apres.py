@@ -62,7 +62,7 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
         try:
             apres_data.append(load_apres_single_file(
                 fn, burst=burst, fs=fs, *args, **kwargs))
-        except ImpdarError:
+        except:
             Warning('Cannot load file: '+fn)
 
     from copy import deepcopy

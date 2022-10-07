@@ -830,7 +830,7 @@ def plot_apres_diff(diffdat, s=False, facecolor = 'w',
 
 
 def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_color='k',
-                        bed=2800, cmap1='hot', cmap2='Greys', cmap3='twilight_shifted',
+                        bed=4000, cmap1='hot', cmap2='Greys', cmap3='twilight_shifted',
                         ftype = 'png', dpi = 300, *args, **kwargs):
     """Plot relevant data fields for a quadpol data object, including:
         1 - co-polarized image
@@ -853,22 +853,25 @@ def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_col
     axs[0].set_ylabel('Range (m)',c=tick_color)
     axs[1].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
     axs[1].pcolormesh(Θs,Ds,10.*np.log10(qpdat.HV**2.).real,cmap=cmap1,zorder=-1)
-    axs[1].plot(qpdat.cpe,qpdat.range,'m',zorder=3)
+    if qpdat.cpe is not None:
+        axs[1].plot(qpdat.cpe,qpdat.range,'m',zorder=3)
     cb = plt.colorbar(cf, ax=axs[0], orientation='horizontal')
     cb.set_label('Power (dB)',c=fg_color)
     cb = plt.colorbar(cf, ax=axs[1], orientation='horizontal')
     cb.set_label('Power (dB)')
 
     axs[2].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
-    cf = axs[2].contourf(Θs,Ds,np.abs(qpdat.chhvv),cmap=cmap2,levels=100,zorder=-1)
-    cb = plt.colorbar(cf, ax=axs[2], ticks=[0,0.5,1.], orientation='horizontal')
-    cb.set_label('$|c_{hhvv}|$',c=fg_color)
+    if qpdat.chhvv is not None:
+        cf = axs[2].contourf(Θs,Ds,np.abs(qpdat.chhvv),cmap=cmap2,levels=100,zorder=-1)
+        cb = plt.colorbar(cf, ax=axs[2], ticks=[0,0.5,1.], orientation='horizontal')
+        cb.set_label('$|c_{hhvv}|$',c=fg_color)
 
     axs[3].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
-    cf = axs[3].contourf(Θs,Ds,np.angle(qpdat.chhvv),cmap=cmap3,levels=100,zorder=-1)
-    cb = plt.colorbar(cf, ax=axs[3], ticks=[-np.pi,0,np.pi], orientation='horizontal')
-    cb.set_label('$\phi_{hhvv}$',c=fg_color)
-    cb.ax.set_xticklabels(['-π','0','π'],color=fg_color)
+    if qpdat.chhvv is not None:
+        cf = axs[3].contourf(Θs,Ds,np.angle(qpdat.chhvv),cmap=cmap3,levels=100,zorder=-1)
+        cb = plt.colorbar(cf, ax=axs[3], ticks=[-np.pi,0,np.pi], orientation='horizontal')
+        cb.set_label('$\phi_{hhvv}$',c=fg_color)
+        cb.ax.set_xticklabels(['-π','0','π'],color=fg_color)
 
     for ax in axs[:4]:
         ax.fill_between(np.linspace(0,np.pi,10),bed,10000,color='w',alpha=0.8,zorder=1)
@@ -879,16 +882,17 @@ def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_col
         ax.set_xticklabels(['0','π/2','π'],color=tick_color)
 
     axs[4].tick_params(labelleft=False)
-    axs[4].plot(np.angle(qpdat.chhvv_cpe),Ds[:,0],'k.',ms=2)
-    axs[4].set_ylim(bed+200,0)
-    axs[4].set_xlim(-np.pi,np.pi)
-    axs[4].set_xticks([-np.pi,0.,np.pi])
-    axs[4].set_xticklabels(['-π','0','π'])
-    cf = axs[4].scatter(np.angle(qpdat.chhvv_cpe)+5.,Ds[:,0],c=np.zeros_like(Ds[:,0]),alpha=0.)
-    cb = plt.colorbar(cf, ax=axs[4], shrink=0.6, orientation='horizontal')
-    cb.ax.xaxis.set_tick_params(color=facecolor)
-    cb.outline.set_edgecolor(facecolor)
-    plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color=facecolor)
+    if qpdat.chhvv is not None:
+        axs[4].plot(np.angle(qpdat.chhvv_cpe),Ds[:,0],'k.',ms=2)
+        axs[4].set_ylim(bed+200,0)
+        axs[4].set_xlim(-np.pi,np.pi)
+        axs[4].set_xticks([-np.pi,0.,np.pi])
+        axs[4].set_xticklabels(['-π','0','π'])
+        cf = axs[4].scatter(np.angle(qpdat.chhvv_cpe)+5.,Ds[:,0],c=np.zeros_like(Ds[:,0]),alpha=0.)
+        cb = plt.colorbar(cf, ax=axs[4], shrink=0.6, orientation='horizontal')
+        cb.ax.xaxis.set_tick_params(color=facecolor)
+        cb.outline.set_edgecolor(facecolor)
+        plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color=facecolor)
 
     fig.canvas.manager.set_window_title(qpdat.fn)
     if s:

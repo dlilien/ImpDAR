@@ -18,15 +18,19 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestBSI(unittest.TestCase):
- 
+
     @unittest.skipIf(not load_bsi.H5, 'h5py is not available')
     def test_load_bsi(self):
-        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'))
+        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'), XIPR=False)
+        load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi_xipr.h5'), XIPR=True)
 
     @unittest.skipIf(load_bsi.H5, 'h5py is available')
     def test_load_bsi_noh5py(self):
         with self.assertRaises(ImportError):
-            load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'))
+            load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi.h5'), XIPR=False)
+
+        with self.assertRaises(ImportError):
+            load_bsi.load_bsi(os.path.join(THIS_DIR, 'input_data', 'test_bsi_xipr.h5'), XIPR=True)
 
 
 if __name__ == '__main__':

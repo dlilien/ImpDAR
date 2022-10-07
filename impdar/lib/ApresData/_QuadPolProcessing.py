@@ -75,8 +75,7 @@ def rotational_transform(self, theta_start=0, theta_end=np.pi, n_thetas=100,
             Warning('Flipping sign of cross-polarized term VH')
             self.svh *= -1.
         else:
-            raise ValueError('Cross-polarized terms are of the \
-                             opposite sign, check and update.')
+            raise ValueError('Cross-polarized terms are of the opposite sign, check and update.')
 
     self.thetas = np.linspace(theta_start, theta_end, n_thetas)
 
@@ -315,7 +314,7 @@ def power_anomaly(data):
     # Calculate Power
     P = 10.*np.log10((data)**2.)
     # Remove the mean for each row
-    Pa = np.transpose(np.transpose(P) - np.mean(P, axis=1))
+    Pa = np.transpose(np.transpose(P) - np.nanmean(P, axis=1))
 
     return Pa
 
@@ -338,7 +337,7 @@ def lowpass(data, Wn, fs, order=3):
     """
 
     # Subset the array around nan values
-    nan_idx = next(k for k, value in enumerate(data[:, 0]) if ~np.isnan(value))
+    nan_idx = next(k for k, value in enumerate(data[:, 1]) if ~np.isnan(value))
     if nan_idx != 0:
         data_sub = data[nan_idx:-nan_idx+1]
     else:
