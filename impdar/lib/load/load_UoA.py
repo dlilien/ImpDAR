@@ -52,10 +52,10 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
         nminfo.lon = fin['INS_GPS']['longitude'][:].flatten()
         nminfo.elev = fin['INS_GPS']['altitude_MSL'][:].flatten()
 
-        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'][:len_min].flatten())
-        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'][:len_min].flatten())
-        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'][:len_min].flatten())
-        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'][:len_min].flatten())
+        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
 
         try:
             UoA_data.get_projected_coords()
