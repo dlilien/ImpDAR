@@ -16,6 +16,12 @@ from impdar.lib.ApresData import load_apres
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+try:
+    from netCDF4 import Dataset
+    nc_load = True
+except:
+    nc_load = False
+
 class TestLoad(unittest.TestCase):
 
     def test_loaddat(self):
@@ -28,8 +34,12 @@ class TestLoad(unittest.TestCase):
         self.assertEqual(data.data.shape, (data.bnum, data.cnum, data.snum))
 
     def test_bas_nc(self):
-        data = load_apres.load_BAS_nc(os.path.join(THIS_DIR, 'input_data', 'apres_1.nc'))
-        self.assertEqual(data.data.shape, (data.bnum, data.cnum, data.snum))
+        if nc_load:
+            data = load_apres.load_BAS_nc(os.path.join(THIS_DIR, 'input_data', 'apres_1.nc'))
+            self.assertEqual(data.data.shape, (data.bnum, data.cnum, data.snum))
+        else:
+            with self.assertRaises(ImportError):
+                data = load_apres.load_BAS_nc(os.path.join(THIS_DIR, 'input_data', 'apres_1.nc'))
 
     def test_loadbad(self):
         with self.assertRaises(ValueError):
