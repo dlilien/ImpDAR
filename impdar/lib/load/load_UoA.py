@@ -52,10 +52,10 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
         nminfo.lon = fin['INS_GPS']['longitude'][:].flatten()
         nminfo.elev = fin['INS_GPS']['altitude_MSL'][:].flatten()
 
-        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
-        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'][:].flatten())
+        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.elev = interp1d(nminfo.ppstime, nminfo.elev, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
+        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(fin['Data']['POSIX_time'].flatten())
 
         try:
             UoA_data.get_projected_coords()
@@ -143,11 +143,12 @@ def _load_group(UoA_data, grp, gps_offset):
         nminfo.lon = grp['lon'][:].flatten()
         nminfo.elev = np.zeros_like(nminfo.lat)
 
-        UoA_data.lat = interp1d(nminfo.ppstime, nminfo.lat, fill_value='extrapolate')(dt)
-        UoA_data.long = interp1d(nminfo.ppstime, nminfo.lon, fill_value='extrapolate')(dt)
+        len_min = np.min([nminfo.ppstime.shape[0], nminfo.lat.shape[0], nminfo.lon.shape[0]])
+        UoA_data.lat = interp1d(nminfo.ppstime[:len_min], nminfo.lat[:len_min], fill_value='extrapolate')(dt[:len_min])
+        UoA_data.long = interp1d(nminfo.ppstime[:len_min], nminfo.lon[:len_min], fill_value='extrapolate')(dt[:len_min])
         UoA_data.elev = np.zeros_like(UoA_data.lat)
         UoA_data.elev[:] = np.nan
-        UoA_data.decday = interp1d(nminfo.ppstime, nminfo.time, fill_value='extrapolate')(dt)
+        UoA_data.decday = interp1d(nminfo.ppstime[:len_min], nminfo.time[:len_min], fill_value='extrapolate')(dt[:len_min])
 
         if 'x' in grp:
             UoA_data.x_coord = grp['x'][()]
