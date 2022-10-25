@@ -26,7 +26,7 @@ Sept 23 2019
 import numpy as np
 import h5py
 import re
-
+from ..ImpdarError import ImpdarError
 
 class ApresHeader():
     """
@@ -114,7 +114,7 @@ class ApresHeader():
         elif 'RADAR TIME' in self.header_string: # Data from Prototype FMCW radar (nov 2012)
             self.file_format = 2
         else:
-            raise TypeError('Unknown file format - check file')
+            raise ImpdarError('Unknown file format - check file')
 
     def update_parameters(self,fn_apres=None):
         """
@@ -269,6 +269,3 @@ class ApresHeader():
             # were lazily appended to be arrays, but we preallocate
             if attr_dim != 'none' and getattr(self, attr).shape[0] == 1:
                 setattr(self, attr, np.zeros((attr_dim, )))
-
-        for attr in self.bool_attrs:
-            setattr(self, attr, True if matlab_struct[attr][0][0][0] == 1 else 0)

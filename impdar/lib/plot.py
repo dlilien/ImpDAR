@@ -89,7 +89,7 @@ def plot(fns, tr=None, s=False, ftype='png', dpi=300, xd=False, yd=False,
 
     for fig, dat in zip(figs, radar_data):
         if dat.fn is not None:
-            fig[0].canvas.set_window_title(dat.fn)
+            fig[0].canvas.manager.set_window_title(dat.fn)
 
     if s:
         [f[0].savefig(os.path.splitext(fn0)[0] + '.' + ftype, dpi=dpi)
@@ -723,6 +723,183 @@ def plot_spectrogram(dat, freq_limit=None, window=None,
     ax.set_title(title)
 
     return fig, ax
+
+
+def plot_apres(dat, p=2, s=False, facecolor = 'w', linecolor = 'k', linewidth = 1., linestyle = '-',
+               ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot power vs depth or twtt in a trace.
+
+    Parameters
+    ----------
+    dat: impdar.lib.ApresData.ApresData
+        The ApresData object to plot.
+    ydat: str, optional
+        The vertical axis units. Either twtt or or depth. Default twtt.
+    """
+
+    if dat.Rcoarse is None:
+        fig, axs = plt.subplots(1,2, figsize=(6, 6),facecolor=facecolor)
+        for ax in axs:
+            ax.invert_yaxis()
+        axs[0].plot(dat.data[0,0,:], dat.travel_time, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[0].set_ylabel('Two way travel time (usec)')
+        axs[0].set_xlabel('V')
+        axs[0].set_title('Amplitude')
+        nf = int(np.floor(2*dat.snum/2))    # number of frequencies to recover
+        tau = np.arange(nf)/(dat.header.bandwidth*p)
+        ϕ_r = 2.*np.pi*dat.header.fc*tau - (dat.header.chirp_grad*tau**2)/2.
+        axs[1].plot(np.exp(-1j*ϕ_r),dat.travel_time,'.',c=linecolor,ms=linewidth)
+        axs[1].set_title('Reference Phasor')
+    else:
+        fig, axs = plt.subplots(1,3, figsize=(8, 6),facecolor=facecolor)
+        for ax in axs:
+            ax.invert_yaxis()
+        axs[0].plot(dat.data[0,0,:], dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[0].set_ylabel('Range (m)')
+        axs[0].set_xlabel('V')
+        axs[0].set_title('Amplitude')
+        axs[1].plot(10.*np.log10(dat.data[0,0,:]**2.), dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[1].tick_params(labelleft=False)
+        axs[1].set_xlabel('dB')
+        axs[1].set_title('Power')
+        if dat.uncertainty is not None:
+            axs[2].plot(dat.uncertainty,dat.Rcoarse, linewidth=linewidth, linestyle=linestyle, c=linecolor)
+        axs[2].tick_params(labelleft=False)
+        axs[2].set_xlabel('rad')
+        axs[2].set_title('Phase Uncertainty')
+
+    fig.canvas.manager.set_window_title(dat.fn)
+    if s:
+        fig.savefig(os.path.splitext(dat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_apres_diff(diffdat, s=False, facecolor = 'w',
+                    markercolor = 'k', markercolor2 = 'grey', markersize = 5., markerstyle = '.', linestyle='',
+                    ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot power vs depth or twtt in a trace.
+
+    Parameters
+    ----------
+    diffdat: impdar.lib.ApresData.ApresTimeDiff
+        The ApresTimeDiff object to plot.
+    """
+
+    fig, axs = plt.subplots(1,4, figsize=(10, 6),facecolor=facecolor)
+    for ax in axs:
+        ax.invert_yaxis()
+    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.range,
+                marker=markerstyle, ms=markersize, linestyle=linestyle, c=markercolor,
+                label='acquisition 1')
+    axs[0].plot(10.*np.log10(diffdat.data**2.), diffdat.range,
+                marker=markerstyle, ms=markersize//2, linestyle=linestyle, c=markercolor2,
+                label='acquisition 2')
+    axs[0].legend()
+    axs[0].set_ylabel('Range (m)')
+    axs[0].set_xlabel('dB')
+    axs[0].set_title('Power')
+    if diffdat.co is not None:
+        axs[1].plot(abs(diffdat.co), diffdat.ds,
+                marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+    axs[1].tick_params(labelleft=False)
+    axs[1].set_xlabel('')
+    axs[1].set_title('Coherence')
+    if diffdat.co is not None:
+        axs[2].plot(np.angle(diffdat.co), diffdat.ds,
+                marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+    axs[2].tick_params(labelleft=False)
+    axs[2].set_xlabel('rad')
+    axs[2].set_xticks([-np.pi,0,np.pi])
+    axs[2].set_xticklabels(['-π','0','π'])
+    axs[2].set_title('Phase Offset')
+    if diffdat.w is not None:
+        axs[3].plot(diffdat.w,diffdat.ds,
+                    marker=markerstyle, ms=markersize, c=markercolor, linestyle=linestyle)
+    axs[3].tick_params(labelleft=False)
+    axs[3].set_xlabel('m/yr')
+    axs[3].set_title('Vertical Velocity')
+
+    fig.canvas.manager.set_window_title(diffdat.fn)
+    if s:
+        fig.savefig(os.path.splitext(diffdat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_color='k',
+                        bed=4000, cmap1='hot', cmap2='Greys', cmap3='twilight_shifted',
+                        ftype = 'png', dpi = 300, *args, **kwargs):
+    """Plot relevant data fields for a quadpol data object, including:
+        1 - co-polarized image
+        2 - cross-polarized image
+        3 - co-polarized coherence
+        4 - phase gradient
+
+    Parameters
+    ----------
+    qpdat: impdar.lib.ApresData.ApresQuadPol
+        The ApresQuadPol object to plot.
+    """
+
+    Θs,Ds = np.meshgrid(qpdat.thetas,qpdat.range)
+
+    fig, axs = plt.subplots(1,5, figsize=(10, 4),facecolor=facecolor)
+
+    axs[0].tick_params(labelleft=True,color=tick_color,labelcolor=tick_color)
+    cf = axs[0].pcolormesh(Θs,Ds,10.*np.log10(qpdat.HH**2.).real,cmap=cmap1,zorder=-1)
+    axs[0].set_ylabel('Range (m)',c=tick_color)
+    axs[1].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    axs[1].pcolormesh(Θs,Ds,10.*np.log10(qpdat.HV**2.).real,cmap=cmap1,zorder=-1)
+    if qpdat.cpe is not None:
+        axs[1].plot(qpdat.cpe,qpdat.range,'m',zorder=3)
+    cb = plt.colorbar(cf, ax=axs[0], orientation='horizontal')
+    cb.set_label('Power (dB)',c=fg_color)
+    cb = plt.colorbar(cf, ax=axs[1], orientation='horizontal')
+    cb.set_label('Power (dB)')
+
+    axs[2].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    if qpdat.chhvv is not None:
+        cf = axs[2].contourf(Θs,Ds,np.abs(qpdat.chhvv),cmap=cmap2,levels=100,zorder=-1)
+        cb = plt.colorbar(cf, ax=axs[2], ticks=[0,0.5,1.], orientation='horizontal')
+        cb.set_label('$|c_{hhvv}|$',c=fg_color)
+
+    axs[3].tick_params(labelleft=False,color=tick_color,labelcolor=tick_color)
+    if qpdat.chhvv is not None:
+        cf = axs[3].contourf(Θs,Ds,np.angle(qpdat.chhvv),cmap=cmap3,levels=100,zorder=-1)
+        cb = plt.colorbar(cf, ax=axs[3], ticks=[-np.pi,0,np.pi], orientation='horizontal')
+        cb.set_label('$\phi_{hhvv}$',c=fg_color)
+        cb.ax.set_xticklabels(['-π','0','π'],color=fg_color)
+
+    for ax in axs[:4]:
+        ax.fill_between(np.linspace(0,np.pi,10),bed,10000,color='w',alpha=0.8,zorder=1)
+        ax.axhline(bed,c='k',lw=2,zorder=2)
+        ax.set_ylim(bed+200,0)
+        ax.set_xlim(0,np.pi)
+        ax.set_xticks([0,np.pi/2.,np.pi])
+        ax.set_xticklabels(['0','π/2','π'],color=tick_color)
+
+    axs[4].tick_params(labelleft=False)
+    if qpdat.chhvv is not None:
+        axs[4].plot(np.angle(qpdat.chhvv_cpe),Ds[:,0],'k.',ms=2)
+        axs[4].set_ylim(bed+200,0)
+        axs[4].set_xlim(-np.pi,np.pi)
+        axs[4].set_xticks([-np.pi,0.,np.pi])
+        axs[4].set_xticklabels(['-π','0','π'])
+        cf = axs[4].scatter(np.angle(qpdat.chhvv_cpe)+5.,Ds[:,0],c=np.zeros_like(Ds[:,0]),alpha=0.)
+        cb = plt.colorbar(cf, ax=axs[4], shrink=0.6, orientation='horizontal')
+        cb.ax.xaxis.set_tick_params(color=facecolor)
+        cb.outline.set_edgecolor(facecolor)
+        plt.setp(plt.getp(cb.ax.axes, 'xticklabels'), color=facecolor)
+
+    fig.canvas.manager.set_window_title(qpdat.fn)
+    if s:
+        fig.savefig(os.path.splitext(qpdat.fn)[0] + '.' + ftype, dpi=dpi)
+    else:
+        plt.tight_layout()
+        plt.show()
 
 
 def get_offset(dat, flatten_layer=None):

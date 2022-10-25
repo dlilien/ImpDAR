@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
-# Copyright © 2019 David Lilien <dlilien90@gmail.com>
+# Copyright © 2019 Benjamin Hills <bhills@uw.com>
 #
 # Distributed under terms of the GNU GPL3 license.
 
@@ -33,6 +33,11 @@ import re
 from . import ApresData
 from ..ImpdarError import ImpdarError
 
+try:
+    from netCDF4 import Dataset
+    nc_load = True
+except:
+    nc_load = False
 
 def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     """Load and concatenate all apres data from several files
@@ -41,6 +46,10 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
     ----------
     fns_apres: list of file names for ApresData
         each loads object to concatenate
+    burst: int
+
+    fs: int
+        sampling frequency (per second)
 
     Returns
     -------
@@ -53,14 +62,14 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
         try:
             apres_data.append(load_apres_single_file(
                 fn, burst=burst, fs=fs, *args, **kwargs))
-        except ImpdarError:
+        except:
             Warning('Cannot load file: '+fn)
 
     from copy import deepcopy
     out = deepcopy(apres_data[0])
+    ext = os.path.splitext(fns_apres[0])[1]
 
-    if len(apres_data)>1:
-
+    if len(apres_data)>1 or ext in ['.DAT','.dat']:
         for dat in apres_data[1:]:
             if out.snum != dat.snum:
                 raise ValueError('Need the same number of vertical samples in each file')
@@ -71,15 +80,24 @@ def load_apres(fns_apres, burst=1, fs=40000, *args, **kwargs):
             if not np.all(out.frequencies == dat.frequencies):
                 raise ValueError('Need matching frequency vectors')
 
-    out.data = np.vstack([[dat.data] for dat in apres_data])
-    out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
-    out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
-    out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
-    out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
-    out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
-    out.battery_voltage = np.hstack(
-        [dat.battery_voltage for dat in apres_data])
-    out.bnum = np.shape(out.data)[0]
+        out.data = np.vstack([[dat.data] for dat in apres_data])
+        out.chirp_num = np.vstack([[dat.chirp_num] for dat in apres_data])
+        out.chirp_att = np.vstack([[dat.chirp_att] for dat in apres_data])
+        out.chirp_time = np.vstack([[dat.chirp_time] for dat in apres_data])
+        out.decday = np.hstack([dat.decday for dat in apres_data])
+        out.time_stamp = np.hstack([dat.time_stamp for dat in apres_data])
+        out.lat = np.hstack([dat.lat for dat in apres_data])
+        out.long = np.hstack([dat.long for dat in apres_data])
+        out.temperature1 = np.hstack([dat.temperature1 for dat in apres_data])
+        out.temperature2 = np.hstack([dat.temperature2 for dat in apres_data])
+        out.battery_voltage = np.hstack(
+            [dat.battery_voltage for dat in apres_data])
+        out.bnum = np.shape(out.data)[0]
+
+    else:
+        out = deepcopy(apres_data[0])
+
+    out.fn = os.path.splitext(fns_apres[0])[0]
 
     return out
 
@@ -118,7 +136,7 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
     2014/10/22 KWN - edited to allow for new headers in RMB2 files
     """
 
-    # We can be raw, impdar mat, BAS mat, or impdar h5
+    # We can be raw, impdar mat, BAS mat, impdar h5, or BAS nc
     ext = os.path.splitext(fn_apres)[1]
     if ext == '.mat':
         dat = loadmat(fn_apres)
@@ -138,28 +156,28 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
 
     elif ext == '.h5':
         return ApresData(fn_apres)
+
+    elif ext == '.nc':
+        return load_BAS_nc(fn_apres)
+
+    elif ext not in ['.dat','.DAT']:
+        raise ValueError('Expecting a certain filetype; either .mat, .h5, .dat, .DAT, .nc')
+
     else:
         # Load data and reshape array
         apres_data = ApresData(None)
         apres_data.header.update_parameters(fn_apres)
         start_ind, end_ind = load_burst(apres_data, burst, fs)
 
-    # Extract just good chirp data from voltage record and rearrange into
-    # matrix with one chirp per row
-    # note: you can't just use reshape as we are also cropping the 20K samples
-    # of sync tone etc which occur after each 40K of chirp.
-    AttSet = apres_data.header.attenuator1 + 1j * \
-        apres_data.header.attenuator2  # unique code for attenuator setting
+        # Extract just good chirp data from voltage record and rearrange into
+        # matrix with one chirp per row
+        # note: you can't just use reshape as we are also cropping the 20K samples
+        # of sync tone etc which occur after each 40K of chirp.
+        AttSet = apres_data.header.attenuator1 + 1.0j * apres_data.header.attenuator2  # unique code for attenuat
 
-    # Add metadata to structure
-
-    # Sampling parameters
-    if apres_data.header.file_format is None:
-        raise TypeError("File format is 'None', cannot load")
-    else:
-        if apres_data.header.file_format != 5:
-            raise TypeError('Loading functions have only been written for rmb5 data.\
-                            Look back to the original Matlab scripts if you need to implement earlier formats.')
+        # Sampling parameters
+        if apres_data.header.file_format is None:
+            raise TypeError("File format is 'None', cannot load")
         else:
             apres_data.header.f1 = apres_data.header.f0 + \
                 apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
@@ -175,15 +193,14 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
             # preallocate array
             data_load = np.zeros((apres_data.cnum, apres_data.snum))
             apres_data.chirp_num = np.arange(apres_data.cnum)
-            apres_data.chirp_att = np.zeros(
-                (apres_data.cnum)).astype(np.cdouble)
+            apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
             apres_data.chirp_time = np.zeros((apres_data.cnum))
-            apres_data.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
+            apres_data.header.chirp_interval = 1.6384/(24.*3600.)  # in days; apparently this is always the interval?
             for chirp in range(apres_data.cnum):
                 data_load[chirp, :] = apres_data.data[start_ind[chirp]: end_ind[chirp]]
                 # attenuator setting for chirp
                 apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]
-                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.chirp_interval*chirp
+                apres_data.chirp_time[chirp] = apres_data.decday + apres_data.header.chirp_interval*chirp
             apres_data.data = data_load
 
     # Create time and frequency stamp for samples
@@ -193,6 +210,8 @@ def load_apres_single_file(fn_apres, burst=1, fs=40000, *args, **kwargs):
     apres_data.travel_time *= 1.0e6
 
     apres_data.data_dtype = apres_data.data.dtype
+
+    apres_data.check_attrs()
 
     return apres_data
 
@@ -267,8 +286,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
 
             # Write header values to data object
             self.snum = int(output[0])
-            self.n_subbursts = int(output[1])
-            self.average = int(output[2])
+            self.header.average = int(output[2])
+            self.header.n_subbursts = int(output[1])
             self.header.n_attenuators = int(output[3])
             self.header.attenuator1 = np.array(output[4].split(',')).astype(int)[
                 :self.header.n_attenuators]
@@ -280,10 +299,10 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
             self.header.tx_ant = self.header.tx_ant[self.header.tx_ant == 1]
             self.header.rx_ant = self.header.rx_ant[self.header.rx_ant == 1]
 
-            if self.average != 0:
+            if self.header.average != 0:
                 self.cnum = 1
             else:
-                self.cnum = self.n_subbursts*len(self.header.tx_ant) *\
+                self.cnum = self.header.n_subbursts*len(self.header.tx_ant) *\
                     len(self.header.rx_ant)*self.header.n_attenuators
 
             # End of burst
@@ -300,7 +319,7 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
 
         # Move the burst pointer
         if burst_count < burst and burst_pointer <= file_len - max_header_len:
-            if self.average != 0:
+            if self.header.average != 0:
                 burst_pointer += self.cnum*self.snum*4
             else:
                 burst_pointer += self.cnum*self.snum*2
@@ -310,7 +329,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
     # --- Get remaining information from burst header --- #
 
     # Look for a few different strings and save output
-    strings = ['Time stamp=', 'Temp1=', 'Temp2=', 'BatteryVoltage=']
+    strings = ['Time stamp=', 'Latitude=', 'Longitude=',
+               'Temp1=', 'Temp2=', 'BatteryVoltage=']
     output = []
     for i, string in enumerate(strings):
         if string in self.header.header_string:
@@ -327,15 +347,16 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
     else:
-        self.time_stamp = np.array([datetime.datetime.strptime(
-            str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
+        self.time_stamp = np.array([datetime.datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S') for str_time in output[0]])
         timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
         day_offset = self.time_stamp - timezero
         self.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
 
-    self.temperature1 = np.array(output[1]).astype(float)
-    self.temperature2 = np.array(output[2]).astype(float)
-    self.battery_voltage = np.array(output[3]).astype(float)
+    self.lat = np.array(output[1]).astype(float)
+    self.long = np.array(output[2]).astype(float)
+    self.temperature1 = np.array(output[3]).astype(float)
+    self.temperature2 = np.array(output[4]).astype(float)
+    self.battery_voltage = np.array(output[5]).astype(float)
 
     # --- Read in the actual data --- #
 
@@ -350,12 +371,12 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.flags.file_read_code = 'Burst' + \
             str(self.bnum) + 'not found in file' + self.header.fn
         self.bnum = burst_count - 1
-        raise ValueError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
+        raise ImpdarError('Burst {:d} not found in file {:s}'.format(self.bnum, self.header.fn))
     else:
-        if self.average == 2:
+        if self.header.average == 2:
             self.data = np.fromfile(
                 fid, dtype='uint32', count=self.cnum*self.snum)
-        elif self.average == 1:
+        elif self.header.average == 1:
             fid.seek(burst_pointer+1)
             self.data = np.fromfile(
                 fid, dtype='float4', count=self.cnum*self.snum)
@@ -370,8 +391,8 @@ def load_burst(self, burst=1, fs=40000, max_header_len=2000, burst_pointer=0):
         self.data[self.data < 0] = self.data[self.data < 0] + 2**16.
         self.data = self.data.astype(float) * 2.5/2**16.
 
-        if self.average == 2:
-            self.data /= (self.n_subbursts*self.header.n_attenuators)
+        if self.header.average == 2:
+            self.data /= (self.header.n_subbursts*self.header.n_attenuators)
 
         start_ind = np.transpose(np.arange(0, self.snum*self.cnum, self.snum))
         end_ind = start_ind + self.snum
@@ -407,17 +428,27 @@ def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
     mat = loadmat(fn)
 
     apres_data = ApresData(None)
+
+    # Load the header first. Some of these are pre-set, some really loaded
+    apres_data.header.f0 = mat['vdat'][0]['f0'][0][0][0]
     apres_data.header.fs = mat['vdat'][0]['fs'][0][0][0]
+    apres_data.header.f1 = mat['vdat'][0]['f1'][0][0][0]
+    apres_data.header.fc = mat['vdat'][0]['fc'][0][0][0]
     apres_data.header.attenuator1 = mat['vdat'][0]['Attenuator_1'][0][0][0]
     apres_data.header.attenuator2 = mat['vdat'][0]['Attenuator_2'][0][0][0]
+    apres_data.header.chirp_length = mat['vdat'][0]['T'][0][0][0]
+    apres_data.header.chirp_grad = mat['vdat'][0]['K'][0][0][0]
+    apres_data.header.bandwidth = mat['vdat'][0]['B'][0][0][0]
+    apres_data.header.lambdac = mat['vdat'][0]['lambdac'][0][0][0]
+    apres_data.header.er = mat['vdat'][0]['er'][0][0][0]
+    apres_data.header.ci = mat['vdat'][0]['ci'][0][0][0]
 
     apres_data.snum = mat['vdat'][0]['Nsamples'][0][0][0]
     apres_data.cnum = mat['vdat'][0]['chirpNum'][0][0][0]
     apres_data.bnum = mat['vdat'][0]['Burst'][0][0][0]
-    apres_data.n_subbursts = mat['vdat'][0]['SubBurstsInBurst'][0][0][0]
-    apres_data.average = mat['vdat'][0]['Average'][0][0][0]
+    apres_data.header.n_subbursts = mat['vdat'][0]['SubBurstsInBurst'][0][0][0]
+    apres_data.header.average = mat['vdat'][0]['Average'][0][0][0]
 
-    apres_data.data = mat['vdat'][0]['v'][0].T
     apres_data.travel_time = mat['vdat'][0]['t'][0].T
     apres_data.frequencies = mat['vdat'][0]['f'][0].T
     apres_data.dt = 1.0 / apres_data.header.fs
@@ -425,8 +456,155 @@ def load_BAS_mat(fn, chirp_interval=1.6384/(24.*3600.)):
     apres_data.chirp_num = np.arange(apres_data.cnum) + 1
     apres_data.chirp_att = mat['vdat'][0]['chirpAtt'][0]
     apres_data.decday = mat['vdat'][0]['TimeStamp'][0][0][0]
+    apres_data.header.chirp_interval = chirp_interval
+    apres_data.chirp_time = apres_data.decday + apres_data.header.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
 
-    apres_data.chirp_interval = chirp_interval
-    apres_data.chirp_time = apres_data.decday + apres_data.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
+    apres_data.data = mat['vdat'][0]['vif'][0]
+    if len(apres_data.data.shape) == 2:
+        apres_data.data = np.reshape(apres_data.data, (1, apres_data.data.shape[0], apres_data.data.shape[1]))
+
     apres_data.check_attrs()
+
+    return apres_data
+
+
+def load_BAS_nc(fn, fs=40000, chirp_interval=1.6384/(24.*3600.), *args, **kwargs):
+    """Load apres data from a netcdf file saved by software from the British Antarctic Survey.
+    https://github.com/antarctica/bas-apres
+
+    Parameters
+    ----------
+    fn: str
+        netCDF file name for ApresData
+
+    Returns
+    -------
+    apres_data: class
+        ImpDAR data object
+    """
+
+    if not nc_load:
+        raise ImportError('Need the netCDF4 library to load nc files.')
+
+    apres_data = ApresData(None)
+
+    apres_data.bnum = int(0)
+
+    with Dataset(fn, 'r') as fin:
+        # Convert each netCDF group to an ApRESBurst object
+        # each key is its own burst
+        apres_data.bnum += 1
+        if len(fin.groups) > 0:
+            key = list(fin.groups.keys())[0]
+            attrs = vars(fin.groups[key]).copy()
+            apres_data.data = np.array([fin.groups[key].variables['data'][:]])
+        else:
+            attrs = vars(fin).copy()
+            apres_data.data = np.array([fin.variables['data'][:]])
+
+        apres_data.header.fs = fs
+        apres_data.header.fn = fn
+        apres_data.header.file_format = 'BAS_nc'
+        apres_data.header.noDwellHigh = int(attrs['NoDwell'])
+        #apres_data.header.noDwellLow = int(attrs['NoDwell'])
+        apres_data.header.f0 = float(attrs['StartFreq'])
+        apres_data.header.f_stop = float(attrs['StopFreq'])
+        apres_data.header.ramp_up_step = float(attrs['FreqStepUp'])
+        apres_data.header.ramp_down_step = float(attrs['FreqStepDn'])
+        apres_data.header.tstep_up = float(attrs['TStepUp'])
+        apres_data.header.tstep_down = float(attrs['TStepDn'])
+        apres_data.header.ramp_dir = 'up'
+        apres_data.header.nsteps_DDS = round(abs((apres_data.header.f_stop - apres_data.header.f0)/apres_data.header.ramp_up_step)) # abs as ramp could be down
+        apres_data.header.chirp_length = int(apres_data.header.nsteps_DDS * apres_data.header.tstep_up)
+        apres_data.header.nchirp_samples = round(apres_data.header.chirp_length * apres_data.header.fs)
+        # If number of ADC samples collected is less than required to collect
+        # entire chirp, set chirp length to length of series actually collected
+        apres_data.header.snum = float(attrs['N_ADC_SAMPLES'])
+        if apres_data.header.nchirp_samples > apres_data.header.snum:
+            apres_data.header.chirp_length = apres_data.header.snum / apres_data.header.fs
+        apres_data.header.chirp_grad = 2.*np.pi*(apres_data.header.ramp_up_step/apres_data.header.tstep_up) # chirp gradient (rad/s/s)
+        if apres_data.header.f_stop > 400e6:
+            apres_data.header.ramp_dir = 'down'
+        else:
+            apres_data.header.ramp_dir = 'up'
+
+        apres_data.header.f1 = apres_data.header.f0 + \
+            apres_data.header.chirp_length * apres_data.header.chirp_grad/2./np.pi
+        apres_data.header.bandwidth = apres_data.header.chirp_length * \
+            apres_data.header.chirp_grad/2/np.pi
+        apres_data.header.fc = apres_data.header.f0 + apres_data.header.bandwidth/2.
+        apres_data.header.er = 3.18
+        apres_data.header.ci = 3e8/np.sqrt(apres_data.header.er)
+        apres_data.header.lambdac = apres_data.header.ci/apres_data.header.fc
+        apres_data.header.n_attenuators = int(attrs['nAttenuators'])
+        str_attenuators = attrs['Attenuator1']
+        apres_data.header.attenuator1 = np.array(str_attenuators.split(',')).astype(int)[
+                                                    :apres_data.header.n_attenuators]
+        AFGain = attrs['AFGain']
+        apres_data.header.attenuator2 = np.array(AFGain.split(',')).astype(int)[
+                                                    :apres_data.header.n_attenuators]
+        apres_data.header.tx_ant = attrs['TxAnt']
+        apres_data.header.rx_ant = attrs['RxAnt']
+
+        # Should be the same for every burst
+        apres_data.header.average = float(attrs['Average'])
+        apres_data.header.chirp_interval = chirp_interval
+        apres_data.dt = 1.0 / apres_data.header.fs
+        apres_data.snum = int(attrs['N_ADC_SAMPLES'])
+        apres_data.cnum = int(attrs['NSubBursts'])
+        apres_data.header.n_subbursts = int(attrs['NSubBursts'])
+
+        # Should be appended to every burst
+        apres_data.temperature1 = np.array([float(attrs['Temp1'])])
+        apres_data.temperature2 = np.array([float(attrs['Temp2'])])
+        apres_data.battery_voltage = np.array([float(attrs['BatteryVoltage'])])
+
+        time_stamp = attrs['Time stamp']
+        apres_data.time_stamp = np.array([datetime.datetime.strptime(time_stamp, '%Y-%m-%d %H:%M:%S')])
+        timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
+        day_offset = apres_data.time_stamp - timezero
+        apres_data.decday = np.array([offset.days + offset.seconds/86400. for offset in day_offset]) + 366. # Matlab compatable
+        apres_data.chirp_time = apres_data.decday + apres_data.header.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0)
+
+        AttSet = apres_data.header.attenuator1 + 1j * \
+                apres_data.header.attenuator2  # unique code for attenuator setting
+        apres_data.chirp_att = np.zeros((apres_data.cnum)).astype(np.cdouble)
+        for chirp in range(apres_data.cnum):
+            apres_data.chirp_att[chirp] = AttSet[chirp//apres_data.cnum]
+        apres_data.chirp_num = np.array([np.arange(apres_data.cnum) + 1])
+
+        if len(fin.groups) > 1:
+            for key in fin.groups[1:]:
+                apres_data.data = np.append(apres_data.data,
+                                            [fin.groups[key].variables['data'][:]],
+                                            axis=0)
+
+                # Append to these data arrays for subsequent bursts
+                apres_data.temperature1 = np.append(apres_data.temperature1, float(attrs['Temp1']))
+                apres_data.temperature2 = np.append(apres_data.temperature2, float(attrs['Temp2']))
+                apres_data.battery_voltage = np.append(apres_data.battery_voltage, float(attrs['BatteryVoltage']))
+
+                time_stamp = attrs['Time stamp']
+                ts = datetime.datetime.strptime(time_stamp, '%Y-%m-%d %H:%M:%S')
+                apres_data.time_stamp = np.append(apres_data.time_stamp,ts)
+                timezero = datetime.datetime(1, 1, 1, 0, 0, 0)
+                day_offset = ts - timezero
+                decday = day_offset.days + day_offset.seconds/86400. + 366.
+                apres_data.decday = np.append(apres_data.decday, decday)
+                apres_data.chirp_time = np.append(apres_data.chirp_time,
+                                                  decday + apres_data.header.chirp_interval * np.arange(0.0, apres_data.cnum, 1.0),
+                                                  axis=0)
+
+                apres_data.chirp_num = np.append(apres_data.chirp_num,
+                                                 [np.arange(apres_data.cnum) + 1],
+                                                 axis=0)
+
+    apres_data.travel_time = apres_data.dt * np.arange(apres_data.snum)
+    apres_data.frequencies = apres_data.header.f0 + apres_data.travel_time * apres_data.header.chirp_grad/(2.*np.pi)
+    apres_data.travel_time *= 1.0e6
+
+    apres_data.data_dtype = apres_data.data.dtype
+
+    apres_data.check_attrs()
+
     return apres_data

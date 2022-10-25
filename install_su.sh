@@ -10,7 +10,7 @@ export thisdir=$PWD
 cd ..
 export CWPROOT=$PWD/SeisUnix
 git clone https://github.com/JohnWStockwellJr/SeisUnix.git
-cd $CWPROOT/src 
+cd $CWPROOT/src
 mv configs/Makefile.config_Linux_x86_64 Makefile.config
 touch LICENSE_44R14_ACCEPTED
 touch MAILHOME_44R14

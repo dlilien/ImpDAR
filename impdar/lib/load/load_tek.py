@@ -22,8 +22,8 @@ from ..RadarFlags import RadarFlags
 
 def fread(fid, nelements, dtype):
     """Equivalent to Matlab fread function"""
-    if dtype is np.str:
-        dt = np.uint8  # WARNING: assuming 8-bit ASCII for np.str!
+    if dtype is str:
+        dt = np.uint8  # WARNING: assuming 8-bit ASCII for str!
     else:
         dt = dtype
     data_array = np.fromfile(fid, dt, nelements)

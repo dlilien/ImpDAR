@@ -28,13 +28,19 @@ if __name__ == '__main__':
                        'impproc=impdar.bin.impproc:main',
                        'imppick=impdar.bin.imppick:main',
                        'impplot=impdar.bin.impplot:main',
-                       'apdar=impdar.bin.apdar:main']
+                       'apdar=impdar.bin.apdar:main',
+                       'qpdar=impdar.bin.qpdar:main']
 
     ext = '.pyx' if CYTHON else '.c'
     ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
                              sources=["impdar/lib/migrationlib/_mig_cython"
                                       + ext,
                                       "impdar/lib/migrationlib/mig_cython.c"],
+                             include_dirs=[np.get_include()]),
+                   Extension("impdar.lib.ApresData.coherence",
+                             sources=["impdar/lib/ApresData/_coherence"
+                                      + ext,
+                                      "impdar/lib/ApresData/coherence.c"],
                              include_dirs=[np.get_include()])]
     if CYTHON:
         from Cython.Build import cythonize

@@ -14,7 +14,7 @@ import os.path
 import glob
 from . import load_mcords  # needs to be imported first and alone due to opaque h5py/netcdf4 error
 from . import load_gssi, load_pulse_ekko, load_gprMax, load_olaf, load_segy, load_UoA
-from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi, load_tek
+from . import load_delores, load_osu, load_stomat, load_ramac, load_bsi, load_tek, load_apres_profile
 from ..RadarData import RadarData
 
 # This should be updated as new functionality arrives
@@ -22,7 +22,7 @@ from ..RadarData import RadarData
 # to figure out what the available options are
 FILETYPE_OPTIONS = ['mat', 'pe', 'gssi', 'stomat', 'gprMax', 'gecko', 'segy', 'mcords_mat',
                     'mcords_nc', 'UoA_mat', 'UoA_h5', 'ramac', 'bsi', 'delores', 'osu',
-                    'ramac', 'tek']
+                    'ramac', 'tek', 'apres']
 
 
 def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
@@ -134,6 +134,8 @@ def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
         dat = [load_ramac.load_ramac(fn) for fn in fns_in]
     elif filetype == 'tek':
         dat = [load_tek.load_tek(fn) for fn in fns_in]
+    elif filetype == 'apres':
+        dat = [load_apres_profile.load_apres_profile([fn]) for fn in fns_in]
     else:
         raise ValueError('Unrecognized filetype')
 
