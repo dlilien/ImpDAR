@@ -84,7 +84,7 @@ jobs:
     - name: Run tests GUI
       if: ${{ matrix.qt5 }}
       run: |
-        xvfb-run `which coverage` run --source impdar --omit=impdar/tests/*,impdar/lib/ApresData/*,impdar/lib/analysis/* -m pytest 
+        xvfb-run `which coverage` run --source impdar --omit=impdar/tests/*,impdar/lib/analysis/* -m pytest 
 
     - name: Run tests no GUI
       if: ${{ !matrix.qt5 }}
@@ -226,7 +226,7 @@ jobs:
 
       - name: Collect packages
         run: |
-            mkdir dist
+            if [ ! -d dist ]; then mkdir dist; fi
             mv build*/* dist/
 
       - name: Publish distribution 📦 to Test PyPI
