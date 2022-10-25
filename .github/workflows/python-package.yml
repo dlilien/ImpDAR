@@ -227,7 +227,7 @@ jobs:
       - name: Collect packages
         run: |
             if [ ! -d dist ]; then mkdir dist; fi
-            mv build*/* dist/
+            for d in build*; do mv -f $d/* dist/; done
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
