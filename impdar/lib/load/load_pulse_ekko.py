@@ -180,14 +180,15 @@ def load_pe(fn_dt1, *args, **kwargs):
 
     with open(hdname, openmode_unicode) as fin:
         fin_str = fin.read()
-        if fin_str.find('1.6.956') != -1:
-            pe_data.version = '1.6.956'
-        elif fin_str.find('1.5.340') != -1:
-            pe_data.version = '1.5.340'
-        else:
+
+        if fin_str.find('pulseEKKO') == -1:
             pe_data.version = '1.0'
-        pe_data.version = '1.5.340'
+        else:
+            idx1 = fin_str.find('pulseEKKO')
+            idx2 = fin_str[idx1:].find('\n')
+            pe_data.version = fin_str[idx1+10:idx1+idx2]
         fin.seek(0)
+        print(pe_data.version)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
@@ -203,14 +204,14 @@ def load_pe(fn_dt1, *args, **kwargs):
                     doy = (int(line[6:10]), int(line[1:2]), int(line[3:5]))
                 except ValueError:
                     doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
-            if i == 2 and pe_data.version in ['1.5.340','1.6.956']:
+            if i == 2 and pe_data.version != '1.0':
                 doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
 
         day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
-    elif pe_data.version in ['1.5.340','1.6.956']:
+    else:
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.float32)
 
     pe_data.traceheaders = TraceHeaders(pe_data.tnum)
@@ -225,7 +226,7 @@ def load_pe(fn_dt1, *args, **kwargs):
             trace = struct.unpack('<{:d}h'.format(pe_data.snum),
                                   lines[offset: offset + pe_data.snum * 2])
             offset += pe_data.snum * 2
-        elif pe_data.version in ['1.5.340','1.6.956']:
+        else:
             fmt = '<%df' % (len(lines[offset: offset + pe_data.snum * 4]) // 4)
             trace = struct.unpack(fmt, lines[offset:offset + pe_data.snum * 4])
             offset += pe_data.snum * 4
