@@ -49,7 +49,8 @@ jobs:
         python -m pip install coverage
         python -m pip install mock
         # production
-        pip install -r requirements.txt
+        python -m pip install wheel
+        python pip install -r requirements.txt
 
     - name: Install optional dependency qt5
       if: ${{ matrix.qt5 }}
