@@ -48,6 +48,7 @@ def load_mcords_nc(fn):
     mcords_data.data = dst.variables['amplitude'][:].T
     mcords_data.long = dst.variables['lon'][:]
     mcords_data.lat = dst.variables['lat'][:]
+    mcords_data.elev = dst.variables['altitude'][:] - dst.variables['Surface'][:] * 3.0e8 / 2.0
 
     # time has units of seconds according to documentation, but this seems wrong
     # numbers are way too big. Leaving it since that is how it is documented though?
@@ -89,7 +90,7 @@ def load_mcords_mat(fn_mat):
     try:
         mat = loadmat(fn_mat)
     except:
-        mat = h5py.File('AR_20140424_03_018.mat', 'r')
+        mat = h5py.File(fn_mat, 'r')
 
     if ('Data' not in mat) or ('Longitude' not in mat):
         if ('data' in mat) and ('long' in mat):
