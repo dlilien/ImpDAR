@@ -50,7 +50,7 @@ jobs:
         python -m pip install mock
         # production
         python -m pip install wheel
-        python pip install -r requirements.txt
+        python -m pip install -r requirements.txt
 
     - name: Install optional dependency qt5
       if: ${{ matrix.qt5 }}
