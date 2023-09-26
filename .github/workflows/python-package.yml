@@ -17,6 +17,8 @@ jobs:
         gdal: [true, false]
         seisunix: [true, false]
         exclude:
+          - os: windows-latest
+            python-version: "3.7"
           - os: macos-latest
             qt5: true
           - os: macos-latest
@@ -102,7 +104,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.8, 3.9, 3.10]
 
     steps:
       - uses: actions/checkout@master
@@ -141,7 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
