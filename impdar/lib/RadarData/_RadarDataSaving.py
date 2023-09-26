@@ -121,6 +121,41 @@ def output_shp(self, fn, t_srs=None, target_out=None):
     ------
     ImportError
         If osgeo cannot be imported
+
+    *Deprecated since 1.1.7. Use output_ogr (with driver='ESRI Shapefile') instead.*
+    """
+    from warnings import warn
+    warn('output_shp is deprecated since 1.1.7. Use output_ogr instead', DeprecationWarning)
+    return self.output_ogr(fn, t_srs=t_srs, target_out=None, driver='ESRI Shapefile')
+
+
+def output_ogr(self, fn, t_srs=None, target_out=None, driver='ESRI Shapefile'):
+    """Output a vector file of the traces.
+
+    If there are any picks, we want to output these.
+    If not, we will only output the tracenumber.
+    This function requires osr/gdal for shapefile/gpkg/etc creation.
+    I suggest exporting a csv if you don't want to deal with gdal.
+
+    Parameters
+    ----------
+    fn: str
+        The filename of the output
+    t_srs: int, optional
+        EPSG number of the target spatial reference system. Default 4326 (wgs84)
+    target_out: str, optional
+        Used to overwrite the default output format of picks.
+        By default, try to write depth and if there is no nmo_depth use TWTT.
+        You might want to use this to get the output in TWTT or sample number
+        (options are depth, elev, twtt, snum)
+    driver: str, optional
+        The ogr driver to use. For shapefiles, use 'ESRI Shapefile' (default).
+        'GPKG' is another common option.
+
+    Raises
+    ------
+    ImportError
+        If osgeo cannot be imported
     """
     if not CONVERSIONS_ENABLED:
         raise ImportError('osgeo could not be imported')
@@ -133,7 +168,7 @@ def output_shp(self, fn, t_srs=None, target_out=None):
         pts = np.vstack((self.long, self.lat)).transpose()
         t_srs = 'EPSG:4326'
 
-    driver = ogr.GetDriverByName('ESRI Shapefile')
+    driver = ogr.GetDriverByName(driver)
     data_source = driver.CreateDataSource(fn)
     out_srs = osr.SpatialReference()
     out_srs.SetFromUserInput(t_srs)

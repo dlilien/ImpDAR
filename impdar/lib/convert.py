@@ -12,6 +12,9 @@ from .RadarData import RadarData
 from .load import load_gssi, load_pulse_ekko, load_segy, load
 
 
+OUTPUT_FILETYPES = ['shp', 'gpkg', 'mat', 'sgy']
+
+
 def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
     """Convert between formats. Mainly used to create shps and sgy files."""
     # Basic check on the conversion being implemented.
@@ -20,8 +23,8 @@ def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
     if t_srs == 'wgs84':
         t_srs = 'EPSG:4326'
 
-    if out_fmt not in ['shp', 'mat', 'sgy']:
-        raise ValueError('Can only convert to shp, mat, or sgy')
+    if out_fmt not in OUTPUT_FILETYPES:
+        raise ValueError('Can only convert to ' + ', '.join(OUTPUT_FILETYPES[:-1]) + ', or ' + OUTPUT_FILETYPES[-1])
 
     # Treat this like batch input always
     if not isinstance(fns_in, (tuple, list)):
@@ -59,7 +62,10 @@ def convert(fns_in, out_fmt, t_srs=None, in_fmt=None, *args, **kwargs):
             data.save(fn_out)
         elif out_fmt == 'shp':
             fn_out = os.path.splitext(data.fn)[0] + '.shp'
-            data.output_shp(fn_out, t_srs=t_srs)
+            data.output_ogr(fn_out, t_srs=t_srs, driver='ESRI Shapefile')
+        elif out_fmt == 'gpkg':
+            fn_out = os.path.splitext(data.fn)[0] + '.gpkg'
+            data.output_ogr(fn_out, t_srs=t_srs, driver='GPKG')
         elif out_fmt == 'sgy':
             if not load_segy.SEGY:
                 raise ImportError('You cannot use segy without segyio installed!')

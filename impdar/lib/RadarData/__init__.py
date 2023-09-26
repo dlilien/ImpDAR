@@ -114,7 +114,7 @@ class RadarData(object):
         rangegain, agc, constant_space, elev_correct, \
         constant_sample_depth_spacing, traveltime_to_depth
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, \
-        _get_pick_targ_info
+        _get_pick_targ_info, output_ogr
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \
         winavg_hfilt, hfilt, vertical_band_pass, denoise, migrate, \
         horizontal_band_pass, lowpass

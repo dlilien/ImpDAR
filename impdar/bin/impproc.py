@@ -285,6 +285,11 @@ def _get_args():
                                 type=int,
                                 help='Size of filtering window in horizontal \
                                     (number of traces)')
+    parser_denoise.add_argument('--filt',
+                                type=str,
+                                choices=['weiner', 'median'],
+                                default='weiner',
+                                help='Filter type (Weiner or median with specified dimensions)')
     _add_def_args(parser_denoise)
 
     # Migration
@@ -495,9 +500,9 @@ def geolocate(dats, gps_fn, extrapolate=False, guess=False, **kwargs):
                guess_offset=guess)
 
 
-def denoise(dat, vert_win=1, hor_win=10, noise=None, filter_type='wiener', **kwargs):
+def denoise(dat, vert_win=1, hor_win=10, noise=None, filt='wiener', **kwargs):
     """Despeckle."""
-    dat.denoise(vert_win=vert_win, hor_win=hor_win, noise=noise, ftype=filter_type)
+    dat.denoise(vert_win=vert_win, hor_win=hor_win, noise=noise, ftype=filt)
 
 
 def mig(dat, mtype='stolt', vel=1.69e8, vtaper=100, htaper=100, tmig=0,

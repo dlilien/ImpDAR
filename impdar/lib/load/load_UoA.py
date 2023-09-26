@@ -125,10 +125,10 @@ def load_UoA_h5(fn, gps_offset=0.0):
 def _load_group(UoA_data, grp, gps_offset):
     UoA_data.data = grp['Chirps'][()]
     # complex data
-    if (len(UoA_data.data.dtype) == 2) or (UoA_data.data.dtype in [np.complex64, np.complex128]):
-        UoA_data.data = 10.0 * np.log10(np.sqrt(np.real(UoA_data.data) ** 2.0 + np.imag(UoA_data.data) ** 2.0))
-    else:
-        UoA_data.data = 10.0 * np.log10(UoA_data.data)
+    # if (len(UoA_data.data.dtype) == 2) or (UoA_data.data.dtype in [np.complex64, np.complex128]):
+    #     UoA_data.data = 10.0 * np.log10(np.sqrt(np.real(UoA_data.data) ** 2.0 + np.imag(UoA_data.data) ** 2.0))
+    # else:
+    #     UoA_data.data = 10.0 * np.log10(UoA_data.data)
     UoA_data.snum, UoA_data.tnum = int(UoA_data.data.shape[0]), int(UoA_data.data.shape[1])
     UoA_data.trace_num = np.arange(UoA_data.tnum) + 1
     UoA_data.travel_time = grp['_time'][()] * 1.0e6
@@ -142,6 +142,18 @@ def _load_group(UoA_data, grp, gps_offset):
         nminfo.lat = grp['lat'][:].flatten()
         nminfo.lon = grp['lon'][:].flatten()
         nminfo.elev = np.zeros_like(nminfo.lat)
+        print(nminfo.lat.shape)
+        print(nminfo.lon.shape)
+        print(nminfo.elev.shape)
+
+        if nminfo.lat.shape[0] > UoA_data.tnum:
+            nminfo.lat = nminfo.lat[:UoA_data.tnum]
+
+        if nminfo.lon.shape[0] > UoA_data.tnum:
+            nminfo.lon = nminfo.lon[:UoA_data.tnum]
+
+        if nminfo.elev.shape[0] > UoA_data.tnum:
+            nminfo.elev = nminfo.elev[:UoA_data.tnum]
 
         len_min = np.min([nminfo.ppstime.shape[0], nminfo.lat.shape[0], nminfo.lon.shape[0]])
         UoA_data.lat = interp1d(nminfo.ppstime[:len_min], nminfo.lat[:len_min], fill_value='extrapolate')(dt[:len_min])
@@ -151,8 +163,8 @@ def _load_group(UoA_data, grp, gps_offset):
         UoA_data.decday = interp1d(nminfo.ppstime[:len_min], nminfo.time[:len_min], fill_value='extrapolate')(dt[:len_min])
 
         if 'x' in grp:
-            UoA_data.x_coord = grp['x'][()]
-            UoA_data.y_coord = grp['y'][()]
+            UoA_data.x_coord = grp['x'][()][:UoA_data.tnum]
+            UoA_data.y_coord = grp['y'][()][:UoA_data.tnum]
         else:
             try:
                 UoA_data.get_projected_coords()
@@ -165,7 +177,11 @@ def _load_group(UoA_data, grp, gps_offset):
         UoA_data.elev = np.zeros((UoA_data.tnum,)) * np.nan
         UoA_data.decday = np.zeros((UoA_data.tnum,))
 
-    UoA_data.trace_int = UoA_data.decday[1] - UoA_data.decday[0]
+    try:
+        UoA_data.trace_int = UoA_data.decday[1] - UoA_data.decday[0]
+    except:
+        UoA_data.trace_int = 1.0
+
     UoA_data.pressure = np.zeros_like(UoA_data.decday)
     UoA_data.trig = np.zeros_like(UoA_data.decday).astype(int)
     UoA_data.trig_level = 0.
