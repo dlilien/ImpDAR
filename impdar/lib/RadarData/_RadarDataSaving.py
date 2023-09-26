@@ -126,14 +126,15 @@ def output_shp(self, fn, t_srs=None, target_out=None):
     """
     from warnings import warn
     warn('output_shp is deprecated since 1.1.7. Use output_ogr instead', DeprecationWarning)
+    return self.output_ogr(fn, t_srs=t_srs, target_out=None, driver='ESRI Shapefile'):
 
 
 def output_ogr(self, fn, t_srs=None, target_out=None, driver='ESRI Shapefile'):
-    """Output a shapefile of the traces.
+    """Output a vector file of the traces.
 
     If there are any picks, we want to output these.
     If not, we will only output the tracenumber.
-    This function requires osr/gdal for shapefile creation.
+    This function requires osr/gdal for shapefile/gpkg/etc creation.
     I suggest exporting a csv if you don't want to deal with gdal.
 
     Parameters
