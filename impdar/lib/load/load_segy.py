@@ -31,7 +31,7 @@ def load_segy(fn_sgy, *args, **kwargs):
         raise ImportError('Need segyio to load SGY files')
     segy_data = RadarData(None)
     segy_data.fn = fn_sgy
-    f = segyio.open(fn_sgy, ignore_geometry=True)
+    f = segyio.open(fn_sgy, ignore_geometry=True, endian='little')
 
     segy_data.data = segyio.tools.collect(f.trace).transpose()
     segy_data.snum = f.bin[segyio.BinField.Samples]
