@@ -126,7 +126,7 @@ def output_shp(self, fn, t_srs=None, target_out=None):
     """
     from warnings import warn
     warn('output_shp is deprecated since 1.1.7. Use output_ogr instead', DeprecationWarning)
-    return self.output_ogr(fn, t_srs=t_srs, target_out=None, driver='ESRI Shapefile'):
+    return self.output_ogr(fn, t_srs=t_srs, target_out=None, driver='ESRI Shapefile')
 
 
 def output_ogr(self, fn, t_srs=None, target_out=None, driver='ESRI Shapefile'):
