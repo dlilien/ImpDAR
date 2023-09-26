@@ -177,7 +177,7 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
     if y_range[-1] == -1:
         y_range = (y_range[0], dat.data.shape[0])
 
-    if dat.data.dtype in [np.complex128]:
+    if dat.data.dtype in [np.complex128, np.complex64, np.complex, complex]:
         def norm(x):
             return 10.0 * np.log10(np.absolute(x))
     else:
