@@ -32,10 +32,10 @@ jobs:
           - os: windows-latest
             gdal: true
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -94,7 +94,7 @@ jobs:
       run: coverage xml
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         fail_ci_if_error: false  # I see no reason to fail over this.
 
@@ -104,7 +104,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, 3.10]
+        python-version: ["3.8", "3.9", "3.10"]
 
     steps:
       - uses: actions/checkout@master
@@ -132,7 +132,7 @@ jobs:
       - name: Build binary wheel
         run: python setup.py bdist_wheel
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-windows-${{ matrix.python-version }}
           path: dist
@@ -149,7 +149,7 @@ jobs:
       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Symlink gcc
@@ -158,7 +158,7 @@ jobs:
             ln -s /usr/local/bin/gcc-9 /usr/local/bin/gcc
         continue-on-error: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -168,7 +168,7 @@ jobs:
       - name: Build binary wheel
         run: python setup.py bdist_wheel
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-macos-${{ matrix.python-version }}
           path: dist
@@ -182,12 +182,12 @@ jobs:
       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build and deploy manylinux wheels
         uses: ./
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-linux
           path: dist
@@ -198,9 +198,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: Test
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.7
       - name: Install dependencies
@@ -210,7 +210,7 @@ jobs:
       - name: create source distribution
         run: python setup.py sdist
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-source
           path: dist
@@ -219,9 +219,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [Source-Build, Mac-Build, Windows-Build, Linux-Build]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
 
       - name: Collect packages
         run: |
