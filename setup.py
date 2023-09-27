@@ -46,7 +46,7 @@ if __name__ == '__main__':
         from Cython.Build import cythonize
         ext_modules = cythonize(ext_modules)
 
-    version = '1.1.6'
+    version = '1.1.7'
     packages = ['impdar',
                 'impdar.lib',
                 'impdar.bin',
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                          description='Scripts for impulse radar',
                          url='http://github.com/dlilien/impdar',
                          author='David Lilien',
-                         author_email='dal22@uw.edu',
+                         author_email='dlilien@iu.edu',
                          license='GNU GPL-3.0',
                          entry_points={'console_scripts': console_scripts},
                          ext_modules=ext_modules,
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                          description='Scripts for impulse radar',
                          url='http://github.com/dlilien/impdar',
                          author='David Lilien',
-                         author_email='dal22@uw.edu',
+                         author_email='dlilien@iu.edu',
                          license='GNU GPL-3.0',
                          entry_points={'console_scripts': console_scripts},
                          install_requires=requires,

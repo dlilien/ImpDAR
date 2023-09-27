@@ -4,7 +4,7 @@
 
 ImpDAR is a suite of processing and interpretation tools for impulse radar (targeted for ice-penetrating radar applications but usable for ground-penetrating radar as well). The core processing steps and general terminology come from of the St. Olaf Deep Radar processor, but everything is re-written in python and significant improvements to speed, readability, documentation, and interface have been made across the board. However, this code has a lot of history of contributors--acknowledgment of many of them are preserved in the file headers.
 
-ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, [GSSI](http://www.geophysical.com), [PulseEKKO](http://www.sensoft.ca), [Ramac](http://www.malagpr.com), [Blue Systems](http://www.bluesystem.ca/ice-penetrating-radar.html), DELORES, SEGY, [gprMAX](http://www.gprmax.com), Gecko, and legacy StoDeep files are supported. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing. The integrated migration routines are in development but Stolt is working.
+ImpDAR is intended to be more flexible than other available options. Support is gradually being added for a variety of file formats. Currently, [GSSI](http://www.geophysical.com), [PulseEKKO](http://www.sensoft.ca), [Ramac](http://www.malagpr.com), [Blue Systems](http://www.bluesystem.ca/ice-penetrating-radar.html), DELORES, SEGY, [gprMAX](http://www.gprmax.com), Gecko, and legacy StoDeep files are supported. ImpDAR can also read in MCoRDS files, though these are already processed so this would just be for tracing. Available processing steps include various filtering operations, trivial modifications such as restacking, cropping, or reversing data, and a few different geolocation-related operations like interpolating to constant trace spacing.
 
 The primary interface to ImpDAR is through the command line, which allows efficient processing of large volumes of data. An API, centered around the RadarData class, is also available to allow the user to use ImpDAR in other programs.
 
@@ -21,7 +21,7 @@ Easiest is `pip install impdar`. Some explanation of other options is available 
 ### Dependencies
 
 #### Required
-*Python 3* The package is tested on Python 3.7+. Older versions may work, but we have stopped testing on 2.7 since it has reached end of life. You can probably get 2.7 to work still, but no guarantees.
+[Python 3](http://python.org) The package is tested on Python 3.7 to 3.10. It is probably best to upgrade ot one of those versions, but 3.6 is likely to work though not tested while older versions are unlikely to work. 3.11 should be fine on the ImpDAR side, though you may issues with finding prebuilt binaries for some dependencies.
 
 You also need:
 [numpy](http://www.scipy.org),
