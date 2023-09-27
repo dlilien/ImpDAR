@@ -161,7 +161,7 @@ def _get_args():
                                 help='File(s) to convert')
     parser_convert.add_argument('out_fmt',
                                 type=str,
-                                choices=['shp', 'mat', 'segy'])
+                                choices=convert.OUTPUT_FILETYPES)
     parser_convert.add_argument('-in_fmt',
                                 type=str,
                                 default=None,
