@@ -153,8 +153,8 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     v = np.minimum(np.arange(dat.snum),np.arange(dat.snum)[::-1])/vtaper
     h[h>1.] = 1.
     v[v>1.] = 1.
-    H,V = np.meshgrid(h,v).astype(dat.data.dtype)
-    dat.data *= H*V
+    H,V = np.meshgrid(h,v)
+    dat.data = (dat.data*H*V).astype(dat.data.dtype)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
     FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
     # get the temporal frequencies
