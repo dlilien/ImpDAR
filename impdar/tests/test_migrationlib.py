@@ -104,6 +104,11 @@ class TestMigration(unittest.TestCase):
         data = NoInitRadarData(big=True)
         data = mig_python.migrationStolt(data)
 
+        data = NoInitRadarData(big=True)
+        data.data = data.data.astype(int)
+        data.data.dtype = int
+        data = mig_python.migrationStolt(data)
+
     def test_Kirchhoff(self):
         data = NoInitRadarData(big=True)
         data = mig_python.migrationKirchhoff(data)

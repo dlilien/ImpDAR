@@ -19,7 +19,7 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
     double min, m;
     double costheta;
     double integral;
-    double rs;
+    double r;
     int Didx;
     int lmin_prev, rmin_prev;
     clock_t iter_start, this_time;
@@ -30,6 +30,9 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
     iter_start = clock();
     /* You can flip the loop order, but I think this is marginally faster
      * based on c row-major ordering. Could be wrong though... */
+
+    /* Loop through every point in the image (trace and sample) 
+     * to look for a hyperbola propagating away from that point */
     for(j=0;j<tnum;j++){
         if (j % 100 == 0){
             if (j > 0){
@@ -43,54 +46,53 @@ void mig_kirch_loop (double * migdata, int tnum, int snum, double * dist, double
             rmin_prev = i;
             lmin_prev = i;
 
+            /* Now look for the hyperbola propagating from this point */
+
             /* Do left and right separately so we know when to break
             * the break lets us skip a lot of iterations for long profiles */
             for(k=j + 1;k<tnum;k++){
-                /* rs is the distance to the closest point in this trace??? */
-                rs = sqrt(pow(dist[k] - dist[j], 2.) + zs2[i]);
+                /* r is the distance from the surface to 
+                 * this point along the hyperbola */
+                r = sqrt(pow(dist[k] - dist[j], 2.) + zs2[i]);
                 /* We do not get closer as we go, so we can break the loop
                  * if we are far away */
-                if(2. * rs / vel > max_travel_time){
+                if(2. * r / vel > max_travel_time){
                      break;
                 }
-
-                costheta = zs[i] / rs;
-                min = 1.0e6;
+                min = max_travel_time;
                 /* The new min should not be smaller than the previous rmin
                 * since otherwise the hyperbola would be inverted (smiles) */
                 for(l=rmin_prev;l<snum;l++){
-                    m = fabs(tt_sec[l] - 2. * rs / vel);
+                    m = fabs(tt_sec[l] - 2. * r / vel);
                     if(m < min){
                         min = m;
                         Didx = l;
                     }
                 }
                 rmin_prev = Didx;
+                costheta = zs[i] / r;
                 integral += gradD[Didx * tnum + k] * costheta / vel;
             }
 
             for(k=j;k>=0;k--){
-                rs = sqrt(pow(dist[k] - dist[j], 2.) + zs2[i]);
-                if(2. * rs / vel > max_travel_time){
+                r = sqrt(pow(dist[k] - dist[j], 2.) + zs2[i]);
+                if(2. * r / vel > max_travel_time){
                      break;
                 }
-                costheta = zs[i] / rs;
-                if (rs <= 1.0e8){
-                    costheta = 0.;
-                }
-                min = 1.0e6;
+                min = max_travel_time;
                 for(l=lmin_prev;l<snum;l++){
-                    m = fabs(tt_sec[l] - 2. * rs / vel);
+                    m = fabs(tt_sec[l] - 2. * r / vel);
                     if(m < min){
                         min = m;
                         Didx = l;
                     }
                 }
                 lmin_prev = Didx;
+                costheta = zs[i] / r;
                 integral += gradD[Didx * tnum + k] * costheta / vel;
             }
 
-            migdata[i * tnum + j] = integral;
+            migdata[i * tnum + j] = integral / (2*M_PI);
         }
         if (j % 100 == 0){
             if (j > 0){
