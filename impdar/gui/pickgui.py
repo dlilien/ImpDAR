@@ -633,7 +633,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                                             self.dat.fn[:-4] + '.shp',
                                             "All Files (*);;shp Files (*.shp)")
         if fn:
-            self.dat.output_shp(fn)
+            self.dat.output_ogr(fn)
 
     ######
     # Decorators for processing

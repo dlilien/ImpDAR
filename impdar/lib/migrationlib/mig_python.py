@@ -187,7 +187,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
             # migration conversion to wavenumber (Yilmaz equation C.53)
             wsj = vel/2.*np.sqrt(kzj**2.+kxi**2.)
             # get the interpolated FFT values, real and imaginary, S(kx,kz,t=0)
-            KK[zj,xi] = interp_real(kxi,wsj) + 1j*interp_imag(kxi,wsj)
+            KK[zj,xi] = interp_real(kxi,wsj)[0, 0] + 1j*interp_imag(kxi,wsj)[0, 0]
     # all vertical wavenumbers
     kz = ws*2./vel
     # grid wavenumbers for scaling calculation
@@ -434,7 +434,7 @@ def phaseShift(dat, vmig, vels_in, kx, ws, FK):
             print('1-D velocity structure, Gazdag Migration')
             print('Velocities (m/s): %.2e',vels_in[:,0])
             print('Depths (m):',vels_in[:,1])
-            print('Travel Times ($\mu$ sec):',dat.travel_time)
+            print(r'Travel Times ($\mu$ sec):',dat.travel_time)
         # iterate through all output travel times
         for itau in range(dat.snum):
             tau = dat.travel_time[itau] / 1.0e6

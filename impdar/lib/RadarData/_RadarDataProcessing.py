@@ -546,7 +546,7 @@ def constant_space(self, spacing, min_movement=1.0e-2, show_nomove=False):
                           step=spacing / 1000.0)
 
     # interp1d can only handle real values
-    if self.data.dtype in [np.complex128]:
+    if np.iscomplexobj(self.data.dtype):
         self.data = interp1d(temp_dist, np.real(self.data[:, good_vals]))(new_dists) + 1.j * interp1d(temp_dist, np.imag(self.data[:, good_vals]))(new_dists)
     else:
         self.data = interp1d(temp_dist, self.data[:, good_vals])(new_dists)

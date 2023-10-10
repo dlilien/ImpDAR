@@ -12,6 +12,8 @@ Test the machinery of plotting. We will not try the "show" lines.
 import sys
 import os
 import unittest
+import warnings
+
 import numpy as np
 from impdar.lib.RadarData import RadarData
 from impdar.lib.NoInitRadarData import NoInitRadarData
@@ -214,7 +216,7 @@ class TestPlotRadargram(unittest.TestCase):
         plot.plot_radargram(dat, fig=fig, ax=ax)
         plot.plot_radargram(dat, fig=fig)
 
-        dat.data = dat.data + 1.0j * dat.data
+        dat.data = dat.data + 1.0j * np.ones_like(dat.data)
         plot.plot_radargram(dat, fig=fig, ax=ax)
 
         # Varying xdata
@@ -248,11 +250,14 @@ class TestPlotRadargram(unittest.TestCase):
         # Elevation offsets
         dat = NoInitRadarData(big=True)
         with self.assertRaises(ValueError):
-            plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
         dat.flags.elev = True
-        dat.elev = np.zeros(dat.data.shape[1])
-        dat.elev[1:] = 1
-        plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
+        dat.elev = np.arange(dat.data.shape[1]) * 0.5
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            plot.plot_radargram(dat, ydat='elev', fig=fig, ax=ax)
 
     @patch('impdar.lib.plot.plt.show')
     def test_plot_radargram_flattenlayer(self, mock_show):

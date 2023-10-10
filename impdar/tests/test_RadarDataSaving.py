@@ -9,7 +9,7 @@
 """
 
 """
-
+import warnings
 import os
 import unittest
 import numpy as np
@@ -136,10 +136,15 @@ class TestRadarDataExports(unittest.TestCase):
     @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     def test_output_shp_nolayers(self):
         rd = NoInitRadarData()
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'))
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test.shp'))
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
 
     @unittest.skipIf(not CONVERSIONS_ENABLED, 'No GDAL on this version')
     def test_output_shp_picks(self):
+
         # Make sure that we are selecting the proper output format
         rd = NoInitRadarData()
         rd.nmo_depth = np.arange(len(rd.travel_time)) * 1.1
@@ -149,16 +154,36 @@ class TestRadarDataExports(unittest.TestCase):
 
         # First, export with NaNs, both with normal field (depth) and elev
         rd.picks.samp2[:] = np.nan
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test0.shp'))
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test1.shp'), target_out='elev')
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test0.shp'))
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test1.shp'), target_out='elev')
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
 
         # Fill in NaNs
         rd.picks.samp2[:] = 1
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test2.shp'))
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test3.shp'), target_out='elev')
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test2.shp'))
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test3.shp'), target_out='elev')
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
 
         # Check geometry
-        rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs='EPSG:3413')
+        with warnings.catch_warnings(record=True) as w:
+            rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test4.shp'), t_srs='EPSG:3413')
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
 
     @unittest.skipIf(CONVERSIONS_ENABLED, 'Version has GDAL, just checking we fail without')
     def test_output_shp_nolayers_nogdal(self):

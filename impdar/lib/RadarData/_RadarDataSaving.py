@@ -7,6 +7,8 @@
 # Distributed under terms of the GNU GPL3.0 license.
 
 """Methods for saving radar data in different formats."""
+import warnings
+
 from ..gpslib import get_conversion
 import numpy as np
 from scipy.io import savemat
@@ -236,7 +238,10 @@ def output_csv(self, fn, target_out=None, delimiter=','):
         for picknum in self.picks.picknums:
             header += (delimiter + 'Layer_{:d}_{:s}'.format(picknum, out_name))
 
-        out_ind_picks = self.picks.samp2.astype(int)
+        # We do not care that we cast NaNs to ints here 
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            out_ind_picks = self.picks.samp2.astype(int)
         out_ind_picks_viableind = out_ind_picks.copy()
         out_ind_picks_viableind[out_ind_picks_viableind < 0] = 0
         out_arr_picks = target_out_array[out_ind_picks_viableind]
