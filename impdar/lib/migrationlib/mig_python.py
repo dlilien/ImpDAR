@@ -29,7 +29,7 @@ import sys
 import numpy as np
 import time
 from scipy import sparse
-from scipy.interpolate import griddata, interp2d, interp1d
+from scipy.interpolate import griddata, interp1d, RectBivariateSpline
 
 
 def migrationKirchhoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
@@ -156,9 +156,9 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     H,V = np.meshgrid(h,v)
     dat.data = (dat.data*H*V).astype(dat.data.dtype)
     # 2D Forward Fourier Transform to get data in frequency-wavenumber space, FK = D(kx,z=0,ws)
-    FK = np.fft.fft2(dat.data,(dat.snum,dat.tnum))[:dat.snum//2]
+    FK = np.fft.rfft2(dat.data, axes=(1, 0))
     # get the temporal frequencies
-    ws = 2.*np.pi*np.fft.fftfreq(dat.snum, d=dat.dt)[:dat.snum//2]
+    ws = 2.*np.pi*np.fft.rfftfreq(dat.snum, d=dat.dt)
     # get the horizontal wavenumbers
     if np.mean(dat.trace_int) <= 0:
         Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
@@ -167,14 +167,16 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
         trace_int = dat.trace_int
     kx = 2.*np.pi*np.fft.fftfreq(dat.tnum, d=np.mean(trace_int))
     # interpolate from frequency (ws) into wavenumber (kz)
-    interp_real = interp2d(kx,ws,FK.real)
-    interp_imag = interp2d(kx,ws,FK.imag)
+    print(kx.shape, ws.shape, FK.real.shape)
+    interp_real = RectBivariateSpline(np.fft.fftshift(kx), ws, np.fft.fftshift(FK.real, axes=[1]).T, kx=1, ky=1)
+    interp_imag = RectBivariateSpline(np.fft.fftshift(kx), ws, np.fft.fftshift(FK.imag, axes=[1]).T, kx=1, ky=1)
+
     # interpolation will move from frequency-wavenumber to wavenumber-wavenumber, KK = D(kx,kz,t=0)
     KK = np.zeros_like(FK)
     print('Interpolating from temporal frequency (ws) to vertical wavenumber (kz):')
     print('Interpolating:')
     # for all temporal frequencies
-    for zj in range(dat.snum//2):
+    for zj in range(dat.snum // 2):
         kzj = ws[zj]*2./vel
         if zj%100 == 0:
             print(int(ws[zj]/1e6/2/np.pi), 'MHz, ', end='')
@@ -197,15 +199,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     # the DC frequency should be 0.
     KK[0,0] = 0.+0j
     # 2D Inverse Fourier Transform to get back to distance spce, D(x,z,t=0)
-    dat.data = np.real(np.fft.ifft2(KK))
-    # Cut array to input matrix dimensions
-    dat.data = dat.data[:dat.snum,:dat.tnum]
-
-    # this changes the vertical scale
-    print('Rescaling TWTT')
-    dat.travel_time = dat.travel_time[::2]
-    dat.dt = dat.dt * 2.
-    dat.snum = dat.data.shape[0]
+    dat.data = np.fft.irfft2(KK, axes=(1, 0))
 
     # print the total time
     print('')
