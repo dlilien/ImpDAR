@@ -401,6 +401,8 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                         decday_interp[i] = np.nan
                 dat.lat[dat.lat == 0.] = np.nan
                 dat.long[dat.long == 0.] = np.nan
+                if np.all(np.isnan(decday_interp)):
+                    raise ValueError("Too much time offset")
             for i in range(5):
                 if (min(lon % 360) - max(dat.long % 360)) > 0. or (min(dat.long % 360) - max(lon % 360)) > 0.:
                     raise ValueError('No overlap in longitudes')
@@ -436,6 +438,11 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
                             kind='linear',
                             fill_value=fill_value)
         if old_gps_gaps:
+            # need to redo this, since otherwise we are going to have some out of bounds errors
+            for i,dday in enumerate(decday_interp):
+                if np.min(abs(dday-decday))>1./(24*3600.):
+                    decday_interp[i] = np.nan
+
             lat_interp = lat_interpolator(decday_interp)
             long_interp = long_interpolator(decday_interp)
             elev_interp = elev_interpolator(decday_interp)

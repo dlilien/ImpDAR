@@ -55,16 +55,21 @@ def auto_pick(dat,snums,tnums):
     ----------
     dat: object class
         data object
-    indices: numpy.ndarray
-        indices on the left side of the image where the picks will start from
-        These are the centerpoint of the wavelet
+    snums: array_like
+        Sample indices from which the picks will start.
+    tnums: array_like
+        Trace indices from which the picks will start.
 
     Returns
     -------
     numpy.ndarray
-        The picks selected. Rows are: top of packet, center pick, bottom of
-        packet, time (deprecated, all nans), and power. Size 5xtnum
+        The picks selected. First index is the pick number.
+        Rows are: top of packet, center pick, bottom of
+        packet, time (deprecated, all nans), and power.
+        Size len(snums)x5xtnum
     """
+    if len(snums) != len(tnums):
+        raise ValueError('Snum and tnum must be of equal length')
 
     picks_out = np.empty((len(snums),5,dat.tnum))
 
@@ -216,6 +221,9 @@ def get_intersection(data_main, data_cross, multiple_int=True, return_nans=False
     return_nans: bool, optional
         Return the closest sample, even if it was nanpicked.
         Default is false (find closest non-nan value)
+    multiple_int: bool, optional
+        Whether to look for multiple intersections closer than some threshold
+        Or to use a single (closest) intersection.
     cutoff: float, optional
         The maximum distance for multiple intersections.
 

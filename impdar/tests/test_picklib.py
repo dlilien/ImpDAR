@@ -27,6 +27,7 @@ class BareRadarData(NoInitRadarData):
         super(BareRadarData, self).__init__()
         self.dt = 1.0e-7
         self.data = traces
+        self.snum, self.tnum = self.data.shape
         self.picks = Picks.Picks(self)
 
 
@@ -93,7 +94,7 @@ class TestPickLib(unittest.TestCase):
         self.assertEqual(pickout[1], 101)
 
     def test_pick(self):
-        easy_pick_traces = np.zeros((traces.shape[1], 10))
+        easy_pick_traces = np.zeros_like(traces)
         cpeak = 100
         bpeak = -200
         tpeak = -100
@@ -111,23 +112,58 @@ class TestPickLib(unittest.TestCase):
         self.assertTrue(np.all(picks[2, :] == 107))
 
         # now do a line across the middle guessing slanty
-        picks = picklib.pick(easy_pick_traces, 99, 105, data.picks.pickparams)
+        picks = picklib.pick(easy_pick_traces, 99, 103, data.picks.pickparams)
         self.assertTrue(np.all(picks[0, :] == 95))
         self.assertTrue(np.all(picks[1, :] == 101))
 
     def test_intersection(self):
         thisdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'along_picked.mat'))
         thatdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'cross_picked.mat'))
+
         nopickdata = RadarData.RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data.mat'))
-        tnum, sn = picklib.get_intersection(thisdata, thatdata)
+        tnum, sn = picklib.get_intersection(thisdata, thatdata, multiple_int=True, return_nans=False)
         self.assertTrue(len(sn) == len(thatdata.picks.picknums))
-        tnum, sn = picklib.get_intersection(thatdata, thisdata)
+        tnum, sn = picklib.get_intersection(thatdata, thisdata, multiple_int=False, return_nans=False)
         self.assertTrue(len(sn) == len(thisdata.picks.picknums))
-        tnum, sn = picklib.get_intersection(thatdata, thisdata, return_nans=True)
+        tnum, sn = picklib.get_intersection(thatdata, thisdata, multiple_int=True, return_nans=True)
+        self.assertTrue(len(sn) == len(thisdata.picks.picknums))
+        tnum, sn = picklib.get_intersection(thatdata, thisdata, multiple_int=False, return_nans=True)
         self.assertTrue(len(sn) == len(thisdata.picks.picknums))
         with self.assertRaises(AttributeError):
             tnum, sn = picklib.get_intersection(thisdata, nopickdata)
 
+        thatdata.picks.samp1[:, :] = np.NaN
+        thatdata.picks.samp2[:, :] = np.NaN
+        thatdata.picks.samp3[:, :] = np.NaN
+        tnum, sn = picklib.get_intersection(thisdata, thatdata, multiple_int=False, return_nans=True)
+        self.assertTrue(len(sn) == len(thisdata.picks.picknums))
+        tnum, sn = picklib.get_intersection(thisdata, thatdata, multiple_int=False, return_nans=False)
+        self.assertTrue(len(sn) == len(thisdata.picks.picknums))
+
+    def test_autopick(self):
+        easy_pick_traces = np.zeros_like(traces)
+        cpeak = 100
+        bpeak = -200
+        tpeak = -100
+        easy_pick_traces[101, :] = cpeak
+        easy_pick_traces[107, :] = bpeak
+        easy_pick_traces[95, :] = tpeak
+
+        data = BareRadarData()
+        data.picks.pickparams.freq_update(1.0)
+        data.data = easy_pick_traces
+
+        # first just do a line across the middle guessing correctly
+        picks = picklib.auto_pick(data, [101], [9])
+        self.assertTrue(np.all(picks[0, 0, :] == 95))
+        self.assertTrue(np.all(picks[0, 1, :] == 101))
+        self.assertTrue(np.all(picks[0, 2, :] == 107))
+
+        with self.assertRaises(ValueError):
+            picks = picklib.auto_pick(data, [101, 10], [9])
+
+        with self.assertRaises(TypeError):
+            picks = picklib.auto_pick(data, 101, 9)
 
 
 if __name__ == '__main__':

@@ -99,7 +99,7 @@ class TestHorizontalBandPass(unittest.TestCase):
     def test_hbp_simple(self):
         radardata = NoInitRadarData()
 
-        # fails without constant-spaced data
+        # fails without constant-spaced data, so pretend it is constant spaced
         radardata.flags.interp = np.ones((2,))
         radardata.horizontal_band_pass(5., radardata.tnum * radardata.flags.interp[1] * 0.9)
         # We cannot really check this since the filter causes some residual variability as an edge effect

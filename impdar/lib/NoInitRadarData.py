@@ -44,7 +44,7 @@ class NoInitRadarData(RadarData):
         self.long = np.arange(self.tnum) * 3.
         self.lat = np.arange(self.tnum) * 2.
         self.trace_num = np.arange(self.tnum) + 1.
-        self.decday = np.arange(self.tnum)
+        self.decday = np.arange(self.tnum).astype(float)
         self.trace_int = 1
         self.dt = 1
         self.trig = np.zeros((self.tnum,))

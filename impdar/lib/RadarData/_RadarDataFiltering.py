@@ -306,6 +306,8 @@ def horizontal_band_pass(self, low, high):
         raise ImpdarError('This will not work with elevation corrected data')
     if low >= high:
         raise ValueError('Low must be less than high')
+    if low <= 0.0:
+        raise ValueError('Low must be larger than 0 but is {:f}'.format(low))
 
     tracespace = self.flags.interp[1]
 
@@ -315,11 +317,11 @@ def horizontal_band_pass(self, low, high):
     # Set an approximate sampling frequency (10ns ~ 10m --> 100MHz).
     fsamp = 100.
     # Calculate the number of samples per wavelength.
-    nsamp_high = int(wavelength_high / tracespace)
-    nsamp_low = int(wavelength_low / tracespace)
-    if nsamp_low < 1:
+    nsamp_high = int(wavelength_low / tracespace)
+    nsamp_low = int(wavelength_high / tracespace)
+    if nsamp_high < 1:
         raise ValueError('Minimum wavelength is too small, causing no samples per wavelength')
-    if nsamp_high > self.tnum:
+    if nsamp_low > self.tnum:
         raise ValueError('Maximum wavelength is too long, causing more samples per wavelength than tnum, use lowpass instead?')
     print('Sample resolution high = {:d}'.format(nsamp_high))
     print('Sample resolution low = {:d}'.format(nsamp_low))
