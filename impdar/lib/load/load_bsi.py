@@ -96,14 +96,24 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 ch = '0'
                 h5_data.chan = 0
             elif XIPR:
-                dig_meta_str = 'DigitizerMetaData_xml'
-                gps_cluster_str = 'GPSData_xml'
-                gps_fix_str = 'GPSFixValid'
-                gps_message_str = 'GPSMessageOk'
-                sample_rate_str = 'SampleRate'
-                trigger_level_str = 'TriggerLevel'
-                gps_timestamp_str = 'GPSTimestamp_UTC'
-                alt_asl = 'Alt_ASL_m'
+                ##OLD VARIABLE NAMES FOR BSI (Pre-2023 field work)##
+                #dig_meta_str = 'DigitizerMetaData_xml'
+                #gps_cluster_str = 'GPSData_xml'
+                #gps_fix_str = 'GPSFixValid'
+                #gps_message_str = 'GPSMessageOk'
+                #sample_rate_str = 'SampleRate'
+                #trigger_level_str = 'TriggerLevel'
+                #gps_timestamp_str = 'GPSTimestamp_UTC'
+
+		####NEW VARIABLE NAMES###
+                dig_meta_str = 'Digitizer-MetaData_xml'
+                gps_cluster_str = 'GPS Cluster- MetaData_xml'
+                gps_fix_str = 'GPS Fix Valid'
+                gps_message_str = 'GPS Message Ok'
+                sample_rate_str = 'Sample Rate'
+                trigger_level_str = 'trigger level'
+                gps_timestamp_str = 'GPS_timestamp_UTC'
+                
                 if channel == 0 or channel == 'unamped':
                     ch = '0'
                     h5_data.chan = 0
@@ -136,7 +146,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                     gps_data = dset['location_{:d}'.format(location_num)][
                         'datacapture_'+ch]['echogram_'+ch].attrs[
                             gps_cluster_str].decode('utf-8')
-                if (float(_xmlGetVal(gps_data, gps_fix_str)) > 0) and (
+                if (float(_xmlGetVal(gps_data, gps_fix_str) or 0) > 0) and (
                         float(_xmlGetVal(gps_data, gps_message_str)) > 0):
                     # sometimes, there are bad entries that are unmarked
                     try:
@@ -159,9 +169,9 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                     h5_data.elev[location_num] = np.nan
 
             h5_data.dt = 1.0 / float(
-                _xmlGetVal(digitizer_data, sample_rate_str))
+                _xmlGetVal(digitizer_data, sample_rate_str) or 1.0)
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
-
+           
             # Other information that ImpDAR currently cannot use
             # _xmlGetVal(digitizer_data, 'vertical range')
             h5_data.trig_level = float(
