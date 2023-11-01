@@ -64,7 +64,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
     with h5py.File(fn_h5, 'r') as f_in:
         dset_names = [key for key in f_in.keys()]
         for dset_name in dset_names:
-            if line != None and dset_name != 'line_' + str(line):
+            if line is not None and dset_name != 'line_' + str(line):
                 continue
             print('Loading {:s} from {:s}'.format(dset_name, fn_h5))
             # Just in case there is something else that can be here
@@ -84,28 +84,25 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
             time = np.zeros((h5_data.tnum,))
             h5_data.data = np.zeros((h5_data.snum, h5_data.tnum))
 
-            if not XIPR:
-                dig_meta_str = 'Digitizer-MetaData_xml'
-                gps_cluster_str = 'GPS Cluster- MetaData_xml'
-                gps_fix_str = 'GPS Fix valid'
-                gps_message_str = 'GPS Message ok'
-                sample_rate_str = ' Sample Rate'
-                trigger_level_str = 'trigger level'
-                gps_timestamp_str = 'GPS_timestamp_UTC'
-                alt_asl = 'Alt_asl_m'
-                ch = '0'
-                h5_data.chan = 0
-            elif XIPR:
-                ##OLD VARIABLE NAMES FOR BSI (Pre-2023 field work)##
-                #dig_meta_str = 'DigitizerMetaData_xml'
-                #gps_cluster_str = 'GPSData_xml'
-                #gps_fix_str = 'GPSFixValid'
-                #gps_message_str = 'GPSMessageOk'
-                #sample_rate_str = 'SampleRate'
-                #trigger_level_str = 'TriggerLevel'
-                #gps_timestamp_str = 'GPSTimestamp_UTC'
+            ch = '0'
+            h5_data.chan = 0
+            if XIPR:
+                if channel == 1 or channel == 'amped':
+                    ch = '1'
+                    h5_data.chan = 1
 
-		####NEW VARIABLE NAMES###
+            if 'DigitizerMetaData_xml' in dset['location_0']['datacapture_'+ch]['echogram_'+ch].attrs:
+                # OLD VARIABLE NAMES FOR BSI (Pre-2023)
+                dig_meta_str = 'DigitizerMetaData_xml'
+                gps_cluster_str = 'GPSData_xml'
+                gps_fix_str = 'GPSFixValid'
+                gps_message_str = 'GPSMessageOk'
+                sample_rate_str = 'SampleRate'
+                trigger_level_str = 'TriggerLevel'
+                gps_timestamp_str = 'GPSTimestamp_UTC'
+                alt_asl = 'Alt_ASL_m'
+            else:
+                # NEW VARIABLE NAMES
                 dig_meta_str = 'Digitizer-MetaData_xml'
                 gps_cluster_str = 'GPS Cluster- MetaData_xml'
                 gps_fix_str = 'GPS Fix Valid'
@@ -113,13 +110,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 sample_rate_str = 'Sample Rate'
                 trigger_level_str = 'trigger level'
                 gps_timestamp_str = 'GPS_timestamp_UTC'
-                
-                if channel == 0 or channel == 'unamped':
-                    ch = '0'
-                    h5_data.chan = 0
-                if channel == 1 or channel == 'amped':
-                    ch = '1'
-                    h5_data.chan = 1
+                alt_asl = 'Alt_ASL_m'
 
             if type(dset['location_0']['datacapture_'+ch]['echogram_'+ch].attrs[dig_meta_str]) == str:
                 digitizer_data = dset['location_0']['datacapture_'+ch][
