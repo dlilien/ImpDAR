@@ -137,22 +137,22 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                     gps_data = dset['location_{:d}'.format(location_num)][
                         'datacapture_'+ch]['echogram_'+ch].attrs[
                             gps_cluster_str].decode('utf-8')
-                if (float(_xmlGetVal(gps_data, gps_fix_str) or 0) > 0) and (
+                if (float(_xmlGetVal(gps_data, gps_fix_str)) > 0) and (
                         float(_xmlGetVal(gps_data, gps_message_str)) > 0):
-                    # sometimes, there are bad entries that are unmarked
-                    try:
-                        lat[location_num] = float(_xmlGetVal(gps_data, 'Lat'))
-                        lon[location_num] = float(
-                            _xmlGetVal(gps_data, 'Long'))
-                        time[location_num] = float(
-                            _xmlGetVal(gps_data, gps_timestamp_str))
-                        h5_data.elev[location_num] = float(
-                            _xmlGetVal(gps_data, alt_asl))
-                    except:
+                    for lname, sign in [('Lat', 1), ('Lat_N', 1), ('Lat_S', -1)]:
+                        if _xmlGetVal(gps_data, lname) is not None:
+                            lat[location_num] = sign * float(_xmlGetVal(gps_data, lname))
+                            break
+                    else:
                         lat[location_num] = np.nan
+                    for lname, sign in [('Long', 1), ('Long_ E', 1), ('Long_ W', -1)]:
+                        if _xmlGetVal(gps_data, lname) is not None:
+                            lon[location_num] = sign * float(_xmlGetVal(gps_data, lname))
+                            break
+                    else:
                         lon[location_num] = np.nan
-                        time[location_num] = np.nan
-                        h5_data.elev[location_num] = np.nan
+                    time[location_num] = float(_xmlGetVal(gps_data, gps_timestamp_str))
+                    h5_data.elev[location_num] = float(_xmlGetVal(gps_data, alt_asl))
                 else:
                     lat[location_num] = np.nan
                     lon[location_num] = np.nan
@@ -162,7 +162,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
             h5_data.dt = 1.0 / float(
                 _xmlGetVal(digitizer_data, sample_rate_str) or 1.0)
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
-           
+
             # Other information that ImpDAR currently cannot use
             # _xmlGetVal(digitizer_data, 'vertical range')
             h5_data.trig_level = float(
@@ -170,25 +170,34 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
             time_offset = float(_xmlGetVal(digitizer_data, 'relativeInitialX'))
             h5_data.travel_time = h5_data.travel_time + time_offset * 1.0e6
 
-
             mask = ~np.isnan(time)
             if nans == 'interp':
-                if np.any(~mask):
+                if np.any(~mask) and not np.all(~mask):
                     print('Interpolating traces with bad GPS in {:s}'.format(dset_name))
-                # get rid of bad GPS locations
-                h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
-                time = interp1d(h5_data.trace_num[mask],
-                                time[mask],
-                                fill_value='extrapolate')(h5_data.trace_num)
-                h5_data.lat = interp1d(h5_data.trace_num[mask],
-                                       _dm2dec(lat[mask]),
-                                       fill_value='extrapolate')(h5_data.trace_num)
-                h5_data.long = interp1d(h5_data.trace_num[mask],
-                                        -_dm2dec(lon[mask]),
-                                        fill_value='extrapolate')(h5_data.trace_num)
-                h5_data.elev = interp1d(h5_data.trace_num[mask],
-                                        h5_data.elev[mask],
-                                        fill_value='extrapolate')(h5_data.trace_num)
+                    # get rid of bad GPS locations
+                    h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
+                    time = interp1d(h5_data.trace_num[mask],
+                                    time[mask],
+                                    fill_value='extrapolate')(h5_data.trace_num)
+                    h5_data.lat = interp1d(h5_data.trace_num[mask],
+                                           _dm2dec(lat[mask]),
+                                           fill_value='extrapolate')(h5_data.trace_num)
+                    h5_data.long = interp1d(h5_data.trace_num[mask],
+                                            -_dm2dec(lon[mask]),
+                                            fill_value='extrapolate')(h5_data.trace_num)
+                    h5_data.elev = interp1d(h5_data.trace_num[mask],
+                                            h5_data.elev[mask],
+                                            fill_value='extrapolate')(h5_data.trace_num)
+                elif np.all(~mask):
+                    print('Warning, no good GPS in {:s}'.format(dset_name))
+                    h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
+                    h5_data.lat = lat
+                    h5_data.long = lon
+                else:
+                    print('No bad GPS in {:s}, not interpolating'.format(dset_name))
+                    h5_data.lat = _dm2dec(lat)
+                    h5_data.long = np.sign(lon) * _dm2dec(abs(lon))
+                    h5_data.trace_num = np.arange(h5_data.tnum).astype(int) + 1
             elif nans == 'delete':
                 if np.any(~mask):
                     print('Deleting traces with bad GPS in {:s}'.format(dset_name))
@@ -223,7 +232,6 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
             day_offset = (day_collection - datetime.datetime(1, 1, 1, 0, 0, 0)
                           ).days
             h5_data.decday = gpslib.hhmmss2dec(time) + day_offset
-
             if np.any(np.isfinite(h5_data.lat)):
                 try:
                     h5_data.get_projected_coords()
