@@ -159,8 +159,12 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                     time[location_num] = np.nan
                     h5_data.elev[location_num] = np.nan
 
-            h5_data.dt = 1.0 / float(
-                _xmlGetVal(digitizer_data, sample_rate_str) or 1.0)
+            sr = _xmlGetVal(digitizer_data, sample_rate_str)
+            if sr is None:
+                sr = _xmlGetVal(digitizer_data, ' Sample Rate')
+            if sr is None:
+                raise ValueError('Cannot read sample rate')
+            h5_data.dt = 1.0 / float(sr)
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
 
             # Other information that ImpDAR currently cannot use

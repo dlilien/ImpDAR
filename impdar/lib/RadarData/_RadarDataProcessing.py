@@ -281,7 +281,7 @@ def crop(self, lim, top_or_bottom='top', dimension='snum', uice=1.69e8, rezero=T
             ind = self.trig.astype(int)
     else:
         ind = int(lim)
-        
+
     if not isinstance(ind, np.ndarray) or (dimension != 'pretrig'):
 
         if top_or_bottom == 'top':
@@ -630,3 +630,20 @@ def elev_correct(self, v_avg=1.69e8):
     self.elevation = np.hstack((np.arange(np.max(self.elev), np.min(self.elev), -dz_avg),
                                 np.min(self.elev) - self.nmo_depth))
     self.flags.elev = 1
+
+
+def clean_GPS(self):
+    """Remove GPS gaps
+
+    Warning: this is essentially going to "make up data" to fill holes.
+    Do not do this unless you have checked to be sure that you have only
+    reasonable sized gaps, and interpolating is sane. This is for an
+    occasional bad NMEA string. It is not a panacea.
+
+    It is likely that you want to redo your geospatial operations after this,
+    since you will no longer have a match between lat/long and x_coord/y_coord.
+    """
+    for attr in ['x_coord', 'y_coord', 'decday', 'lat', 'long', 'elev']:
+        attr_vals = getattr(self, attr)
+        if attr_vals is not None:
+            setattr(self, attr, interp1d(self.trace_num[np.isfinite(attr_vals)], attr_vals[np.isfinite(attr_vals)], fill_value="extrapolate", assume_sorted=True)(self.trace_num))
