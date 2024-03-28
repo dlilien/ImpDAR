@@ -90,7 +90,7 @@ def migrationSeisUnix(dat,
         trace_int = np.gradient(dat.dist)
     else:
         trace_int = dat.trace_int
-    dx = np.mean(trace_int)
+    dx = np.mean(trace_int[np.isfinite(trace_int)])
     if nz is None:
         nz = dat.snum
     if dz is None:
