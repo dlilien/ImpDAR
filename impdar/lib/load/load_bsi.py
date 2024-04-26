@@ -97,17 +97,19 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 gps_cluster_str = 'GPSData_xml'
                 gps_fix_str = 'GPSFixValid'
                 gps_message_str = 'GPSMessageOk'
-                sample_rate_str = 'SampleRate'
+                ##emma adjusted 4.2024
+                sample_rate_str = ' SampleRate'
                 trigger_level_str = 'TriggerLevel'
                 gps_timestamp_str = 'GPSTimestamp_UTC'
                 alt_asl = 'Alt_ASL_m'
             else:
-                # NEW VARIABLE NAMES
+                # NEW VARIABLE NAME
                 dig_meta_str = 'Digitizer-MetaData_xml'
                 gps_cluster_str = 'GPS Cluster- MetaData_xml'
                 gps_fix_str = 'GPS Fix Valid'
                 gps_message_str = 'GPS Message Ok'
-                sample_rate_str = 'Sample Rate'
+                ## emma adjusted 4.2024
+                sample_rate_str = ' Sample Rate'
                 trigger_level_str = 'trigger level'
                 gps_timestamp_str = 'GPS_timestamp_UTC'
                 alt_asl = 'Alt_ASL_m'
@@ -158,9 +160,9 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                     lon[location_num] = np.nan
                     time[location_num] = np.nan
                     h5_data.elev[location_num] = np.nan
-
+            ##error removed that was throwing off time vector - emma 4.2024
             h5_data.dt = 1.0 / float(
-                _xmlGetVal(digitizer_data, sample_rate_str) or 1.0)
+                _xmlGetVal(digitizer_data, sample_rate_str))
             h5_data.travel_time = np.arange(h5_data.snum) * h5_data.dt * 1.0e6
 
             # Other information that ImpDAR currently cannot use
