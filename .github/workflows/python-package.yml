@@ -3,6 +3,9 @@
 
 name: Test, build, deploy ImpDAR
 
+env:
+  CIBW_SKIP: pp310-win_amd64
+
 on:
   workflow_dispatch:
   pull_request:
