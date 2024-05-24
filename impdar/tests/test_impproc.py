@@ -34,7 +34,7 @@ class TestMain(unittest.TestCase):
         impproc.main()
         self.assertTrue(agc_patch.called)
         self.assertTrue(load_patch.called)
-        self.assertTrue(load_patch.called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat')]))
+        load_patch.assert_called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
 
         impproc.sys.argv = ['dummy', 'agc', os.path.join(THIS_DIR, 'input_data', 'small_data.mat'), os.path.join(THIS_DIR, 'input_data', 'small_data.mat')]
         impproc.main()
@@ -53,7 +53,7 @@ class TestMain(unittest.TestCase):
         impproc.main()
         self.assertTrue(agc_patch.called)
         self.assertTrue(load_patch.called)
-        self.assertTrue(load_patch.called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat')]))
+        load_patch.assert_called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data.mat')])
         self.assertTrue(rd_patch[0].save.called)
         rd_patch[0].save.assert_called_with('dummy')
 
@@ -67,7 +67,7 @@ class TestMain(unittest.TestCase):
         impproc.sys.argv = ['dummy', 'agc', os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')]
         impproc.main()
         self.assertTrue(load_patch.called)
-        self.assertTrue(load_patch.called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')]))
+        load_patch.assert_called_with('mat', [os.path.join(THIS_DIR, 'input_data', 'small_data_raw.mat')])
         for p in rd_patch:
             self.assertTrue(p.save.called)
             p.save.assert_called_with(os.path.join(THIS_DIR, 'input_data', 'small_data_agc.mat'))
