@@ -209,7 +209,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.autoButton.setText(_translate('MainWindow', 'Auto'))
 
     def _color_select(self, val):
-        self.im.set_cmap(plt.cm.get_cmap(val + self.color_reversal))
+        if hasattr(plt.cm, "get_cmap"):
+            self.im.set_cmap(plt.cm.get_cmap(val + self.color_reversal))
+        else:
+            self.im.set_cmap(colormaps[val + self.color_reversal])
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
