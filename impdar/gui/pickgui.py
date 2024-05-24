@@ -1119,9 +1119,17 @@ COLORB = [(1.0000, 1.0000, 1.000),
 
 PERCENTS = np.array([0, 63, 95, 114, 123, 127, 130, 134, 143, 162, 194, 256]) / 256.
 
-plt.cm.register_cmap(name='CEGSIC',
-                     cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
-                                                                   list(zip(PERCENTS, COLORB))))
-plt.cm.register_cmap(name='CEGSIC_r',
-                     cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
-                                                                   list(zip(PERCENTS, COLORB))))
+if hasattr(plt.cm, "register_cmap"):
+    plt.cm.register_cmap(name='CEGSIC',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
+                                                                       list(zip(PERCENTS, COLORB))))
+    plt.cm.register_cmap(name='CEGSIC_r',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
+                                                                       list(zip(PERCENTS, COLORB))))
+else:
+    plt.cm.register(name='CEGSIC',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
+                                                                       list(zip(PERCENTS, COLORB))))
+    plt.cm.register(name='CEGSIC_r',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
+                                                                       list(zip(PERCENTS, COLORB))))
