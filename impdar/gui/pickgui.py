@@ -9,7 +9,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
+from matplotlib import colors, colormaps
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 
@@ -1127,9 +1127,9 @@ if hasattr(plt.cm, "register_cmap"):
                          cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
                                                                        list(zip(PERCENTS, COLORB))))
 else:
-    plt.cm.register(name='CEGSIC',
+    colormaps.register(name='CEGSIC',
                          cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
                                                                        list(zip(PERCENTS, COLORB))))
-    plt.cm.register(name='CEGSIC_r',
+    colormaps.register(name='CEGSIC_r',
                          cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
                                                                        list(zip(PERCENTS, COLORB))))
