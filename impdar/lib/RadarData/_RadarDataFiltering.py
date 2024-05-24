@@ -9,7 +9,8 @@
 The class methods for filtering.
 """
 import numpy as np
-from scipy.signal import filtfilt, butter, tukey, cheby1, bessel, firwin, lfilter, wiener
+from scipy.signal import filtfilt, butter, cheby1, bessel, firwin, lfilter, wiener
+from scipy.signal.windows import tukey
 from scipy.ndimage import median_filter
 from .. import migrationlib
 from ..ImpdarError import ImpdarError
