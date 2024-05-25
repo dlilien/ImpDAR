@@ -1,7 +1,8 @@
 [project]
 name = "impdar"
 version = "1.2.0"
-description = "auxiliary scripts for glacier flow modeling"
+description = "Scripts for impulse radar"
+readme = "README.md"
 authors = [
     {name = "David Lilien", email = "dlilien@iu.edu"}
 ]
