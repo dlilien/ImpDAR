@@ -9,7 +9,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
+from matplotlib import colors, colormaps
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog
 
@@ -209,7 +209,10 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             self.autoButton.setText(_translate('MainWindow', 'Auto'))
 
     def _color_select(self, val):
-        self.im.set_cmap(plt.cm.get_cmap(val + self.color_reversal))
+        if hasattr(plt.cm, "get_cmap"):
+            self.im.set_cmap(plt.cm.get_cmap(val + self.color_reversal))
+        else:
+            self.im.set_cmap(colormaps[val + self.color_reversal])
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -1119,9 +1122,17 @@ COLORB = [(1.0000, 1.0000, 1.000),
 
 PERCENTS = np.array([0, 63, 95, 114, 123, 127, 130, 134, 143, 162, 194, 256]) / 256.
 
-plt.cm.register_cmap(name='CEGSIC',
-                     cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
-                                                                   list(zip(PERCENTS, COLORB))))
-plt.cm.register_cmap(name='CEGSIC_r',
-                     cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
-                                                                   list(zip(PERCENTS, COLORB))))
+if hasattr(plt.cm, "register_cmap"):
+    plt.cm.register_cmap(name='CEGSIC',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
+                                                                       list(zip(PERCENTS, COLORB))))
+    plt.cm.register_cmap(name='CEGSIC_r',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
+                                                                       list(zip(PERCENTS, COLORB))))
+else:
+    colormaps.register(name='CEGSIC',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC',
+                                                                       list(zip(PERCENTS, COLORB))))
+    colormaps.register(name='CEGSIC_r',
+                         cmap=colors.LinearSegmentedColormap.from_list('CEGSIC_r',
+                                                                       list(zip(PERCENTS, COLORB))))

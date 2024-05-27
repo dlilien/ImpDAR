@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 from impdar.lib.RadarData._RadarDataSaving import CONVERSIONS_ENABLED
 from impdar.lib.RadarData import RadarData
+from matplotlib import colormaps
 
 try:
     import matplotlib
@@ -83,9 +84,15 @@ class TestInteractivePicker(unittest.TestCase):
         self.assertEqual(self.ip.dat.picks.pickparams.pol, -1)
 
     def test_reverse_color(self):
-        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText()))
+        if hasattr(plt.cm, "get_cmap"):
+            self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText()))
+        else:
+            self.assertEqual(self.ip.im.get_cmap(), colormaps[self.ip.ColorSelector.currentText()])
         self.ip._update_color_reversal(QtCore.Qt.Checked)
-        self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText() + '_r'))
+        if hasattr(plt.cm, "get_cmap"):
+            self.assertEqual(self.ip.im.get_cmap(), plt.cm.get_cmap(self.ip.ColorSelector.currentText() + '_r'))
+        else:
+            self.assertEqual(self.ip.im.get_cmap(), colormaps[self.ip.ColorSelector.currentText() + '_r'])
 
     def test_select_lines_click(self):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))

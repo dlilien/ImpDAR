@@ -112,7 +112,8 @@ class RadarData(object):
 
     from ._RadarDataProcessing import reverse, nmo, crop, hcrop, restack, \
         rangegain, agc, constant_space, elev_correct, \
-        constant_sample_depth_spacing, traveltime_to_depth
+        constant_sample_depth_spacing, traveltime_to_depth, \
+        clean_GPS
     from ._RadarDataSaving import save, save_as_segy, output_shp, output_csv, \
         _get_pick_targ_info, output_ogr
     from ._RadarDataFiltering import adaptivehfilt, horizontalfilt, highpass, \

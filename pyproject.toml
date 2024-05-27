@@ -1,0 +1,27 @@
+[project]
+name = "impdar"
+version = "1.2.0"
+description = "Scripts for impulse radar"
+readme = "README.md"
+authors = [
+    {name = "David Lilien", email = "dlilien@iu.edu"}
+]
+license = {text = "LICENSE"}
+requires-python = ">=3.8"
+dependencies = ['numpy>1.12.0',
+                'scipy>0.19.0',
+                'matplotlib>2.0.0',
+                'h5py',
+                'segyio']
+
+[build-system]
+requires = ["setuptools", "numpy", "cython"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+impdar = 'impdar.bin.impdarexec:main'
+impproc = 'impdar.bin.impproc:main'
+imppick = 'impdar.bin.imppick:main'
+impplot = 'impdar.bin.impplot:main'
+apdar = 'impdar.bin.apdar:main'
+qpdar = 'impdar.bin.qpdar:main'
