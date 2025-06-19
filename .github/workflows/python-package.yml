@@ -4,7 +4,7 @@
 name: Test, build, deploy ImpDAR
 
 env:
-  CIBW_SKIP: pp310-win_amd64 pp38-macosx_x86_64
+  CIBW_SKIP: pp310-win_amd64 pp38-macosx_x86_64 pp38-macosx_arm64
 
 on:
   workflow_dispatch:
@@ -22,9 +22,12 @@ jobs:
       matrix:
         os: [ubuntu-24.04]  # , macos-latest, windows-latest]
         python-version: ["3.9"]  #, "3.10", "3.11", "3.12", "3.13"]
-        qt5: [true, false]
-        gdal: [true, false]
-        seisunix: [true, false]
+        #qt5: [true, false]
+        #gdal: [true, false]
+        #seisunix: [true, false]
+        qt5: [false]
+        gdal: [false]
+        seisunix: [false]
         exclude:
           - os: macos-latest
             qt5: true
