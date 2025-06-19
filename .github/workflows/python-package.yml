@@ -74,7 +74,7 @@ jobs:
       if: ${{ matrix.gdal }}
       run: |
         sudo apt-get install -y libcurl4-gnutls-dev
-        sudo apt-get install libgdal-dev_3.8.4+dfsg-1build4
+        sudo apt-get install libgdal-dev_3.8.4+dfsg-3ubuntu3
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
         python -m pip install gdal==3.8.4
