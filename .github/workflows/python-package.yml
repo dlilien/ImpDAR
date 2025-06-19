@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         qt5: [true, false]
         gdal: [true, false]
@@ -73,7 +73,7 @@ jobs:
       if: ${{ matrix.gdal }}
       run: |
         sudo apt-get install -y libcurl4-gnutls-dev
-        sudo apt-get install libgdal-dev
+        sudo apt-get install libgdal-dev_3.8.4+dfsg-3ubuntu3_amd64
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
         python -m pip install gdal==3.8.4
