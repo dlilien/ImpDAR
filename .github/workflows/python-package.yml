@@ -4,7 +4,7 @@
 name: Test, build, deploy ImpDAR
 
 env:
-  CIBW_SKIP: pp310-win_amd64
+  CIBW_SKIP: pp310-win_amd64 pp38-macosx_x86_64
 
 on:
   workflow_dispatch:
@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-24.04]  # , macos-latest, windows-latest]
+        python-version: ["3.9"]  #, "3.10", "3.11", "3.12", "3.13"]
         qt5: [true, false]
         gdal: [true, false]
         seisunix: [true, false]
@@ -73,7 +73,7 @@ jobs:
       if: ${{ matrix.gdal }}
       run: |
         sudo apt-get install -y libcurl4-gnutls-dev
-        sudo apt-get install libgdal-dev_3.8.4+dfsg-3ubuntu3_amd64
+        sudo apt-get install libgdal-dev
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
         python -m pip install gdal==3.8.4
