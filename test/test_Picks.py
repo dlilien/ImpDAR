@@ -68,7 +68,7 @@ class TestPickMods(unittest.TestCase):
             data.picks.update_pick(0, np.zeros((5, data.tnum)))
 
     def test_smooth(self):
-        # first, no NaNs
+        # first, no nans
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
         cache_val = data.picks.samp1.copy()
         for attr in ['samp1', 'samp2', 'samp3', 'power']:
@@ -77,12 +77,12 @@ class TestPickMods(unittest.TestCase):
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='tnum')
 
-        # NaNs ends only
+        # nans ends only
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
         for attr in ['samp1', 'samp2', 'samp3', 'power']:
             val = getattr(data.picks, attr)
-            val[:, -1] = np.NaN
-            val[:, 0] = np.NaN
+            val[:, -1] = np.nan
+            val[:, 0] = np.nan
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='tnum')
 
@@ -90,9 +90,9 @@ class TestPickMods(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
         for attr in ['samp1', 'samp2', 'samp3', 'power']:
             val = getattr(data.picks, attr)
-            val[:, -1] = np.NaN
-            val[:, 0] = np.NaN
-            val[:, 5] = np.NaN
+            val[:, -1] = np.nan
+            val[:, 0] = np.nan
+            val[:, 5] = np.nan
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='tnum')
 
@@ -100,7 +100,7 @@ class TestPickMods(unittest.TestCase):
         data = RadarData(os.path.join(THIS_DIR, 'input_data', 'small_data_picks.mat'))
         for attr in ['samp1', 'samp2', 'samp3', 'power']:
             val = getattr(data.picks, attr)
-            val[0, :] = np.NaN
+            val[0, :] = np.nan
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='tnum')
 
@@ -109,9 +109,9 @@ class TestPickMods(unittest.TestCase):
         data.flags.interp = [2, 1]
         for attr in ['samp1', 'samp2', 'samp3', 'power']:
             val = getattr(data.picks, attr)
-            val[:, -1] = np.NaN
-            val[:, 0] = np.NaN
-            val[:, 5] = np.NaN
+            val[:, -1] = np.nan
+            val[:, 0] = np.nan
+            val[:, 5] = np.nan
             setattr(data.picks, attr, val)
         data.picks.smooth(4, units='dist')
 

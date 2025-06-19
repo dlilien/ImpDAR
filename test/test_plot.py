@@ -283,7 +283,7 @@ class TestPlotRadargram(unittest.TestCase):
         dat.picks.samp2[:] = dat.data.shape[0] - 1  # make sure no bugs if this is at the bottom
         fig, ax = plot.plot_radargram(dat, flatten_layer=10)
 
-        dat.picks.samp2[:, 1] = np.NaN  # make sure no bugs if this is at the bottom
+        dat.picks.samp2[:, 1] = np.nan  # make sure no bugs if this is at the bottom
         fig, ax = plot.plot_radargram(dat, flatten_layer=10)
 
         with self.assertRaises(ValueError):

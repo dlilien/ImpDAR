@@ -249,7 +249,7 @@ def concat(radar_data):
         out.picks.lasttrace.snum = [0 for i in all_picks]
         pick_attrs = ['samp1', 'samp2', 'samp3', 'power', 'time']
         for attr in pick_attrs:
-            setattr(out.picks, attr, np.zeros((len(all_picks), out.tnum)) * np.NaN)
+            setattr(out.picks, attr, np.zeros((len(all_picks), out.tnum)) * np.nan)
         start_ind = 0
         for dat in radar_data:
             if ((not hasattr(dat, 'picks')) or (not hasattr(dat.picks, 'picknums')) or (

@@ -64,7 +64,7 @@ class ApresFlags():
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
-        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.NaN) for att in self.attrs}
+        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.nan) for att in self.attrs}
         return outmat
 
     def from_matlab(self, matlab_struct):
@@ -133,7 +133,7 @@ class TimeDiffFlags():
     def to_matlab(self):
         """Convert all associated attributes into a dictionary formatted for use with :func:`scipy.io.savemat`
         """
-        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.NaN) for att in self.attrs}
+        outmat = {att: (getattr(self, att) if getattr(self, att) is not None else np.nan) for att in self.attrs}
         return outmat
 
     def from_matlab(self, matlab_struct):

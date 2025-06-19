@@ -83,7 +83,7 @@ def load_UoA_mat(fn_mat, gps_offset=0.0):
         return UoA_data
 
 
-def load_UoA_h5(fn, gps_offset=0.0):
+def load_UoA_h5(fn, gps_offset=0.0, channel="processed"):
     """Load MCoRDS data in .mat format downloaded from the CReSIS ftp client
 
     Parameters
@@ -95,7 +95,7 @@ def load_UoA_h5(fn, gps_offset=0.0):
     with h5py.File(fn, 'r') as fin:
         if fin.attrs['Type'] != 'MultiChannel':
             raise ValueError('Can only unpack MultiChannel UoA data')
-        if 'processed' in fin:
+        if channel == "processed" and 'processed' in fin:
             for name in fin['processed'].keys():
                 for integrator in fin['processed'][name].keys():
                     grp = fin['processed'][name][integrator]
@@ -104,20 +104,31 @@ def load_UoA_h5(fn, gps_offset=0.0):
                     UoA_data.chan = 999
                     _load_group(UoA_data, grp, gps_offset)
                     data_list.append(UoA_data)
-
         else:
-            print('No processed data found, reading channels')
-            for i in range(8):
-                if f'channel_{i}' in fin:
-                    for integrator in fin[f'channel_{i}'].keys():
-                        grp = fin[f'channel_{i}'][integrator]
-                        UoA_data = RadarData(None)
-                        UoA_data.fn = fn[:-3] + f'_ch{i}_Int' + integrator[-1]
+            if f'channel_{channel}' in fin:
+                for integrator in fin[f'channel_{channel}'].keys():
+                    grp = fin[f'channel_{channel}'][integrator]
+                    UoA_data = RadarData(None)
+                    UoA_data.fn = fn[:-3] + f'_ch{channel}_Int' + integrator[-1]
 
-                        UoA_data.chan = i
-                        _load_group(UoA_data, grp, gps_offset)
+                    UoA_data.chan = channel
+                    _load_group(UoA_data, grp, gps_offset)
 
-                        data_list.append(UoA_data)
+                    data_list.append(UoA_data)
+
+            else:
+                print('No processed data found, reading channels')
+                for i in range(8):
+                    if f'channel_{i}' in fin:
+                        for integrator in fin[f'channel_{i}'].keys():
+                            grp = fin[f'channel_{i}'][integrator]
+                            UoA_data = RadarData(None)
+                            UoA_data.fn = fn[:-3] + f'_ch{i}_Int' + integrator[-1]
+
+                            UoA_data.chan = i
+                            _load_group(UoA_data, grp, gps_offset)
+
+                            data_list.append(UoA_data)
 
     return data_list
 
@@ -142,9 +153,7 @@ def _load_group(UoA_data, grp, gps_offset):
         nminfo.lat = grp['lat'][:].flatten()
         nminfo.lon = grp['lon'][:].flatten()
         nminfo.elev = np.zeros_like(nminfo.lat)
-        print(nminfo.lat.shape)
-        print(nminfo.lon.shape)
-        print(nminfo.elev.shape)
+        print(nminfo.lat.shape, UoA_data.data.shape[1])
 
         if nminfo.lat.shape[0] > UoA_data.tnum:
             nminfo.lat = nminfo.lat[:UoA_data.tnum]

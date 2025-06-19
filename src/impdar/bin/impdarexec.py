@@ -25,7 +25,7 @@ def _get_args():
                              type=str,
                              nargs='+',
                              help='File(s) to load')
-    parser_load.add_argument('-channel', type=int, default=1,
+    parser_load.add_argument('-channel', type=str, default="processed",
                              help='Receiver channel to load this is primarily for the St. Olaf HF data.')
     parser_load.add_argument('-gps_offset',
                              type=float,

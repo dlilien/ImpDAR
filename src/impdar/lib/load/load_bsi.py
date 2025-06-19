@@ -76,8 +76,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
             # We need this for logical file naming later on
             h5_data.fn = os.path.splitext(fn_h5)[0] + dset_name + '.h5'
             h5_data.tnum = len(list(dset.keys()))
-            h5_data.snum = len(
-                dset['location_0']['datacapture_0']['echogram_0'])
+            h5_data.snum = len(dset['location_0']['datacapture_0']['echogram_0'])
             lat = np.zeros((h5_data.tnum,))
             lon = np.zeros((h5_data.tnum,))
             h5_data.elev = np.zeros((h5_data.tnum,))
@@ -111,7 +110,7 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 gps_timestamp_str = 'GPS_timestamp_UTC'
                 alt_asl = 'Alt_ASL_m'
 
-            if type(dset['location_0']['datacapture_'+ch]['echogram_'+ch].attrs[dig_meta_str]) == str:
+            if type(dset['location_0']['datacapture_'+ch]['echogram_'+ch].attrs[dig_meta_str]) is str:
                 digitizer_data = dset['location_0']['datacapture_'+ch][
                     'echogram_'+ch].attrs[dig_meta_str]
             else:
@@ -123,12 +122,12 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                 if nsamps > h5_data.snum:
                     h5_data.data = np.vstack((h5_data.data, np.zeros((nsamps - h5_data.snum, h5_data.tnum))))
                     h5_data.snum = nsamps
-                h5_data.data[:, location_num] = dset[
+                h5_data.data[:nsamps, location_num] = dset[
                     'location_{:d}'.format(location_num)][
                         'datacapture_'+ch]['echogram_'+ch]
                 if type(dset['location_{:d}'.format(location_num)][
                     'datacapture_'+ch]['echogram_'+ch].attrs[
-                        gps_cluster_str]) == str:
+                        gps_cluster_str]) is str:
                     gps_data = dset['location_{:d}'.format(location_num)][
                         'datacapture_'+ch]['echogram_'+ch].attrs[
                             gps_cluster_str]
@@ -150,8 +149,14 @@ def load_bsi(fn_h5, XIPR=True, channel=0., line=None, nans=None, *args, **kwargs
                             break
                     else:
                         lon[location_num] = np.nan
-                    time[location_num] = float(_xmlGetVal(gps_data, gps_timestamp_str))
-                    h5_data.elev[location_num] = float(_xmlGetVal(gps_data, alt_asl))
+                    try:
+                        time[location_num] = float(_xmlGetVal(gps_data, gps_timestamp_str))
+                    except ValueError:
+                        time[location_num] = np.nan
+                    try:
+                        h5_data.elev[location_num] = float(_xmlGetVal(gps_data, alt_asl))
+                    except ValueError:
+                        h5_data.elev[location_num] = np.nan
                 else:
                     lat[location_num] = np.nan
                     lon[location_num] = np.nan

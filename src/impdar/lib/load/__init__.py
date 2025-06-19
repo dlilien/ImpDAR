@@ -123,7 +123,7 @@ def load(filetype, fns_in, channel=1, t_srs=None, s_srs=None, *args, **kwargs):
             elif filetype == 'UoA_h5':
                 dat = []
                 for fn in fns_in:
-                    dat += load_UoA.load_UoA_h5(fn, gps_offset=gps_offset)
+                    dat += load_UoA.load_UoA_h5(fn, gps_offset=gps_offset, channel=channel)
         else:
             raise ImportError('You need h5py for UoA')
     elif filetype == 'delores':

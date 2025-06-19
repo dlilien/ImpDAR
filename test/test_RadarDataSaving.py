@@ -152,7 +152,7 @@ class TestRadarDataExports(unittest.TestCase):
         rd.picks = Picks(rd)
         rd.picks.add_pick()
 
-        # First, export with NaNs, both with normal field (depth) and elev
+        # First, export with nans, both with normal field (depth) and elev
         rd.picks.samp2[:] = np.nan
         with warnings.catch_warnings(record=True) as w:
             rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test0.shp'))
@@ -165,7 +165,7 @@ class TestRadarDataExports(unittest.TestCase):
             self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
             self.assertIn("deprecated", str(w[-1].message))
 
-        # Fill in NaNs
+        # Fill in nans
         rd.picks.samp2[:] = 1
         with warnings.catch_warnings(record=True) as w:
             rd.output_shp(os.path.join(THIS_DIR, 'input_data', 'test2.shp'))
@@ -199,7 +199,7 @@ class TestRadarDataExports(unittest.TestCase):
         rd.picks = Picks(rd)
         rd.picks.add_pick()
 
-        # First, export with NaNs
+        # First, export with nans
         rd.picks.samp2[:] = np.nan
         rd.output_csv(os.path.join(THIS_DIR, 'input_data', 'test.csv'))
         with open(os.path.join(THIS_DIR, 'input_data', 'test.csv')) as fin:
@@ -214,7 +214,7 @@ class TestRadarDataExports(unittest.TestCase):
             # The final header should be in terms of depth
             self.assertTrue(lines[0].index('depth') > 0)
 
-        # Fill in NaNs
+        # Fill in nans
         rd.picks.samp2[:] = 1
         rd.output_csv(os.path.join(THIS_DIR, 'input_data', 'test.csv'))
         with open(os.path.join(THIS_DIR, 'input_data', 'test.csv')) as fin:

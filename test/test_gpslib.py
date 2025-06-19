@@ -88,7 +88,7 @@ class TestGPS(unittest.TestCase):
             gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(0, 20, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1))
 
         dat = NoInitRadarData(big=True)
-        dat.decday[10] = np.NaN
+        dat.decday[10] = np.nan
 
         gpslib.kinematic_gps_control(dat, np.arange(0, 2.0, 0.1), np.arange(40, 60, 1), np.arange(0, 2000, 100), np.arange(0, 20, 1), guess_offset=False)
         self.assertTrue(np.allclose(np.arange(0, 2.0, 0.1)[~np.isnan(dat.lat)], dat.lat[~np.isnan(dat.lat)]))

@@ -10,9 +10,7 @@
 
 """
 
-import os
 import unittest
-import numpy as np
 from impdar.lib.ApresData import ApresFlags, TimeDiffFlags, QuadPolFlags
 
 

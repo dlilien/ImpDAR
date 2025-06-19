@@ -65,7 +65,11 @@ if conversions_enabled:
 
     def get_conversion(t_srs):
         out_cs = osr.SpatialReference()
-        out_cs.SetFromUserInput(t_srs)
+        try:
+            out_cs.SetFromUserInput(t_srs)
+        except TypeError:
+            out_cs.SetFromUserInput(t_srs[0])
+
         try:
             out_cs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         except AttributeError:
@@ -382,7 +386,7 @@ def kinematic_gps_control(dats, lat, lon, elev, decday, offset=0.0,
     if extrapolate:
         fill_value = 'extrapolate'
     else:
-        fill_value = np.NaN
+        fill_value = np.nan
 
     if type(dats) not in [list, tuple]:
         dats = [dats]

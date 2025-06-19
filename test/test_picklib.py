@@ -132,9 +132,9 @@ class TestPickLib(unittest.TestCase):
         with self.assertRaises(AttributeError):
             tnum, sn = picklib.get_intersection(thisdata, nopickdata)
 
-        thatdata.picks.samp1[:, :] = np.NaN
-        thatdata.picks.samp2[:, :] = np.NaN
-        thatdata.picks.samp3[:, :] = np.NaN
+        thatdata.picks.samp1[:, :] = np.nan
+        thatdata.picks.samp2[:, :] = np.nan
+        thatdata.picks.samp3[:, :] = np.nan
         tnum, sn = picklib.get_intersection(thisdata, thatdata, multiple_int=False, return_nans=True)
         self.assertTrue(len(sn) == len(thisdata.picks.picknums))
         tnum, sn = picklib.get_intersection(thisdata, thatdata, multiple_int=False, return_nans=False)

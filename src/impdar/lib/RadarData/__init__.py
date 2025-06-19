@@ -341,6 +341,8 @@ class RadarData(object):
         """
         if t_srs is not None:
             transform, self.t_srs = gpslib.get_conversion(t_srs=t_srs)
+        elif self.t_srs is not None:
+            transform, _ = gpslib.get_conversion(t_srs=self.t_srs)
         else:
             transform, self.t_srs = gpslib.get_utm_conversion(np.nanmean(self.lat), np.nanmean(self.long))
 

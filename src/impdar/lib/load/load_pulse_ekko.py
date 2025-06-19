@@ -36,7 +36,7 @@ class TraceHeaders:
         self.points_per_trace = np.zeros((1, tnum))
         self.topography = np.zeros((1, tnum))
         self.bytes_per_point = np.zeros((1, tnum))
-        self.n_stackes = np.zeros((1, tnum))
+        self.n_stacks = np.zeros((1, tnum))
         self.time_window = np.zeros((1, tnum))
         self.pos = np.zeros((3, tnum))
         self.receive = np.zeros((3, tnum))
@@ -57,7 +57,7 @@ class TraceHeaders:
         self.points_per_trace[0, self.header_index] = header[2]
         self.topography[0, self.header_index] = header[3]
         self.bytes_per_point[0, self.header_index] = header[5]
-        self.n_stackes[0, self.header_index] = header[7]
+        self.n_stacks[0, self.header_index] = header[7]
         self.time_window[0, self.header_index] = header[8]
         self.pos[0, self.header_index] = header[9]
         self.pos[1, self.header_index] = header[11]
@@ -172,10 +172,9 @@ def load_pe(fn_dt1, *args, **kwargs):
     gps_fn = bn_pe + '.GPS'
 
     try:
-        strtypes = (unicode, str)
+        unicode
         openmode_unicode = 'rU'
     except NameError:
-        strtypes = (str, )
         openmode_unicode = 'r'
 
     with open(hdname, openmode_unicode) as fin:
@@ -188,7 +187,6 @@ def load_pe(fn_dt1, *args, **kwargs):
             idx2 = fin_str[idx1:].find('\n')
             pe_data.version = fin_str[idx1+10:idx1+idx2]
         fin.seek(0)
-        print(pe_data.version)
         for i, line in enumerate(fin):
             if 'TRACES' in line or 'NUMBER OF TRACES' in line:
                 pe_data.tnum = int(line.rstrip('\n\r ').split(' ')[-1])
@@ -204,10 +202,16 @@ def load_pe(fn_dt1, *args, **kwargs):
                     doy = (int(line[6:10]), int(line[1:2]), int(line[3:5]))
                 except ValueError:
                     doy = (int(line[:4]), int(line[5:7]), int(line[8:10]))
-            if i == 2 and pe_data.version != '1.0':
-                doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
-
-        day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+                day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+            elif i == 2 and float(pe_data.version) <= 1.5:
+                try:
+                    doy = (int(line[6:10]), int(line[:2]), int(line[3:5]))
+                except ValueError:
+                    doy = (int(line[28:32]), int(line[34:36]), int(line[36:38]))
+                day_offset = datetime.datetime(doy[0], doy[1], doy[2], 0, 0, 0)
+            elif i == 2 and float(pe_data.version) > 1.5:
+                fmt = "%Y-%b-%d\nT%H:%M:%S"
+                day_offset = datetime.datetime.strptime(line + "T00:00:00", fmt)
 
     if pe_data.version == '1.0':
         pe_data.data = np.zeros((pe_data.snum, pe_data.tnum), dtype=np.int16)
