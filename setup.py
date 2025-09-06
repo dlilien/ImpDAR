@@ -11,7 +11,7 @@
 from setuptools import setup, Extension
 import numpy
 ext_modules = [Extension("impdar.lib.migrationlib.mig_cython",
-                         sources=["src/impdar/lib/migrationlib/_mig_cython.pyx"],
+                         sources=["src/impdar/lib/migrationlib/_mig_cython.pyx", "src/impdar/lib/migrationlib/mig_cython.c"],
                          include_dirs=[numpy.get_include()],
                          optional=True),
                Extension("impdar.lib.ApresData.coherence",
