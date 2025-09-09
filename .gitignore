@@ -1,0 +1,10 @@
+# Ignore backup files
+mig_python_20*
+*~
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore build directory
+build/

@@ -21,15 +21,19 @@ Earth and Space Sciences
 
 Mar 12 2019
 
+modified Johannes Aichele, 09 2025
+
 """
 
 from __future__ import print_function
 import sys
 
+
 import numpy as np
 import time
 from scipy import sparse
 from scipy.interpolate import griddata, interp1d, RectBivariateSpline
+from scipy.integrate import cumulative_trapezoid
 
 
 def migrationKirchhoffLoop(data, migdata, tnum, snum, dist, zs, zs2, tt_sec, vel, gradD, max_travel_time, nearfield):
@@ -208,7 +212,7 @@ def migrationStolt(dat,vel=1.68e8,htaper=100,vtaper=1000):
     return dat
 
 
-def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **genfromtxt_kwargs):
+def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000,nextPowerVal=1, **genfromtxt_kwargs):
     """
 
     Phase-Shift Migration
@@ -235,6 +239,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **gen
         Array structure is velocities in first column, z location in second, x location in third.
         If uniform velocity (i.e. vel=constant) input constant
         If layered velocity (i.e. vel=v(z)) input array with shape (#vel-points, 2) (i.e. no x-values)
+    nextPowerVal: integer power of 2 for padding the number of traces (i.e. 1=2, 2=4, 3=8, etc)    
     vel_fn: filename for layered velocity input, .txt file with columns for v, x, z
 
     Output
@@ -257,7 +262,7 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **gen
     H,V = np.meshgrid(h,v)
     dat.data *= H*V
     # pad the array with zeros up to the next power of 2 for discrete fft
-    nt = 2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
+    nt = 2**(nextPowerVal-1)*2**(np.ceil(np.log(dat.snum)/np.log(2))).astype(int)
     # get frequencies and wavenumbers
     if np.mean(dat.trace_int) <= 0:
         Warning("The trace spacing, variable 'dat.trace_int', should be greater than 0. Using gradient(dat.dist) instead.")
@@ -275,7 +280,11 @@ def migrationPhaseShift(dat,vel=1.69e8,vel_fn=None,htaper=100,vtaper=1000, **gen
             print('Velocities loaded from %s.'%vel_fn)
         except:
             raise TypeError('File %s was given for input velocity array, but cannot be loaded. Please reformat to txt file.'%vel_fn)
-    vmig = getVelocityProfile(dat,vel)
+    if hasattr(vel, 'shape') and vel.shape == dat.data.shape:
+        vmig = getVelocityMatrix(dat,vel)
+        print('directly use velocity matrix')
+    else:      
+        vmig = getVelocityProfile(dat,vel)
     # Migration by phase shift, frequency-wavenumber (FKx) to time-wavenumber (TKx)
     TK = phaseShift(dat, vmig, vel, kx, ws, FK)
     # Transform from time-wavenumber (TKx) to time-space (TX) domain to get migrated section
@@ -646,3 +655,42 @@ def getVelocityProfile(dat,vels_in):
 def _check_data_shape(dat):
     if np.size(dat.data, 1) != dat.tnum or np.size(dat.data, 0) != dat.snum:
         raise ValueError('The input array must be of size (snum, tnum)')
+
+
+# Compute migration velocity from a physical velocity matrix (in (time, trace) space)
+def getVelocityMatrix(dat, vels_in):
+    """
+    Given a physical velocity matrix (in (time, trace) space), compute the migration velocity profile (vmig)
+    as required for migration: vmig = 2 * np.gradient(depth, time) for each trace.
+
+    Parameters
+    ----------
+    dat: data as a class in the ImpDAR format
+    vels_in: np.ndarray
+        Physical velocity matrix of shape (dat.snum, dat.tnum), in m/s
+
+    Returns
+    -------
+    vmig: np.ndarray
+        Migration velocity matrix, shape (dat.snum, dat.tnum)
+    """
+    if not isinstance(vels_in, np.ndarray):
+        raise TypeError("vels_in must be a numpy ndarray.")
+    if vels_in.shape != dat.data.shape:
+        raise ValueError(f"vels_in shape {vels_in.shape} does not match data shape {dat.data.shape}.")
+    # Get time axis in seconds (assume dat.travel_time is in microseconds)
+    if hasattr(dat, 'travel_time'):
+        twtt = dat.travel_time.copy() / 1.0e6
+    else:
+        raise AttributeError("dat must have attribute 'travel_time' (in microseconds)")
+    vmig = np.zeros_like(vels_in)
+    for i in range(vels_in.shape[1]):
+        # Integrate velocity to get depth as a function of time for this trace
+        # depth(t) = \int_0^t v(t') * dt' / 2 (divide by 2 for two-way travel time)
+        depth = cumulative_trapezoid(vels_in[:, i], twtt, initial=0) / 2
+        # Compute migration velocity: 2 * dz/dt
+        vmig[:, i] = 2 * np.gradient(depth, twtt)
+    return vmig
+
+
+

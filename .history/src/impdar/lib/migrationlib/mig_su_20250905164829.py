@@ -47,7 +47,7 @@ def migrationSeisUnix(dat,
     Migration through Seis Unix. For now only three options:
     ---------
     1) sumigtk - Migration via T-K domain method for common-midpoint stacked data
-    2) sumigffd - Fourier finite difference migration for zero-offset data. This method is a hybrid
+    2) sugffd - Fourier finite difference migration for zero-offset data. This method is a hybrid
                 migration which combines the advantages of phase shift and finite difference migrations.
     3) sustolt - Stolt migration for stacked data or common-offset gathers
 
