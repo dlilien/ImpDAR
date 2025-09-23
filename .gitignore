@@ -9,6 +9,6 @@ Thumbs.db
 # Ignore build directory
 build/
 
-.history
+.history/
 
 src/impdar/lib/__pycache__/
