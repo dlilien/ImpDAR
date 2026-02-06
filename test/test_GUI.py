@@ -212,11 +212,22 @@ class TestInteractivePicker(unittest.TestCase):
         event.ydata = 1.0e-1
         event.button = 1
 
+        self.ip.waiting_on_new_pick = True
+
         # assume we have no picks
         self.ip._add_pick = MagicMock()
         self.ip.update_lines = MagicMock()
         self.ip._edit_lines_click(event)
         self.assertTrue(self.ip._add_pick.called)
+        self.assertTrue(self.ip.update_lines.called)
+
+        self.ip.waiting_on_new_pick = False
+
+        # assume we have no picks
+        self.ip._add_point_pick = MagicMock()
+        self.ip.update_lines = MagicMock()
+        self.ip._edit_lines_click(event)
+        self.assertTrue(self.ip._add_point_pick.called)
         self.assertTrue(self.ip.update_lines.called)
 
     @unittest.skipIf(sys.version_info[0] < 3, 'Mock is only on 3+')

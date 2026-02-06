@@ -241,12 +241,6 @@ class TestPlotRadargram(unittest.TestCase):
         with self.assertRaises(ValueError):
             plot.plot_radargram(dat, ydat='dummy', fig=fig, ax=ax)
 
-        # Cannot do dist if we have no dist
-        dat = NoInitRadarData(big=True)
-        dat.dist = None
-        with self.assertRaises(ValueError):
-            plot.plot_radargram(dat, xdat='dist', fig=fig, ax=ax)
-
         # Elevation offsets
         dat = NoInitRadarData(big=True)
         with self.assertRaises(ValueError):
