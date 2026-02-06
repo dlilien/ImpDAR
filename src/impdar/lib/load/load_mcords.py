@@ -97,7 +97,12 @@ def load_mcords_mat(fn_mat):
             raise KeyError('It appears that this mat file is ImpDAR/StoDeep, not MCoRDS')
         else:
             raise KeyError('ImpDAR cannot read this type of mat file--it does not appear to be MCoRDS')
-    mcords_data.data = 10.*np.log10(np.squeeze(mat['Data']))
+    try:
+        mcords_data.data = 10.*np.log10(np.squeeze(mat['Data']))
+    except TypeError:
+        mcords_data.data = np.squeeze(mat['Data']["real"]) + 1.0j * np.squeeze(mat['Data']["imag"])
+        mcords_data.data_dtype = np.complex128
+
     mcords_data.long = np.squeeze(mat['Longitude'])
     mcords_data.lat = np.squeeze(mat['Latitude'])
     # sometimes the mcords data array is transposed, so check and fix

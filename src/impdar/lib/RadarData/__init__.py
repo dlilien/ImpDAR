@@ -248,7 +248,8 @@ class RadarData(object):
         data_dict = {}
         for data_attr in data_attrs:
             if data_attr in mat:
-                if len(mat[data_attr].dtype) > 0:
+                # Be careful about complex arrays
+                if len(mat[data_attr].dtype) > 0 and mat[data_attr].dtype.name != "void128":
                     print('Warning: Multiple arrays stored in {:s}, taking the first.'.format(data_attr))
                     data_dict[data_attr] = mat[data_attr][0][0][0]
                 else:

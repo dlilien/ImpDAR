@@ -164,7 +164,8 @@ def plot_radargram(dat, xdat='tnum', ydat='twtt', x_range=(0, -1),
     if xdat not in ['tnum', 'dist']:
         raise ValueError('x axis choices are tnum or dist')
     elif (xdat == 'dist') and dat.dist is None:
-        raise ValueError('xdat cannot be dist when the data has no dist')
+        dat.dist = cumulative_distance(dat.long, dat.lat)
+        print("Warning! Distance calculated with a rough approximation")
 
     if x_range is None:
         x_range = (0, -1)
@@ -394,7 +395,7 @@ def plot_traces(dat, tr, ydat='twtt', fig=None, ax=None, linewidth=1.0,
         if not len(tr) == 2:
             raise ValueError('tr must either be a 2-tuple of bounds for the \
                              traces or a single trace index')
-    if type(tr) == int:
+    if type(tr) is int:
         tr = (tr, tr + 1)
     elif tr[0] == tr[1]:
         tr = (tr[0], tr[0] + 1)
@@ -574,12 +575,12 @@ def plot_picks(rd, xd, yd, colors=None, flatten_layer=None, fig=None, ax=None, j
     if not colors:  # may be False or None
         cl = 'mgm'
     else:
-        if type(colors) == str:
+        if type(colors) is str:
             if len(colors) == 3:
                 cl = colors
             else:
                 cl = ('none', colors, 'none')
-        elif (type(colors) == bool) and colors:
+        elif (type(colors) is bool) and colors:
             colors = (COLORS_NONGRAY * (rd.picks.samp1.shape[0] // len(COLORS_NONGRAY) + 1))[:len(picknums)]
             variable_colors = True
         elif not len(colors) == len(picknums):
@@ -870,7 +871,7 @@ def plot_apres_quadpol(qpdat, s=False, facecolor = 'w', tick_color = 'k', fg_col
     if qpdat.chhvv is not None:
         cf = axs[3].contourf(Θs,Ds,np.angle(qpdat.chhvv),cmap=cmap3,levels=100,zorder=-1)
         cb = plt.colorbar(cf, ax=axs[3], ticks=[-np.pi,0,np.pi], orientation='horizontal')
-        cb.set_label('$\phi_{hhvv}$',c=fg_color)
+        cb.set_label(r'$\phi_{hhvv}$',c=fg_color)
         cb.ax.set_xticklabels(['-π','0','π'],color=fg_color)
 
     for ax in axs[:4]:
@@ -915,3 +916,55 @@ def get_offset(dat, flatten_layer=None):
         offset = zero_offset - layer_depth
         mask = np.isnan(dat.picks.samp2[layer_ind, :])
     return offset, mask
+
+
+def cumulative_distance(lon_deg, lat_deg):
+    """
+    Compute cumulative distance (km) along a path on Earth's surface.
+
+    Parameters
+    ----------
+    lon_deg : array-like, shape (N,)
+        Longitudes in degrees.
+    lat_deg : array-like, shape (N,)
+        Latitudes in degrees.
+
+    Returns
+    -------
+    cumdist : ndarray, shape (N,)
+        Cumulative distances in kilometers. cumdist[0] == 0.0.
+
+
+    Written with the help of ChatGPT
+    """
+    radius_km=6371.0088
+
+    lat = np.asarray(lat_deg, dtype=float).ravel()
+    lon = np.asarray(lon_deg, dtype=float).ravel()
+    if lat.shape != lon.shape:
+        raise ValueError("lat and lon must have the same shape")
+    n = lat.size
+    if n == 0:
+        return np.array([], dtype=float)
+    if n == 1:
+        return np.array([0.0], dtype=float)
+
+    # convert degrees to radians
+    lat_rad = np.deg2rad(lat)
+    lon_rad = np.deg2rad(lon)
+
+    # differences between consecutive points
+    dlat = lat_rad[1:] - lat_rad[:-1]
+    dlon = lon_rad[1:] - lon_rad[:-1]
+
+    # haversine for each segment
+    a = np.sin(dlat / 2.0)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(dlon / 2.0)**2
+    # guard against small numerical errors
+    a = np.minimum(1.0, np.maximum(0.0, a))
+    segment_dist = 2.0 * radius_km * np.arcsin(np.sqrt(a))
+
+    # cumulative distance (start at 0)
+    cumdist = np.empty(n, dtype=float)
+    cumdist[0] = 0.0
+    cumdist[1:] = np.cumsum(segment_dist)
+    return cumdist

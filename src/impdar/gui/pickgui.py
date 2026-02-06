@@ -157,6 +157,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.bpid = self.fig.canvas.mpl_connect('pick_event', self._click)
         # We need this so we no if we are nanpicking
         self._n_pressed = False
+        self.waiting_on_new_pick = False
 
         #####
         # Connect some stuff after things are set up
@@ -175,7 +176,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         self.maxSpinner.valueChanged.connect(self._lim_update)
         self.FrequencySpin.valueChanged.connect(self._freq_update)
         self.modeButton.clicked.connect(self._mode_update)
-        self.newpickButton.clicked.connect(self._add_pick)
+        self.newpickButton.clicked.connect(self._add_pick_button)
         self.autoButton.clicked.connect(self._update_autopicker)
         self.pickNumberBox.valueChanged.connect(self._pickNumberUpdate)
         self.bwb_radio.toggled.connect(self._update_polarity)
@@ -257,6 +258,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                     center.set_pickradius(0)
                     bottom.set_pickradius(0)
                     top.set_pickradius(0)
+            if len(self.cline) == 0:
+                self.waiting_on_new_pick = True
         else:
             self.modeButton.setText(_translate('MainWindow', 'Select Mode'))
             self.FigCanvasWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
@@ -300,12 +303,15 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         """Click in edit mode. Shunt this event to the appropriate function.
 
         Can be plain left click (pick)
-        left click with n depressed (nanpick)
+        left click with shift depressed (nanpick)
         or right click (delete)
         """
-        tnum = np.argmin(np.abs(self.xd - event.xdata))
-        snum = np.argmin(np.abs(self.yd - event.ydata)) - self.offset[tnum]
-        if len(self.cline) == 0:
+        try:
+            tnum = np.argmin(np.abs(self.xd - event.xdata))
+            snum = np.argmin(np.abs(self.yd - event.ydata)) - self.offset[tnum]
+        except TypeError:
+            return
+        if self.waiting_on_new_pick:
             self._add_pick(snum=snum, tnum=tnum)
         else:
             if event.button == 1:
@@ -313,6 +319,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 if self._n_pressed:
                     warn('Deprecated', 'n for NaN is deprecated, will be removed in version 1.1, use shift')
                     self._add_nanpick(snum, tnum)
+                    self._n_pressed = False
                 elif (QtCore.Qt.ShiftModifier == modifiers):
                     self._add_nanpick(snum, tnum)
                 else:
@@ -799,7 +806,8 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
         if event.key == 'n':
             self._n_pressed = False
 
-    def _add_pick(self, tnum=None, snum=None):
+    def _add_pick_button(self):
+        self.waiting_on_new_pick = True
         # Give a visual clue to what is being picked by using different colors for old lines
         # I think that c, b, t should always be the same length,
         # if this doesnt work I think it means there is a deeper bug
@@ -811,6 +819,9 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
                 self.fig.canvas.draw()
                 self.fig.canvas.flush_events()
 
+
+
+    def _add_pick(self, tnum=None, snum=None):
         self.cline.append(None)
         self.bline.append(None)
         self.tline.append(None)
@@ -839,6 +850,7 @@ class InteractivePicker(QtWidgets.QMainWindow, RawPickGUI.Ui_MainWindow):
             except ValueError:
                 warn('Frequency too low!',
                      'Resulting search window for pick to be too large. Increase frequency!')
+        self.waiting_on_new_pick = False
 
 
 class VBPInputDialog(QDialog):
